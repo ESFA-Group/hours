@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+
+<div class="container">
+
+    <h3 class="d-flex justify-content-center my-4">
+        <strong>What's going on with you</strong>
+    </h3>
+    <div class="row p-3" style="overflow-x: auto;">
+        <div id="user-chart" style="min-width: 800px;"></div>
+    </div>
+
+    <div class="row p-3">
+        <div class="d-flex justify-content-around">
+            <div class="text-center">
+                <h4>
+                    <strong>Our hero of last month:</strong>
+                </h4>
+                <p id="hero-name"></p>
+                <strong>
+                    <p id="cool-sentence"></p>
+                </strong>
+            </div>
+            <div class="text-center">
+                <h4>
+                    <strong>In last month:</strong>
+                </h4>
+                <span>
+                    Woking hours mean in E<span style="color: red;">S</span>FA: 
+                    <strong><span id="esfa-mean"></span></strong>
+                </span>
+                <br>
+                <span>
+                    Your mean working hours: 
+                    <strong><span id="user-mean"></span></strong>
+                </span>
+                <br>
+                <span>
+                    Your mean working hours were 
+                    <strong><span id="mean-diff"></span>    </strong>
+                    E<span style="color: red;">S</span>FA's mean.
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="d-flex justify-content-center my-4">
+        <strong>Your monthly status in this year</strong>
+    </h3>
+
+    <div class="row p-3">
+        <strong>Year</strong>
+        <div class="mt-1">
+            <select name="year" id="year" style="min-width: 150px; border-radius: 5px; height: 35px;"></select>
+        </div>
+    </div>
+
+    <div class="row p-3" style="overflow-x: auto;">
+        <div id="monthly-chart" style="min-width: 800px;"></div>
+    </div>
+
+    <h3 class="d-flex justify-content-center my-4">
+        <strong>What's going on in E<span style="color: red;">S</span>FA</strong>
+    </h3>
+    <div class="row p-3" style="overflow-x: auto;">
+        <div id="ESFA-chart" style="min-width: 800px;"></div>
+    </div>
+
+</div>
+
+<script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
+<script>
+    async function getPublicInfo(){
+        const url = '{% url "sheets:api_info"%}';
+        try{
+            let res = await fetch(url);
+            return await res.json();
+        }
+        catch (err){
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Fetching Info",
+                message: err,
+                timeout: 6000,
+            });
+        }
+    }
+
+    function drawInfoChart(selector, monthInfo, yearInfo, totInfo){
+        const layout = {
+            grid: {rows: 1, columns: 3},
+            legend: {"orientation": "h"},
+            // margin: {l: 0, r: 0, b: 0, t: 0, p: 0},
+            margin: {t: 0},
+            showlegend: false,
+
+        }
+
+        const monthTotal = monthInfo.Hours;
+        delete monthInfo.Hours;
+        const yearTotal = yearInfo.Hours;
+        delete yearInfo.Hours;
+        const totTotal = totInfo.Hours;
+        delete totInfo.Hours;
+
+        const data = [
+            {   
+                title: {
+                    text: `This Month: ${Math.floor(monthTotal / 60)}:${monthTotal % 60}`, 
+                    font: {family: 'Lato, serif', size: 20}
+                },
+                name: "This Month",
+                type: 'pie',
+                values: Object.values(monthInfo),
+                labels: Object.keys(monthInfo),
+                textinfo: "label+percent",
+                domain: {column: 0},
+            },
+            {   
+                title: {
+                    text: `This Year: ${Math.floor(yearTotal / 60)}:${yearTotal % 60}`, 
+                    font: {family: 'Lato, serif', size: 20}
+                },
+                name: "This Year",
+                type: 'pie',
+                values: Object.values(yearInfo),
+                labels: Object.keys(yearInfo),
+                textinfo: "label+percent",
+                domain: {column: 1},
+            },
+            {   
+                title: {
+                    text: `All the Time: ${Math.floor(totTotal / 60)}:${totTotal % 60}`, 
+                    font: {family: 'Lato, serif', size: 20}
+                },
+                name: "Total",
+                type: 'pie',
+                values: Object.values(totInfo),
+                labels: Object.keys(totInfo),
+                textinfo: "label+percent",
+                domain: {column: 2},
+            },
+        ];
+
+        const config = {responsive: false};
+        Plotly.newPlot(selector, data, layout, config);
+
+    }
+
+    function drawYearlyChart(selector, monthlyHours){
+        console.log('here babe')
+
+        console.log(monthlyHours)
+
+        const months = [
+            "Farvardin", "Ordibehest",  "Khordad",  "Tir",  "Mordad",  "Shahrivar",
+            "Mehr",  "Aban",  "Azar",  "Dey",  "Bahman",  "Esfand",
+        ]
+        const data = [{
+            x: monthlyHours.map(x => months[x.month - 1]),
+            y: monthlyHours.map(x => Math.floor(x.total)),
+            text: monthlyHours.map(x => Math.floor(x.total)),
+            type: "bar",
+            marker: {
+                color: 'rgb(158, 202, 225)',
+                opacity: 0.7,
+                line: {
+                    color: 'rgb(8, 48, 107)',
+                    width: 1.5
+                }
+            }
+        }];
+
+        layout = {
+            xaxis: {
+                tickangle: -45
+            },
+            barmode: 'group',
+            margin: {t: 0},
+        };
+
+        const config = {responsive: true};
+        Plotly.newPlot(selector, data, layout, config);
+    }
+
+    function randInt(start, end){
+        let n = Math.random();
+        n = n  * (end - start) + start;
+        return Math.floor(n)
+    }
+
+    var sentences = [
+        "Salamatish salavat",
+        "Can you believe it?",
+        "Ooosk",
+        "Nice!",
+        "Good job",
+        "Not him again!",
+        "Mmm... that's weird",
+        "Wasn't it obvious?",
+        // "Ahang Bootan lotfan",
+        "Piade sho baham berim",
+        "Well done",
+        "I don't get it too",
+        "So what?",
+        "Can you beat him?",
+        "Still can't believe",
+        "Très bien!",
+    ];
+
+    async function getYearlyData(year){
+        const url = `{% url "sheets:api_yearly_report" year='yearHolder' %}`
+            .replace("yearHolder", year)
+        try{
+            let res = await fetch(url);
+            return await res.json();
+        }
+        catch (err){
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Fetching Report Info",
+                message: err,
+                timeout: 6000,
+            });
+        }
+    }
+
+    async function showInfo(){
+        const year = $("#year").val();
+        const yearly_info = await getYearlyData(year)
+        drawYearlyChart('monthly-chart', yearly_info.hours);
+
+        // const info = await getPublicInfo();
+        // console.log('info is:', info)
+        // drawInfoChart('user-chart', info.user_month_info, info.user_year_info, info.user_tot_info);
+        // drawInfoChart('ESFA-chart', info.esfa_month_info, info.esfa_year_info, info.esfa_tot_info);
+        // drawMonthlyChart('monthly-chart', info.user_monthly_hours);
+        // $("#hero-name").text(info.last_hero);
+        // $("#cool-sentence").text(sentences[randInt(0, sentences.length)]);
+        // $("#esfa-mean").text(`${Math.floor(info.last_esfa_mean / 60)}:${Math.floor(info.last_esfa_mean % 60)}`);
+        // $("#user-mean").text(`${Math.floor(info.last_user_mean / 60)}:${Math.floor(info.last_user_mean % 60)}`);
+        // const diff = Math.abs(info.last_esfa_mean - info.last_user_mean);
+        // const color = info.last_esfa_mean < info.last_user_mean? "green": "red";
+        // const txt = info.last_esfa_mean <= info.last_user_mean? "above": "under";
+        // $("#mean-diff").text(`${Math.floor(diff / 60)}:${Math.floor(diff % 60)} ${txt}`).css({color: color});
+    }
+
+    function fillYears(year){
+        for(let i=window.START_YEAR; i<=year; i++){
+            $("#year").append($("<option>").text(i));
+        }
+    }
+
+    $("document").ready(async function(){
+        const today = new JDate();
+        const currentYear = today.getFullYear();
+        fillYears(currentYear); 
+        $("#year").val(currentYear);
+        
+        $("#year").change(function () {
+            showInfo()
+        })
+
+        showInfo()
+    })
+
+</script>
+{% endblock body %}

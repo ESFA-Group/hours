@@ -210,6 +210,30 @@ class MonthlyReportApiView(APIView):
     def minute_formatter(cls, minutes: int) -> str:
         return f"{int(minutes // 60)}:{int(minutes % 60)}"
     
+class YearlyReportApiView(APIView):
+    
+    def get(self, request, year):
+
+        hours = []
+        for i in range(1, 13):
+            # record = YearlyRecord()
+            # record.month = i
+            # record.total = i
+
+            # hours[i] = { 'month': i, 'total': i }
+            hours.append({ 'month': i, 'total': i })
+
+        res = {
+            "hours": hours
+        }
+
+        return Response(res, status=status.HTTP_200_OK)
+    
+
+class YearlyRecord:
+    month = 0
+    total = 0
+
 class PaymentApiView(APIView):
 
     permission_classes = [permissions.IsAdminUser]

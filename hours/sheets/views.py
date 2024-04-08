@@ -119,6 +119,9 @@ class PersonalInfoView(BaseView):
 class HoursInfoView(BaseView):
     template_name = "hours_info.html"
 
+class HoursReportsView(BaseView):
+    template_name = "hours_reports.html"
+
 @method_decorator([staff_member_required], name='dispatch')
 class ReportsView(BaseView):
     template_name = "reports.html"
