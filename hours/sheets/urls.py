@@ -28,5 +28,6 @@ urlpatterns = [
     path('api/sheets/<str:year>/<str:month>', api_views.SheetApiView.as_view(), name='api_sheets'),
     path('api/monthly_report/<str:year>/<str:month>', api_views.MonthlyReportApiView.as_view(), name='api_monthly_report'),
     path('api/yearly_report/<str:year>', api_views.YearlyReportApiView.as_view(), name='api_yearly_report'),
+    path('api/weekdays_mean_report/<str:year>', api_views.WeekDaysMeanReport.as_view(), name='api_weekdays_mean_report'),
     path('api/payment/<str:year>/<str:month>', api_views.PaymentApiView.as_view(), name='api_payment'),
 ]

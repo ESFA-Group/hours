@@ -216,11 +216,6 @@ class YearlyReportApiView(APIView):
 
         hours = []
         for i in range(1, 13):
-            # record = YearlyRecord()
-            # record.month = i
-            # record.total = i
-
-            # hours[i] = { 'month': i, 'total': i }
             hours.append({ 'month': i, 'total': i })
 
         res = {
@@ -230,9 +225,51 @@ class YearlyReportApiView(APIView):
         return Response(res, status=status.HTTP_200_OK)
     
 
-class YearlyRecord:
-    month = 0
-    total = 0
+class WeekDaysMeanReport(APIView):
+
+    def get(self, request, year):
+        sheets = Sheet.objects.filter(user=request.user, year=year, submitted=True)
+        df_total = pd.DataFrame(
+            { 
+                'Hours': [0] * len(jdt.date.j_weekdays_short_en),
+                'Count': [0] * len(jdt.date.j_weekdays_short_en)
+            }, index=jdt.date.j_weekdays_short_en)
+
+        df_total.index.name = 'WeekDay'
+
+        for sheet in sheets:
+            df_sheet = sheet.transform()
+            df_sum = df_sheet.groupby('WeekDay')['Hours'].sum().to_frame()
+            
+            df_sheet1 = df_sheet[df_sheet['Hours'] != 0]
+            df_count = df_sheet1.groupby('WeekDay')['Hours'].count().to_frame()
+            df_count.columns = ['Count']
+            
+            df_sheet = pd.concat([df_sum, df_count], axis=1)
+            df_sheet['Count'].fillna(0, inplace=True)
+            
+            df_total = df_total + df_sheet
+
+         
+        weekdays_dict = { jdt.date.j_weekdays_short_en[i]:i for i in range(len(jdt.date.j_weekdays_short_en))}
+
+        hours = []
+        for index, row in df_total.iterrows():
+            mean = 0
+            count = row['Count']
+
+            if count != 0:
+                mean = row['Hours'] / (count * 60.0)
+
+            hours.append({ 'weekday': index, 'mean': mean })
+
+        hours.sort(key=lambda x: weekdays_dict[x['weekday']])
+
+        res = {
+            "hours": hours
+        }
+
+        return Response(res, status=status.HTTP_200_OK)
 
 class PaymentApiView(APIView):
 

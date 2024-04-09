@@ -46,10 +46,6 @@
         </div>
     </div>
 
-    <h3 class="d-flex justify-content-center my-4">
-        <strong>Your monthly status in this year</strong>
-    </h3>
-
     <div class="row p-3">
         <strong>Year</strong>
         <div class="mt-1">
@@ -57,8 +53,20 @@
         </div>
     </div>
 
+    <h3 class="d-flex justify-content-center my-4">
+        <strong>Your monthly status in the year</strong>
+    </h3>
+
     <div class="row p-3" style="overflow-x: auto;">
         <div id="monthly-chart" style="min-width: 800px;"></div>
+    </div>
+
+    <h3 class="d-flex justify-content-center my-4">
+        <strong>Your Weekday status in the year</strong>
+    </h3>
+
+    <div class="row p-3" style="overflow-x: auto;">
+        <div id="weekday-chart" style="min-width: 800px;"></div>
     </div>
 
     <h3 class="d-flex justify-content-center my-4">
@@ -186,6 +194,42 @@
         Plotly.newPlot(selector, data, layout, config);
     }
 
+    function drawWeekdayChart(selector, weekdayHours){
+        console.log('weekday babe')
+        console.log(weekdayHours)
+
+        const data = [{
+            x: weekdayHours.map(x => x.weekday),
+            y: weekdayHours.map(x => Math.floor(x.mean)),
+            text: weekdayHours.map(x => Math.floor(x.mean)),
+            type: "bar",
+            marker: {
+                color: 'rgb(158, 202, 225)',
+                opacity: 0.7,
+                line: {
+                    color: 'rgb(8, 48, 107)',
+                    width: 1.5
+                }
+            }
+        }];
+
+        layout = {
+            xaxis: {
+                tickangle: -45
+            },
+            yaxis: {
+                title: {
+                  text: 'y Axis',
+                }
+              },
+            barmode: 'group',
+            margin: {t: 0},
+        };
+
+        const config = {responsive: true};
+        Plotly.newPlot(selector, data, layout, config);
+    }
+
     function randInt(start, end){
         let n = Math.random();
         n = n  * (end - start) + start;
@@ -229,10 +273,32 @@
         }
     }
 
+    async function getWeekdayData(year, user_id){
+        const url = `{% url "sheets:api_weekdays_mean_report" year='yearHolder' %}`
+            .replace("yearHolder", year)
+        try{
+            let res = await fetch(url);
+            return await res.json();
+        }
+        catch (err){
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Fetching Report Info",
+                message: err,
+                timeout: 6000,
+            });
+        }
+    }
+
     async function showInfo(){
         const year = $("#year").val();
+
         const yearly_info = await getYearlyData(year)
         drawYearlyChart('monthly-chart', yearly_info.hours);
+
+        const weekday_info = await getWeekdayData(year)
+        drawWeekdayChart('weekday-chart', weekday_info.hours);
 
         // const info = await getPublicInfo();
         // console.log('info is:', info)
