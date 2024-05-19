@@ -30,8 +30,16 @@ urlpatterns = [
         name="projects_yearly_report",
     ),
     path("payment_export", views.PaymentExportView.as_view(), name="payment_export"),
-    path("payment_excel_export/<str:year>/<str:month>", views.PaymentExcelExportView.as_view(), name="payment_excel_export"),
-    path("payment_excel_import/<str:year>/<str:month>", views.PaymentExcelImportView.as_view(), name="payment_excel_import"),
+    path(
+        "payment_excel_export/<str:year>/<str:month>",
+        views.PaymentExcelExportView.as_view(),
+        name="payment_excel_export",
+    ),
+    path(
+        "payment_excel_import/<str:year>/<str:month>",
+        views.PaymentExcelImportView.as_view(),
+        name="payment_excel_import",
+    ),
     path("api/info", api_views.InfoApiView.as_view(), name="api_info"),
     path("api/projects", api_views.ProjectListApiView.as_view(), name="api_projects"),
     path(

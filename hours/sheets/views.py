@@ -149,7 +149,7 @@ class PaymentHandleView(BaseView):
 
 @method_decorator([staff_member_required], name="dispatch")
 class AlterPaymentHandleView(BaseView):
-    template_name = "AlterPayment.html"
+    template_name = "alter_payment.html"
 
 
 @method_decorator([staff_member_required], name="dispatch")
@@ -386,7 +386,7 @@ class PaymentExcelExportView(View):
 
     def post(self, request, year: str, month: str):
         sheet = Sheet.objects.filter(year=year, month=month).values(
-            "user_id",  # user id
+            "user_id",
             "user_name",
             "wage",
             "base_payment",
@@ -394,6 +394,7 @@ class PaymentExcelExportView(View):
             "reduction2",
             "reduction3",
             "addition1",
+            "payment_status",
         )
 
         df = pd.DataFrame(sheet)
@@ -433,6 +434,7 @@ class PaymentExcelImportView(View):
             current_sheet.reduction2 = row["reduction2"]
             current_sheet.reduction3 = row["reduction3"]
             current_sheet.addition1 = row["addition1"]
+            current_sheet.payment_status = row["payment_status"]
             current_sheet.save()
 
             user = User.objects.get(pk=user_id)

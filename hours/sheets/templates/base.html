@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
-{% load static %}
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>{{request.resolver_match.url_name}}</title>
-    <link rel="icon" href="{% static 'sheets/picture/favicon.ico' %}">
-    {% block main_css %}
-        <link rel="stylesheet" href="{% static 'sheets/css/bootstrap.min.css' %}">
-        <link rel="stylesheet" href="{% static 'sheets/css/jsuites.css' %}">
-        <link rel="stylesheet" href="{% static 'sheets/css/font-awesome-all.min.css' %}">
-    {% endblock main_css %}
+    {% load static %}
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0, user-scalable=no">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>{{ request.resolver_match.url_name }}</title>
+        <link rel="icon" href="{% static 'sheets/picture/favicon.ico' %}">
+        {% block main_css %}
+            <link rel="stylesheet" href="{% static 'sheets/css/bootstrap.min.css' %}">
+            <link rel="stylesheet" href="{% static 'sheets/css/jsuites.css' %}">
+            <link rel="stylesheet"
+                  href="{% static 'sheets/css/font-awesome-all.min.css' %}">
+        {% endblock main_css %}
 
-    {% block extra_css %}
-    {% endblock extra_css %}
-    
-    <style>
+        {% block extra_css %}
+        {% endblock extra_css %}
+
+        <style>
         @font-face {
             font-family: 'lato';
             src: local('Lato'),
@@ -40,59 +42,73 @@
         /* Firefox */
         input[type=number] {
             -moz-appearance: textfield;
-        } {% endcomment %}
-    </style>
+} {% endcomment %}
+        </style>
 
-    <script src="{% static 'sheets/js/JQuery-3.6.0.min.js' %}"></script>
-    <script src="{% static 'sheets/js/bootstrap.bundle.min.js' %}"></script>
-    <script src="{% static 'sheets/js/jdate.min.js' %}"></script>
-    <script src="{% static 'sheets/js/jsuites.js' %}"></script>
-    <script src="{% static 'sheets/js/utils.js' %}"></script>
-</head>
+        <script src="{% static 'sheets/js/JQuery-3.6.0.min.js' %}"></script>
+        <script src="{% static 'sheets/js/bootstrap.bundle.min.js' %}"></script>
+        <script src="{% static 'sheets/js/jdate.min.js' %}"></script>
+        <script src="{% static 'sheets/js/jsuites.js' %}"></script>
+        <script src="{% static 'sheets/js/utils.js' %}"></script>
+    </head>
 
-<body style="letter-spacing: 0.5px;">
+    <body style="letter-spacing: 0.5px;">
 
-    {% block navbar %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">E<span style="color: red;">S</span>FA Hours</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNavDropdown">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" aria-current="page" href="{% url 'sheets:home_page' %}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        {% url 'sheets:hours' as temp_url %}
-                        <a class="nav-link {% if request.path == temp_url %}active{% endif %}" href="{% url 'sheets:hours' %}">Hours</a>
-                    </li>
-                    <li class="nav-item">
-                        {% url 'sheets:hours_info' as temp_url %}
-                        <a class="nav-link {% if request.path == temp_url %}active{% endif %}" href="{% url 'sheets:hours_info' %}">Hours Info</a>
-                    </li>
-                    <li class="nav-item">
-                        {% url 'sheets:personal_info' as temp_url %}
-                        <a class="nav-link {% if request.path == temp_url %}active{% endif %}" href="{% url 'sheets:personal_info' %}">Personal Info</a>
-                    </li>
-                    {% if request.user.is_staff %}
-                    <li class="nav-item">
-                        {% url 'sheets:reports' as temp_url %}
-                        <a class="nav-link {% if request.path == temp_url %}active{% endif %}" href="{% url 'sheets:reports' %}">Reports</a>
-                    </li>
-                    <li class="nav-item">
-                        {% url 'sheets:payment' as temp_url %}
-                        <a class="nav-link {% if request.path == temp_url %}active{% endif %}" href="{% url 'sheets:payment' %}">Payments</a>
-                    </li>
-                    <li class="nav-item">
-                        {% url 'sheets:alter_payment' as temp_url %}
-                        <a class="nav-link {% if request.path == temp_url %}active{% endif %}" href="{% url 'sheets:alter_payment' %}">Alter Payments</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'admin:index' %}">Admin</a>
-                    </li>
-                    {% comment %} <li class="nav-item dropdown">
+        {% block navbar %}
+            <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="#">E<span style="color: red;">S</span>FA Hours</a>
+                    <button class="navbar-toggler"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#navbarNavDropdown"
+                            aria-controls="navbarNavDropdown"
+                            aria-expanded="false"
+                            aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                        <ul class="navbar-nav me-auto">
+                            <li class="nav-item">
+                                <a class="nav-link"
+                                   aria-current="page"
+                                   href="{% url 'sheets:home_page' %}">Home</a>
+                            </li>
+                            <li class="nav-item">
+                                {% url 'sheets:hours' as temp_url %}
+                                <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
+                                   href="{% url 'sheets:hours' %}">Hours</a>
+                            </li>
+                            <li class="nav-item">
+                                {% url 'sheets:hours_info' as temp_url %}
+                                <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
+                                   href="{% url 'sheets:hours_info' %}">Hours Info</a>
+                            </li>
+                            <li class="nav-item">
+                                {% url 'sheets:personal_info' as temp_url %}
+                                <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
+                                   href="{% url 'sheets:personal_info' %}">Personal Info</a>
+                            </li>
+                            {% if request.user.is_staff %}
+                                <li class="nav-item">
+                                    {% url 'sheets:reports' as temp_url %}
+                                    <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
+                                       href="{% url 'sheets:reports' %}">Reports</a>
+                                </li>
+                                <li class="nav-item">
+                                    {% url 'sheets:payment' as temp_url %}
+                                    <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
+                                       href="{% url 'sheets:payment' %}">Payments</a>
+                                </li>
+                                <li class="nav-item">
+                                    {% url 'sheets:alter_payment' as temp_url %}
+                                    <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
+                                       href="{% url 'sheets:alter_payment' %}">Alter Payments</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{% url 'admin:index' %}">Admin</a>
+                                </li>
+                                {% comment %} <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                           Dropdown link
                         </a>
@@ -101,22 +117,22 @@
                           <li><a class="dropdown-item" href="#">Another action</a></li>
                           <li><a class="dropdown-item" href="#">Something else here</a></li>
                         </ul>
-                    </li> {% endcomment %}
-                    {% endif %}
-                    <li class="nav-item">
-                        <a class="nav-link logout" href="{% url 'sheets:logout' %}">Logout</a>
-                    </li>
-                </ul>
-                <span class="navbar-text" style="color: cornsilk;">
-                    <span class="mx-3">{{request.user.username}}</span>
-                    <span id="nav-date" ></span>
-                </span>
-            </div>
-        </div>
-    </nav>
-    {% endblock navbar %}
-    
-    <script>
+                                </li> {% endcomment %}
+                            {% endif %}
+                            <li class="nav-item">
+                                <a class="nav-link logout" href="{% url 'sheets:logout' %}">Logout</a>
+                            </li>
+                        </ul>
+                        <span class="navbar-text" style="color: cornsilk;">
+                            <span class="mx-3">{{ request.user.username }}</span>
+                            <span id="nav-date"></span>
+                        </span>
+                    </div>
+                </div>
+            </nav>
+        {% endblock navbar %}
+
+        <script>
         window.START_YEAR = 1401;
 
         function getToday(){
@@ -133,11 +149,11 @@
             $("#nav-date").text(`${weekday}.\u00A0\u00A0|\u00A0\u00A0${y}/${m}/${d}`);
         }
         writeDate();
-    </script>
+        </script>
 
-    {% block body %}
-    {% endblock %}
+        {% block body %}
+        {% endblock body %}
 
 
-</body>
+    </body>
 </html>

@@ -3,277 +3,450 @@
 
 {% block body %}
 
-<div class="container-fluid mt-3">
+    <div class="container-fluid mt-3">
 
-    {% if submitted %}
-        <div class="bg-success-subtle border border-success rounded p-2 d-flex justify-content-center">
-            <span class="fw-bold fs-4 text-success">Form submitted successfully</span>
-        </div>
-        <br>
-    {% endif %}
+        {% if submitted %}
+            <div class="bg-success-subtle border border-success rounded p-2 d-flex justify-content-center">
+                <span class="fw-bold fs-4 text-success">Form submitted successfully</span>
+            </div>
+            <br>
+        {% endif %}
 
-    <div class="d-flex justify-content-center mb-1">
-        <h3>User Information Form</h3>
-    </div>
-
-    <form class="needs-validation" action="{% url 'sheets:personal_info' %}" method="POST" enctype="multipart/form-data" novalidate>
-        {% csrf_token %} 
-        <input type="hidden" name="saveUserData" value="true">
-        <h5 class="bg-primary-subtle border border-primary rounded px-3 py-2">Personal Information</h5>
-
-        <div class="row g-2">
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="firstName" class="form-label">First Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="firstName" name="firstName" value="{{request.user.first_name}}" pattern="([A-z\s]){1,}" required>
-                <div class="invalid-feedback">
-                    This field is required and should be in Latin.
-                </div>
-            </div>
-    
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="lastName" class="form-label">Last Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="lastName" name="lastName" value="{{request.user.last_name}}" pattern="([A-z\s]){1,}" required>
-                <div class="invalid-feedback">
-                    This field is required and should be in Latin.
-                </div>
-            </div>
-    
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="dob" class="form-label">Date of Birth <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="dob" name="dob" value="{{request.user.dob}}" placeholder="e.g. 1375-1-1"
-                pattern="^\d{4}-(0?[1-9]|1[012])-(0?[1-9]|1[0-9]|2[0-9]|3[01])$" maxlength="10" required>
-                <div class="invalid-feedback">
-                    This field is required and should be in this format: 1375-12-29
-                </div>
-            </div>
-            
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="nationalID" class="form-label">National ID <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="nationalID" name="nationalID" value="{{request.user.national_ID}}" placeholder="e.g. 0012345678"
-                pattern="^\d{10}$" maxlength="10" required>
-                <div class="invalid-feedback">
-                    This field is required and should be exactly a 10 digit number.
-                </div>
-            </div>
-
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="email" name="email" value="{{request.user.email}}" placeholder="e.g. example@gmail.com"
-                pattern="^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$" required>
-                <div class="invalid-feedback">
-                    Email is required and should be in this format: me@gml.com
-                </div>
-            </div>
-    
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="mobile1" class="form-label">Mobile 1 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="mobile1" name="mobile1" value="{{request.user.mobile1}}" placeholder="e.g. 09107654321"
-                pattern="^\d{11}$" maxlength="11" required>
-                <div class="invalid-feedback">
-                    This field is required and should be exactly a 11 digit number.
-                </div>
-            </div>
-    
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="mobile2" class="form-label">Mobile 2</label>
-                <input type="text" class="form-control" id="mobile2" name="mobile2" value="{{request.user.mobile2}}" placeholder="e.g. 09107654321"
-                pattern="^\d{11}$" maxlength="11">
-                <div class="invalid-feedback">
-                    This field is required and should be exactly a 11 digit number.
-                </div>
-            </div>
-
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="emergencyPhone" class="form-label">Emergency Phone <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="emergencyPhone" name="emergencyPhone" value="{{request.user.emergency_phone}}" placeholder="e.g. 09107654321"
-                pattern="^\d{8,11}$" maxlength="11" required>
-                <div class="invalid-feedback">
-                    This field is required and should be 8 to 11 digits.
-                </div>
-            </div>
-
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="laptopInfo" class="form-label">Laptop Information</label>
-                <input type="text" class="form-control" id="laptopInfo" name="laptopInfo" value="{{request.user.laptop_info}}" 
-                placeholder="e.g. ASUS N552-<serial>">
-            </div>
-
-            <div class="col-12 col-md-8 col-xl-9">
-                <label for="address" class="form-label">Address<span class="text-danger">*</span></label>
-                <textarea rows="1" class="form-control" id="address" name="address" placeholder="Your address" required>{{request.user.address}}</textarea>
-                <div class="invalid-feedback">
-                    Please enter your address in the textarea.
-                </div>
-            </div>
+        <div class="d-flex justify-content-center mb-1">
+            <h3>
+                User Information Form
+            </h3>
         </div>
 
-        <br>
+        <form class="needs-validation"
+              action="{% url 'sheets:personal_info' %}"
+              method="post"
+              enctype="multipart/form-data"
+              novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="saveUserData" value="true">
+            <h5 class="bg-primary-subtle border border-primary rounded px-3 py-2">
+                Personal Information
+            </h5>
 
-        <h5 class="bg-primary-subtle border border-primary rounded px-3 py-2">Bank Information</h5>
-
-        <div class="row g-2">
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="bankName" class="form-label">Bank name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="bankName" name="bankName" value="{{request.user.bank_name}}" pattern="([A-z\s]){1,}" required>
-                <div class="invalid-feedback">
-                    This field is required and should be in Latin.
-                </div>
-            </div>
-
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="cardNumber" class="form-label">Card Number <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="cardNumber" name="cardNumber" value="{{request.user.card_number}}" placeholder="e.g. 1111222233334444"
-                pattern="^\d{16}$" maxlength="16" required>
-                <div class="invalid-feedback">
-                    This field is required and should be exactly a 16 digit number.
-                </div>
-            </div>
-
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="accountNumber" class="form-label">Account Number <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="accountNumber" name="accountNumber" value="{{request.user.account_number}}" placeholder="e.g. 0987654321321"
-                pattern="^\d{13}$" maxlength="13" required>
-                <div class="invalid-feedback">
-                    This field is required and should be exactly a 13 digit number.
-                </div>
-            </div>
-
-            <div class="col-12 col-md-4 col-xl-3">
-                <label for="SHEBANumber" class="form-label">SHEBA Number <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <span class="input-group-text">IR</span>
-                    <input type="text" class="form-control" id="SHEBANumber" name="SHEBANumber" value="{{request.user.SHEBA_number}}"
-                    pattern="^\d{24}$" maxlength="24" required>
+            <div class="row g-2">
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="firstName" class="form-label">
+                        First Name <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="firstName"
+                           name="firstName"
+                           value="{{ request.user.first_name }}"
+                           pattern="([A-z\s]){1,}"
+                           required>
                     <div class="invalid-feedback">
-                        This field is required and should be exactly a 24 digit number.
+                        This field is required and should be in Latin.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="lastName" class="form-label">
+                        Last Name <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="lastName"
+                           name="lastName"
+                           value="{{ request.user.last_name }}"
+                           pattern="([A-z\s]){1,}"
+                           required>
+                    <div class="invalid-feedback">
+                        This field is required and should be in Latin.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="dob" class="form-label">
+                        Date of Birth <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="dob"
+                           name="dob"
+                           value="{{ request.user.dob }}"
+                           placeholder="e.g. 1375-1-1"
+                           pattern="^\d{4}-(0?[1-9]|1[012])-(0?[1-9]|1[0-9]|2[0-9]|3[01])$"
+                           maxlength="10"
+                           required>
+                    <div class="invalid-feedback">
+                        This field is required and should be in this format: 1375-12-29
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="nationalID" class="form-label">
+                        National ID <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="nationalID"
+                           name="nationalID"
+                           value="{{ request.user.national_ID }}"
+                           placeholder="e.g. 0012345678"
+                           pattern="^\d{10}$"
+                           maxlength="10"
+                           required>
+                    <div class="invalid-feedback">
+                        This field is required and should be exactly a 10 digit number.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="email" class="form-label">
+                        Email <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="email"
+                           name="email"
+                           value="{{ request.user.email }}"
+                           placeholder="e.g. example@gmail.com"
+                           pattern="^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$"
+                           required>
+                    <div class="invalid-feedback">
+                        Email is required and should be in this format: me@gml.com
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="mobile1" class="form-label">
+                        Mobile 1 <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="mobile1"
+                           name="mobile1"
+                           value="{{ request.user.mobile1 }}"
+                           placeholder="e.g. 09107654321"
+                           pattern="^\d{11}$"
+                           maxlength="11"
+                           required>
+                    <div class="invalid-feedback">
+                        This field is required and should be exactly a 11 digit number.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="mobile2" class="form-label">
+                        Mobile 2
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="mobile2"
+                           name="mobile2"
+                           value="{{ request.user.mobile2 }}"
+                           placeholder="e.g. 09107654321"
+                           pattern="^\d{11}$"
+                           maxlength="11">
+                    <div class="invalid-feedback">
+                        This field is required and should be exactly a 11 digit number.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="emergencyPhone" class="form-label">
+                        Emergency Phone <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="emergencyPhone"
+                           name="emergencyPhone"
+                           value="{{ request.user.emergency_phone }}"
+                           placeholder="e.g. 09107654321"
+                           pattern="^\d{8,11}$"
+                           maxlength="11"
+                           required>
+                    <div class="invalid-feedback">
+                        This field is required and should be 8 to 11 digits.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="laptopInfo" class="form-label">
+                        Laptop Information
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="laptopInfo"
+                           name="laptopInfo"
+                           value="{{ request.user.laptop_info }}"
+                           placeholder="e.g. ASUS N552-<serial>">
+                </div>
+
+                <div class="col-12 col-md-8 col-xl-9">
+                    <label for="address" class="form-label">
+                        Address<span class="text-danger">*</span>
+                    </label>
+                    <textarea rows="1"
+                              class="form-control"
+                              id="address"
+                              name="address"
+                              placeholder="Your address"
+                              required>{{request.user.address}}</textarea>
+                    <div class="invalid-feedback">
+                        Please enter your address in the textarea.
                     </div>
                 </div>
             </div>
-        </div>
-        <br>
 
-        <h5 class="bg-primary-subtle border border-primary rounded px-3 py-2 br-2">Documents</h5>
+            <br>
 
-        <div class="row mb-1">
-            <label class="col-sm-4 col-xl-2 col-form-label" for="personalImage">Personal Image <span class="text-danger">*</span></label>
-            <div class="col-11 col-sm-6">
-                <input type="file" class="form-control" name="personalImage" id="personalImage" accept="image/*"
-                {% if not request.user.personal_image %}required{% endif %}>
-                <div class="invalid-feedback">
-                    This file is requiered.
+            <h5 class="bg-primary-subtle border border-primary rounded px-3 py-2">
+                Bank Information
+            </h5>
+
+            <div class="row g-2">
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="bankName" class="form-label">
+                        Bank name <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="bankName"
+                           name="bankName"
+                           value="{{ request.user.bank_name }}"
+                           pattern="([A-z\s]){1,}"
+                           required>
+                    <div class="invalid-feedback">
+                        This field is required and should be in Latin.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="cardNumber" class="form-label">
+                        Card Number <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="cardNumber"
+                           name="cardNumber"
+                           value="{{ request.user.card_number }}"
+                           placeholder="e.g. 1111222233334444"
+                           pattern="^\d{16}$"
+                           maxlength="16"
+                           required>
+                    <div class="invalid-feedback">
+                        This field is required and should be exactly a 16 digit number.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="accountNumber" class="form-label">
+                        Account Number <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           class="form-control"
+                           id="accountNumber"
+                           name="accountNumber"
+                           value="{{ request.user.account_number }}"
+                           placeholder="e.g. 0987654321321"
+                           pattern="^\d{13}$"
+                           maxlength="13"
+                           required>
+                    <div class="invalid-feedback">
+                        This field is required and should be exactly a 13 digit number.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label for="SHEBANumber" class="form-label">
+                        SHEBA Number <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text">IR</span>
+                        <input type="text"
+                               class="form-control"
+                               id="SHEBANumber"
+                               name="SHEBANumber"
+                               value="{{ request.user.SHEBA_number }}"
+                               pattern="^\d{24}$"
+                               maxlength="24"
+                               required>
+                        <div class="invalid-feedback">
+                            This field is required and should be exactly a 24 digit number.
+                        </div>
+                    </div>
                 </div>
             </div>
-            {% if request.user.personal_image %}
-                <label class="col-1 col-form-label">
-                    <a href="{{request.user.personal_image.url}}" target="_blank">View</a>
+            <br>
+
+            <h5 class="bg-primary-subtle border border-primary rounded px-3 py-2 br-2">
+                Documents
+            </h5>
+
+            <div class="row mb-1">
+                <label class="col-sm-4 col-xl-2 col-form-label" for="personalImage">
+                    Personal Image <span class="text-danger">*</span>
                 </label>
-            {% endif %}
-        </div>
-        <div class="row mb-1">
-            <label class="col-sm-4 col-xl-2 col-form-label" for="nationalIDFrontImage">National ID Front <span class="text-danger">*</span></label>
-            <div class="col-11 col-sm-6">
-                <input type="file" class="form-control" name="nationalIDFrontImage" id="nationalIDFrontImage" accept="image/*"
-                {% if not request.user.national_ID_front_image %}required{% endif %}>
-                <div class="invalid-feedback">
-                    This file is requiered.
+                <div class="col-11 col-sm-6">
+                    <input type="file"
+                           class="form-control"
+                           name="personalImage"
+                           id="personalImage"
+                           accept="image/*"
+                           {% if not request.user.personal_image %}required{% endif %}>
+                    <div class="invalid-feedback">
+                        This file is requiered.
+                    </div>
+                </div>
+                {% if request.user.personal_image %}
+                    <label class="col-1 col-form-label">
+                        <a href="{{ request.user.personal_image.url }}" target="_blank">View</a>
+                    </label>
+                {% endif %}
+            </div>
+            <div class="row mb-1">
+                <label class="col-sm-4 col-xl-2 col-form-label" for="nationalIDFrontImage">
+                    National ID Front <span class="text-danger">*</span>
+                </label>
+                <div class="col-11 col-sm-6">
+                    <input type="file"
+                           class="form-control"
+                           name="nationalIDFrontImage"
+                           id="nationalIDFrontImage"
+                           accept="image/*"
+                           {% if not request.user.national_ID_front_image %}required{% endif %}>
+                    <div class="invalid-feedback">
+                        This file is requiered.
+                    </div>
+                </div>
+                {% if request.user.national_ID_front_image %}
+                    <label class="col-1 col-form-label">
+                        <a href="{{ request.user.national_ID_front_image.url }}" target="_blank">View</a>
+                    </label>
+                {% endif %}
+            </div>
+            <div class="row mb-1">
+                <label class="col-sm-4 col-xl-2 col-form-label" for="nationalIDBackImage">
+                    National ID Back <span class="text-danger">*</span>
+                </label>
+                <div class="col-11 col-sm-6">
+                    <input type="file"
+                           class="form-control"
+                           name="nationalIDBackImage"
+                           id="nationalIDBackImage"
+                           accept="image/*"
+                           {% if not request.user.national_ID_back_image %}required{% endif %}>
+                    <div class="invalid-feedback">
+                        This file is requiered.
+                    </div>
+                </div>
+                {% if request.user.national_ID_back_image %}
+                    <label class="col-1 col-form-label">
+                        <a href="{{ request.user.national_ID_back_image.url }}" target="_blank">View</a>
+                    </label>
+                {% endif %}
+            </div>
+            <div class="row mb-1">
+                <label class="col-sm-4 col-xl-2 col-form-label" for="birthCertFirstPage">
+                    Birth Certificate First Page <span class="text-danger">*</span>
+                </label>
+                <div class="col-11 col-sm-6">
+                    <input type="file"
+                           class="form-control"
+                           name="birthCertFirstPage"
+                           id="birthCertFirstPage"
+                           accept="image/*"
+                           {% if not request.user.birth_cert_first_page %}required{% endif %}>
+                    <div class="invalid-feedback">
+                        This file is requiered.
+                    </div>
+                </div>
+                {% if request.user.birth_cert_first_page %}
+                    <label class="col-1 col-form-label">
+                        <a href="{{ request.user.birth_cert_first_page.url }}" target="_blank">View</a>
+                    </label>
+                {% endif %}
+            </div>
+            <div class="row mb-1">
+                <label class="col-sm-4 col-xl-2 col-form-label" for="birthCertChangesPage">
+                    Birth Certificate Changes Page <span class="text-danger">*</span>
+                </label>
+                <div class="col-11 col-sm-6">
+                    <input type="file"
+                           class="form-control"
+                           name="birthCertChangesPage"
+                           id="birthCertChangesPage"
+                           accept="image/*"
+                           {% if not request.user.birth_cert_changes_page %}required{% endif %}>
+                    <div class="invalid-feedback">
+                        This file is requiered.
+                    </div>
+                </div>
+                {% if request.user.birth_cert_changes_page %}
+                    <label class="col-1 col-form-label">
+                        <a href="{{ request.user.birth_cert_changes_page.url }}" target="_blank">View</a>
+                    </label>
+                {% endif %}
+            </div>
+            <div class="row mb-1">
+                <label class="col-sm-4 col-xl-2 col-form-label" for="studentCard">
+                    Student Card
+                </label>
+                <div class="col-11 col-sm-6">
+                    <input type="file"
+                           class="form-control"
+                           name="studentCard"
+                           id="studentCard"
+                           accept="image/*">
+                </div>
+                {% if request.user.student_card %}
+                    <label class="col-1 col-form-label">
+                        <a href="{{ request.user.student_card.url }}" target="_blank">View</a>
+                    </label>
+                {% endif %}
+            </div>
+            <div class="row mb-1">
+                <label class="col-sm-4 col-xl-2 col-form-label" for="militaryServiceCard">
+                    Military Service Card
+                </label>
+                <div class="col-11 col-sm-6">
+                    <input type="file"
+                           class="form-control"
+                           name="militaryServiceCard"
+                           id="militaryServiceCard"
+                           accept="image/*">
+                </div>
+                {% if request.user.military_service_card %}
+                    <label class="col-1 col-form-label">
+                        <a href="{{ request.user.military_service_card.url }}" target="_blank">View</a>
+                    </label>
+                {% endif %}
+            </div>
+            <br>
+
+            <h5 class="bg-primary-subtle border border-primary rounded px-3 py-2 br-2">
+                Submit
+            </h5>
+
+            <div class="row">
+                <div class="col-12 col-md-6">
+                    <p style="position: relative; top: 6px;">
+                        All your information will be <span class="text-success">safe</span> and used only for E<span style="color: red">S</span>FA's usage.
+                    </p>
+                </div>
+                <div class="col-12 col-md-6">
+                    <button class="btn btn-primary" type="submit" style="width: 150px;">
+                        Submit
+                    </button>
                 </div>
             </div>
-            {% if request.user.national_ID_front_image %}
-                <label class="col-1 col-form-label">
-                    <a href="{{request.user.national_ID_front_image.url}}" target="_blank">View</a>
-                </label>
-            {% endif %}
-        </div>
-        <div class="row mb-1">
-            <label class="col-sm-4 col-xl-2 col-form-label" for="nationalIDBackImage">National ID Back <span class="text-danger">*</span></label>
-            <div class="col-11 col-sm-6">
-                <input type="file" class="form-control" name="nationalIDBackImage" id="nationalIDBackImage" accept="image/*"
-                {% if not request.user.national_ID_back_image %}required{% endif %}>
-                <div class="invalid-feedback">
-                    This file is requiered.
-                </div>
-            </div>
-            {% if request.user.national_ID_back_image %}
-                <label class="col-1 col-form-label">
-                    <a href="{{request.user.national_ID_back_image.url}}" target="_blank">View</a>
-                </label>
-            {% endif %}
-        </div>
-        <div class="row mb-1">
-            <label class="col-sm-4 col-xl-2 col-form-label" for="birthCertFirstPage">Birth Certificate First Page <span class="text-danger">*</span></label>
-            <div class="col-11 col-sm-6">
-                <input type="file" class="form-control" name="birthCertFirstPage" id="birthCertFirstPage" accept="image/*"
-                {% if not request.user.birth_cert_first_page %}required{% endif %}>
-                <div class="invalid-feedback">
-                    This file is requiered.
-                </div>
-            </div>
-            {% if request.user.birth_cert_first_page %}
-                <label class="col-1 col-form-label">
-                    <a href="{{request.user.birth_cert_first_page.url}}" target="_blank">View</a>
-                </label>
-            {% endif %}
-        </div>
-        <div class="row mb-1">
-            <label class="col-sm-4 col-xl-2 col-form-label" for="birthCertChangesPage">Birth Certificate Changes Page <span class="text-danger">*</span></label>
-            <div class="col-11 col-sm-6">
-                <input type="file" class="form-control" name="birthCertChangesPage" id="birthCertChangesPage" accept="image/*" 
-                {% if not request.user.birth_cert_changes_page %}required{% endif %}>
-                <div class="invalid-feedback">
-                    This file is requiered.
-                </div>
-            </div>
-            {% if request.user.birth_cert_changes_page %}
-                <label class="col-1 col-form-label">
-                    <a href="{{request.user.birth_cert_changes_page.url}}" target="_blank">View</a>
-                </label>
-            {% endif %}
-        </div>
-        <div class="row mb-1">
-            <label class="col-sm-4 col-xl-2 col-form-label" for="studentCard">Student Card</label>
-            <div class="col-11 col-sm-6">
-                <input type="file" class="form-control" name="studentCard" id="studentCard" accept="image/*">
-            </div>
-            {% if request.user.student_card %}
-                <label class="col-1 col-form-label">
-                    <a href="{{request.user.student_card.url}}" target="_blank">View</a>
-                </label>
-            {% endif %}
-        </div>
-        <div class="row mb-1">
-            <label class="col-sm-4 col-xl-2 col-form-label" for="militaryServiceCard">Military Service Card</label>
-            <div class="col-11 col-sm-6">
-                <input type="file" class="form-control" name="militaryServiceCard" id="militaryServiceCard" accept="image/*">
-            </div>
-            {% if request.user.military_service_card %}
-                <label class="col-1 col-form-label">
-                    <a href="{{request.user.military_service_card.url}}" target="_blank">View</a>
-                </label>
-            {% endif %}
-        </div>
-        <br>
 
-        <h5 class="bg-primary-subtle border border-primary rounded px-3 py-2 br-2">Submit</h5>
+            <br>
 
-        <div class="row">
-            <div class="col-12 col-md-6">
-                <p style="position: relative; top: 6px;">
-                    All your information will be <span class="text-success">safe</span> and used only for E<span style="color: red">S</span>FA's usage.
-                </p>
-            </div>
-            <div class="col-12 col-md-6">
-                <button class="btn btn-primary" type="submit" style="width: 150px;">Submit</button>
-            </div>
-        </div>
+        </form>
 
-        <br>
-
-    </form>
-    
-</div>
+    </div>
 
 
-<script>
+    <script>
 
 $(".needs-validation").submit(function(e){
 
@@ -286,5 +459,5 @@ $(".needs-validation").submit(function(e){
 
 });
     
-</script>
+    </script>
 {% endblock body %}

@@ -3,67 +3,72 @@
 
 {% block body %}
 
-<div class="container">
+    <div class="container">
 
-    <h3 class="d-flex justify-content-center my-4">
-        <strong>What's going on with you</strong>
-    </h3>
-    <div class="row p-3" style="overflow-x: auto;">
-        <div id="user-chart" style="min-width: 800px;"></div>
-    </div>
-
-    <div class="row p-3">
-        <div class="d-flex justify-content-around">
-            <div class="text-center">
-                <h4>
-                    <strong>Our hero of last month:</strong>
-                </h4>
-                <p id="hero-name"></p>
-                <strong>
-                    <p id="cool-sentence"></p>
-                </strong>
-            </div>
-            <div class="text-center">
-                <h4>
-                    <strong>In last month:</strong>
-                </h4>
-                <span>
-                    Woking hours mean in E<span style="color: red;">S</span>FA:
-                    <strong><span id="esfa-mean"></span></strong>
-                </span>
-                <br>
-                <span>
-                    Your mean working hours:
-                    <strong><span id="user-mean"></span></strong>
-                </span>
-                <br>
-                <span>
-                    Your mean working hours were
-                    <strong><span id="mean-diff"></span> </strong>
-                    E<span style="color: red;">S</span>FA's mean.
-                </span>
+        <h3 class="d-flex justify-content-center my-4">
+            <strong>What's going on with you</strong>
+        </h3>
+        <div class="row p-3" style="overflow-x: auto;">
+            <div id="user-chart" style="min-width: 800px;">
             </div>
         </div>
+
+        <div class="row p-3">
+            <div class="d-flex justify-content-around">
+                <div class="text-center">
+                    <h4>
+                        <strong>Our hero of last month:</strong>
+                    </h4>
+                    <p id="hero-name">
+                    </p>
+                    <strong>
+                        <p id="cool-sentence">
+                        </p>
+                    </strong>
+                </div>
+                <div class="text-center">
+                    <h4>
+                        <strong>In last month:</strong>
+                    </h4>
+                    <span>
+                        Woking hours mean in E<span style="color: red;">S</span>FA:
+                        <strong><span id="esfa-mean"></span></strong>
+                    </span>
+                    <br>
+                    <span>
+                        Your mean working hours:
+                        <strong><span id="user-mean"></span></strong>
+                    </span>
+                    <br>
+                    <span>
+                        Your mean working hours were
+                        <strong><span id="mean-diff"></span> </strong>
+                        E<span style="color: red;">S</span>FA's mean.
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="d-flex justify-content-center my-4">
+            <strong>Your monthly status in this year</strong>
+        </h3>
+        <div class="row p-3" style="overflow-x: auto;">
+            <div id="monthly-chart" style="min-width: 800px;">
+            </div>
+        </div>
+
+        <h3 class="d-flex justify-content-center my-4">
+            <strong>What's going on in E<span style="color: red;">S</span>FA</strong>
+        </h3>
+        <div class="row p-3" style="overflow-x: auto;">
+            <div id="ESFA-chart" style="min-width: 800px;">
+            </div>
+        </div>
+
     </div>
 
-    <h3 class="d-flex justify-content-center my-4">
-        <strong>Your monthly status in this year</strong>
-    </h3>
-    <div class="row p-3" style="overflow-x: auto;">
-        <div id="monthly-chart" style="min-width: 800px;"></div>
-    </div>
-
-    <h3 class="d-flex justify-content-center my-4">
-        <strong>What's going on in E<span style="color: red;">S</span>FA</strong>
-    </h3>
-    <div class="row p-3" style="overflow-x: auto;">
-        <div id="ESFA-chart" style="min-width: 800px;"></div>
-    </div>
-
-</div>
-
-<script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
-<script>
+    <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
+    <script>
     async function getPublicInfo() {
         const url = '{% url "sheets:api_info"%}';
         try {
@@ -274,5 +279,5 @@
     }
 
     showInfo()
-</script>
+    </script>
 {% endblock body %}

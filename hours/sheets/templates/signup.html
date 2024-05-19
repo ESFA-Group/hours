@@ -1,17 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
-{% load static %}
+    {% load static %}
 
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-	<meta http-equiv="X-UA-Compatible" content="ie=edge">
-	<title>{{request.resolver_match.url_name}}</title>
-	<link rel="icon" href="{% static 'sheets/picture/favicon.ico' %}">
-	<link rel="stylesheet" href="{% static 'sheets/css/bootstrap.min.css' %}">
-	<link rel="stylesheet" href="{% static 'sheets/css/loginpage.css' %}">
+    <head>
 
-	<style>
+        <meta charset="UTF-8">
+
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>{{ request.resolver_match.url_name }}</title>
+
+        <link rel="icon" href="{% static 'sheets/picture/favicon.ico' %}">
+
+        <link rel="stylesheet" href="{% static 'sheets/css/bootstrap.min.css' %}">
+
+        <link rel="stylesheet" href="{% static 'sheets/css/loginpage.css' %}">
+
+        <style>
 		@font-face {
 			font-family: 'lato';
 			src: local('Lato'),
@@ -40,58 +47,96 @@
 			color: green;
 			border: 1px solid green;
 		}
-	</style>
-</head>
+	
+        </style>
+    </head>
 
-<body>
-<div class="wrapper fadeInDown">
-    <div id="formContent">
-      <!-- Tabs Titles -->
-  
-        <!-- Header -->
-        <div class="fadeIn first my-2">
-            <strong style="color: black; font-size: 2em;">E<span style="color: red;">S</span>FA Hours</strong>
+    <body>
+        <div class="wrapper fadeInDown">
+            <div id="formContent">
+                <!-- Tabs Titles -->
+
+                <!-- Header -->
+                <div class="fadeIn first my-2">
+                    <strong style="color: black; font-size: 2em;">E<span style="color: red;">S</span>FA Hours</strong>
+                </div>
+
+                {% if created %}
+                    <p class="fadeIn eighth msg success-msg" style="color: green;">
+                        <span>User created successfully.</span>
+                        <br>
+                        <span>Continue to &nbsp;<a href="{% url 'sheets:home_page' %}">Home Page</a></span>
+                    </p>
+                {% else %}
+                    <!-- Signup Form -->
+                    <form action="{% url 'sheets:signup' %}"
+                          method="post"
+                          id="signup-form"
+                          autocomplete="off">
+                        {% csrf_token %}
+                        <input type="hidden" name="signup_submit" value="true">
+                        <input type="text"
+                               id="first_name"
+                               class="fadeIn second"
+                               name="first_name"
+                               placeholder="First Name (in Latin)*"
+                               value="{{ first_name }}"
+                               pattern="([A-z\s]){1,}"
+                               required>
+                        <input type="text"
+                               id="last_name"
+                               class="fadeIn second"
+                               name="last_name"
+                               placeholder="Last Name (in Latin)*"
+                               value="{{ last_name }}"
+                               pattern="([A-z\s]){1,}"
+                               required>
+                        <input type="text"
+                               id="username"
+                               class="fadeIn fourth"
+                               name="username"
+                               placeholder="Username *"
+                               autocomplete="off"
+                               required>
+                        <input type="password"
+                               id="password"
+                               class="fadeIn sixth"
+                               name="password"
+                               placeholder="Password *"
+                               autocomplete="off"
+                               required>
+                        <input type="password"
+                               id="password_confirm"
+                               class="fadeIn sixth"
+                               name="password_confirm"
+                               placeholder="Confirm Password *"
+                               autocomplete="off"
+                               required>
+                        <hr class="fadeIn eighth">
+                        <div class="fadeIn eighth">
+                            <button class="btn btn-primary" id="signup" style="width: 150px;">
+                                Signup
+                            </button>
+                        </div>
+                        <br>
+                    </form>
+                {% endif %}
+
+                {% if existing_username %}
+                    <p class="fadeIn eighth msg error-msg" style="color: red;">
+                        This username is already taken. Please choose another username.
+                    </p>
+                {% endif %}
+
+                {% if wrong_confirm %}
+                    <p class="fadeIn eighth msg error-msg" style="color: red;">
+                        Password confirm is not correct.
+                    </p>
+                {% endif %}
+
+            </div>
         </div>
 
-        {% if created %}
-            <p class="fadeIn eighth msg success-msg" style="color: green;">
-                <span>User created successfully.</span>
-                <br>
-                <span>Continue to &nbsp;<a href="{% url 'sheets:home_page' %}">Home Page</a></span>
-            </p>
-        {% else %}
-            <!-- Signup Form -->
-            <form action="{% url 'sheets:signup' %}" method="POST" id="signup-form" autocomplete="off">
-                {% csrf_token %}
-                <input type="hidden" name="signup_submit" value="true">
-                <input type="text" id="first_name" class="fadeIn second" name="first_name" placeholder="First Name (in Latin)*" value="{{first_name}}" pattern="([A-z\s]){1,}" required>
-                <input type="text" id="last_name" class="fadeIn second" name="last_name" placeholder="Last Name (in Latin)*" value="{{last_name}}" pattern="([A-z\s]){1,}" required>
-                <input type="text" id="username" class="fadeIn fourth" name="username" placeholder="Username *" autocomplete="off" required>
-                <input type="password" id="password" class="fadeIn sixth" name="password" placeholder="Password *" autocomplete="off" required>
-                <input type="password" id="password_confirm" class="fadeIn sixth" name="password_confirm" placeholder="Confirm Password *" autocomplete="off" required>
-                <hr class="fadeIn eighth">
-                <div class="fadeIn eighth">
-                    <button class="btn btn-primary" id="signup" style="width: 150px;">Signup</button>
-                </div>
-                <br>
-            </form>
-        {% endif %}
-
-        {% if existing_username %}
-            <p class="fadeIn eighth msg error-msg" style="color: red;">
-                This username is already taken. Please choose another username.
-            </p>
-        {% endif %}
-
-        {% if wrong_confirm %}
-            <p class="fadeIn eighth msg error-msg" style="color: red;">
-                Password confirm is not correct.
-            </p>
-        {% endif %}
-  
-    </div>
-</div>
-
-</body>
+    </body>
 
 </html>

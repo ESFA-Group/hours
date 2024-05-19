@@ -3,8 +3,10 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.css' %}">
-    <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
-    <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
+    <link rel="stylesheet"
+          href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
+    <link rel="stylesheet"
+          href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
     <style>
         :root {
             --jexcel_header_color: #000;
@@ -32,127 +34,193 @@
 {% endblock extra_css %}
 {% block body %}
 
-<div class="px-4">
-    <div class="row">
+    <div class="px-4">
+        <div class="row">
 
-        <div class="col col-12 col-lg-4 mt-2">
+            <div class="col col-12 col-lg-4 mt-2">
 
-            <div style="position: sticky; top: 10px;">
-                <div class="row">
-                    <div class="col col-4 col-md-4">
-                        <strong>Year</strong>
-                        <div class="mt-1">
-                            <select name="year" id="year" style="min-width: 100px; border-radius: 5px; height: 35px;"></select>
+                <div style="position: sticky; top: 10px;">
+                    <div class="row">
+                        <div class="col col-4 col-md-4">
+                            <strong>Year</strong>
+                            <div class="mt-1">
+                                <select name="year"
+                                        id="year"
+                                        style="min-width: 100px;
+                                               border-radius: 5px;
+                                               height: 35px">
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col col-4 col-md-4">
+                            <strong>Month</strong>
+                            <div class="mt-1">
+                                <select name="month"
+                                        id="month"
+                                        style="min-width: 100px;
+                                               border-radius: 5px;
+                                               height: 35px">
+                                    <option value="1">
+                                        Farvardin
+                                    </option>
+                                    <option value="2">
+                                        Ordibehest
+                                    </option>
+                                    <option value="3">
+                                        Khordad
+                                    </option>
+                                    <option value="4">
+                                        Tir
+                                    </option>
+                                    <option value="5">
+                                        Mordad
+                                    </option>
+                                    <option value="6">
+                                        Shahrivar
+                                    </option>
+                                    <option value="7">
+                                        Mehr
+                                    </option>
+                                    <option value="8">
+                                        Aban
+                                    </option>
+                                    <option value="9">
+                                        Azar
+                                    </option>
+                                    <option value="10">
+                                        Dey
+                                    </option>
+                                    <option value="11">
+                                        Bahman
+                                    </option>
+                                    <option value="12">
+                                        Esfand
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col col-4 col-md-4">
+                            <button id="submit-month"
+                                    class="btn btn-success"
+                                    style="width: 100px;
+                                           position: relative;
+                                           top: 25px;
+                                           float: right;
+                                           display: none"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#submitModal">
+                                Submit
+                            </button>
                         </div>
                     </div>
-                    <div class="col col-4 col-md-4">
-                        <strong>Month</strong>
-                        <div class="mt-1">
-                            <select name="month" id="month" style="min-width: 100px; border-radius: 5px; height: 35px;">
-                                <option value="1">Farvardin</option>
-                                <option value="2">Ordibehest</option>
-                                <option value="3">Khordad</option>
-                                <option value="4">Tir</option>
-                                <option value="5">Mordad</option>
-                                <option value="6">Shahrivar</option>
-                                <option value="7">Mehr</option>
-                                <option value="8">Aban</option>
-                                <option value="9">Azar</option>
-                                <option value="10">Dey</option>
-                                <option value="11">Bahman</option>
-                                <option value="12">Esfand</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col col-4 col-md-4">
-                        <button 
-                        id="submit-month" 
-                        class="btn btn-success" 
-                        style="width: 100px; position: relative; top: 25px; float: right; display: none;"
-                        data-bs-toggle="modal" data-bs-target="#submitModal">
-                            Submit
+
+                    <hr>
+
+                    <strong>Add Projects</strong>
+                    <div class="mt-2 d-flex justify-content-between">
+                        <select name="projects"
+                                id="projects"
+                                style="min-width: 200px;
+                                       border-radius: 5px">
+                        </select>
+                        <button id="add-project" class="btn btn-primary" style="width: 75px;">
+                            Add
                         </button>
                     </div>
+
+                    <hr>
+
+                    <div class="pb-1 pt-3 px-4"
+                         style="background-color: rgba(0,0,0,0.07);
+                                border-radius: 8px">
+                        <p class="d-flex justify-content-between">
+                            <strong>Total working hours:</strong>
+                            <strong id="total-hours"></strong>
+                        </p>
+                        <p class="d-flex justify-content-between">
+                            <strong>Average working hours (per day):</strong>
+                            <strong id="mean-hours"></strong>
+                        </p>
+                        <p class="d-flex justify-content-between">
+                            <strong>No. of days worked:</strong>
+                            <strong id="worked-days-count"></strong>
+                        </p>
+                        <p class="d-flex justify-content-between d-none">
+                            <strong>Base payment:</strong>
+                            <strong id="base-payment"></strong>
+                        </p>
+                        <p class="d-flex justify-content-between d-none">
+                            <strong>complimentary</strong>
+                            <strong id="complimentary"></strong>
+                        </p>
+                    </div>
+
+                    <hr>
+
+                    <div class="chart-container">
+                        <div id="projects-chart">
+                        </div>
+                    </div>
+
                 </div>
-
-                <hr>
-
-                <strong>Add Projects</strong>
-                <div class="mt-2 d-flex justify-content-between">
-                    <select name="projects" id="projects" style="min-width: 200px; border-radius: 5px;"></select>
-                    <button id="add-project" class="btn btn-primary" style="width: 75px;">Add</button>
-                </div>
-
-                <hr>
-
-                <div class="pb-1 pt-3 px-4" style="background-color: rgba(0,0,0,0.07); border-radius: 8px;">
-                    <p class="d-flex justify-content-between">
-                        <strong>Total working hours:</strong>
-                        <strong id="total-hours"></strong>
-                    </p>
-                    <p class="d-flex justify-content-between">
-                        <strong>Average working hours (per day):</strong>
-                        <strong id="mean-hours"></strong>
-                    </p>
-                    <p class="d-flex justify-content-between">
-                        <strong>No. of days worked:</strong>
-                        <strong id="worked-days-count"></strong>
-                    </p>
-                    <p class="d-flex justify-content-between d-none">
-                        <strong>Base payment:</strong>
-                        <strong id="base-payment"></strong>
-                    </p>
-                    <p class="d-flex justify-content-between d-none">
-                        <strong>complimentary</strong>
-                        <strong id="complimentary"></strong>
-                    </p>
-                </div>
-
-                <hr>
-
-                <div class="chart-container">
-                    <div id="projects-chart"></div>
-                </div>
-
             </div>
-        </div>
 
-        <div class="col col-12 col-lg-8" style="overflow-x: auto; border-left: 1px solid; padding-left: 10px;">
-            <div id="spreadsheet"></div>
+            <div class="col col-12 col-lg-8"
+                 style="overflow-x: auto;
+                        border-left: 1px solid;
+                        padding-left: 10px">
+                <div id="spreadsheet">
+                </div>
+            </div>
+
         </div>
 
     </div>
 
-</div>
-
-<!-- Submit Modal -->
-<div class="modal fade" id="submitModal" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Submit Hours</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>
-                    Are you sure you want to submit this month's hours?
-                    <br>
-                    <span class="fw-bold">
-                        if you submit, you <span class="text-danger">won't</span> be able to unsubmit this sheet later.
-                    </span>
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="submit">Submit</button>
+    <!-- Submit Modal -->
+    <div class="modal fade"
+         id="submitModal"
+         data-bs-backdrop="static"
+         data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Submit Hours
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        Are you sure you want to submit this month's hours?
+                        <br>
+                        <span class="fw-bold">
+                            if you submit, you <span class="text-danger">won't</span> be able to unsubmit this sheet later.
+                        </span>
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="button"
+                            class="btn btn-success"
+                            data-bs-dismiss="modal"
+                            id="submit">
+                        Submit
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
-<script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
-<script>
+    <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
+    <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
+    <script>
 
     // JSuites toast settings:
     // error: 1,
@@ -643,5 +711,5 @@
 
     });
      
-</script>
+    </script>
 {% endblock body %}
