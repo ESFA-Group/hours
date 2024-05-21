@@ -229,11 +229,28 @@ class WeekDaysMeanReport(APIView):
 
     def get(self, request, year):
         sheets = Sheet.objects.filter(user=request.user, year=year, submitted=True)
+        hours = WeekDaysMeanReport.get_weekdays_mean(sheets)
+
+        res = {
+            "hours": hours
+        }
+
+        if request.user.is_staff:
+            all_sheets = Sheet.objects.filter(year=year, submitted=True)
+            general_hours = WeekDaysMeanReport.get_weekdays_mean(all_sheets)
+            res['general_hours'] = general_hours
+
+
+        return Response(res, status=status.HTTP_200_OK)
+        
+    
+    @staticmethod
+    def get_weekdays_mean(sheets):
         df_total = pd.DataFrame(
-            { 
-                'Hours': [0] * len(jdt.date.j_weekdays_short_en),
-                'Count': [0] * len(jdt.date.j_weekdays_short_en)
-            }, index=jdt.date.j_weekdays_short_en)
+        { 
+            'Hours': [0] * len(jdt.date.j_weekdays_short_en),
+            'Count': [0] * len(jdt.date.j_weekdays_short_en)
+        }, index=jdt.date.j_weekdays_short_en)
 
         df_total.index.name = 'WeekDay'
 
@@ -264,12 +281,8 @@ class WeekDaysMeanReport(APIView):
             hours.append({ 'weekday': index, 'mean': mean })
 
         hours.sort(key=lambda x: weekdays_dict[x['weekday']])
+        return hours
 
-        res = {
-            "hours": hours
-        }
-
-        return Response(res, status=status.HTTP_200_OK)
 
 class PaymentApiView(APIView):
 
