@@ -586,3 +586,115 @@ class PaymentExcelImportView(View):
         }
 
         return JsonResponse(response_data)
+
+@method_decorator([staff_member_required], name="dispatch")
+class HoursExcelImportView(View):
+    MY_MAP = {
+        1: 2,       # hassan zahedi 
+        2: 2,       # 
+        3: 3,       # 
+        4: 4,       # 
+        5: 5,       # 
+        6: 6,       # 
+        7: 7,       # 
+        8: 8,       # 
+        9: 9,       # 
+        10: 10,     # 
+        11: 11,     # 
+        12: 12,     # 
+        13: 13,     # 
+        14: 14,     # 
+        15: 15,     # 
+        16: 16,     # 
+        17: 17,     # 
+        18: 18,     # 
+        19: 19,     # 
+        20: 20,     # 
+        21: 21,     # 
+        22: 22,     # 
+        23: 23,     # 
+        24: 24,     # 
+        25: 25,     # 
+        26: 26,     # 
+        27: 27,     # 
+        28: 28,     # 
+        29: 29,     # 
+        30: 30,     # 
+        31: 31,     # 
+        32: 32,     # 
+        33: 33,     # 
+        34: 34,     # 
+        35: 35,     # 
+        36: 36,     # 
+        37: 37,     # 
+        38: 38,     # 
+        39: 39,     # 
+        40: 40,     # 
+        41: 41,     # 
+        42: 42,     # 
+        43: 43,     # 
+        44: 44,     # 
+        45: 45,     # 
+        46: 46,     # 
+        47: 47,     # 
+        48: 48,     # 
+        49: 49,     # 
+        50: 50,     # 
+    }
+    def post(self, request, year: str, month: str):
+
+        file = request.FILES["file"]
+        df = pd.read_excel(file)
+        df.fillna(0, inplace=True)
+
+        not_found_name = []
+
+        for index, row in df.iterrows():
+            user_id = row["کد پرسنلي"]
+            date = row["تاريخ"]
+            hours = row["مدت کارکرد"]
+            
+            row = row.to_dict()
+            try:
+                current_sheet = Sheet.objects.get(
+                    user_id=user_id, year=year, month=month
+                )
+            except:
+                not_found_name.append(
+                    {"name": row["user_name"], "user_id": row["user_id"]}
+                )
+                continue
+            current_sheet.wage = wage
+            current_sheet.base_payment = base
+            current_sheet.reduction1 = r1
+            current_sheet.reduction2 = r2
+            current_sheet.reduction3 = row["reduction3"]
+            current_sheet.food_reduction = row["food_reduction"]
+            current_sheet.addition1 = add1
+            current_sheet.addition2 = row["addition2"]
+            current_sheet.payment_status = row["paymentStatus"]
+            current_sheet.save()
+
+            user = User.objects.get(pk=user_id)
+            user.wage = wage
+            user.base_payment = base
+            user.reduction1 = r1
+            user.reduction2 = r2
+            user.addition1 = add1
+            user.save()
+
+            user_sheets = Sheet.objects.filter(user=user, year=year, month__gte=month)
+            for sheet in user_sheets:
+                sheet.wage = wage
+                sheet.base_payment = base
+                sheet.reduction1 = r1
+                sheet.reduction2 = r2
+                sheet.addition1 = add1
+                sheet.save()
+
+        response_data = {
+            "message": "success",
+            "users_not_found": not_found_name,
+        }
+
+        return JsonResponse(response_data)

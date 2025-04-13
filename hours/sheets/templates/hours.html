@@ -44,45 +44,46 @@
             <div class="col col-12 col-lg-4 mt-2">
 
                 <div style="position: sticky; top: 10px;">
-                    <div class="row">
-                        <div class="col col-4 col-md-4">
+                    <div class="d-flex justify-content-between" style="gap: 10px;">
+                        <div class="flex-grow-1 text-center">
                             <strong>Year</strong>
                             <div class="mt-1">
-                                <select name="year"
-                                        id="year"
-                                        style="min-width: 100px;
-                                               border-radius: 5px;
-                                               height: 35px">
+                                <select name="year" id="year" class="form-select">
                                 </select>
                             </div>
                         </div>
-                        <div class="col col-4 col-md-4">
+                        <div class="flex-grow-1 text-center">
                             <strong>Month</strong>
                             <div class="mt-1">
-                                <select name="month"
-                                        id="month"
-                                        style="min-width: 100px;
-                                               border-radius: 5px;
-                                               height: 35px">
+                                <select name="month" id="month" class="form-select">
                                     {{ 1|render_month_options }}
                                 </select>
                             </div>
                         </div>
-                        <div class="col col-4 col-md-4">
-                            <button id="submit-month"
-                                    class="btn btn-success"
-                                    style="width: 100px;
-                                           position: relative;
-                                           top: 25px;
-                                           float: right;
-                                           display: none"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#submitModal">
+                        {% if request.user.is_staff %}
+                            <div class="flex-grow-1 text-center mt-4">
+                                <input type="file"
+                                    id="excelFileInput"
+                                    style="display:none"
+                                    accept=".xlsx,.xls"
+                                    onchange="handleExcelImport(event)">
+                                <button id="add-hour"
+                                        class="btn btn-warning d-flex align-items-center justify-content-around" >
+                                    <i id="add-hour-icon" class="fa fa-file-import"></i>
+                                    <div id="add-hour-spinner" class="spinner-border text-dark d-none">
+                                    </div>                    
+                                    <span> Add Hours</span>
+                                </button>
+                            </div>
+                        {% endif %}
+                        <div class="flex-grow-1 text-center mt-4">
+                            <button id="submit-month" class="btn btn-success"
+                                    data-bs-toggle="modal" data-bs-target="#submitModal" >
                                 Submit
                             </button>
                         </div>
                     </div>
-
+                    
                     <hr>
 
                     <strong>Add Projects</strong>
@@ -321,7 +322,6 @@
         COMPLIMENTARY.parentNode.classList.add('d-none');
         const REFUND_TEXT = document.getElementById('refund-text')
         if(!isPayed){
-            console.log("hi")
             REFUND.textContent = `${value}`
             REFUND_TEXT.textContent = `Please transfer ${value}R to account number:\n 1234 5678 9012 3456`;
         }
@@ -486,7 +486,7 @@
     }
 
     function getTableProjects(tableData){
-        const defaultHeaders = new Set(['Day', 'WeekDay', 'Hours']);
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Hours', 'Remote', 'Rest']);
         const allHeaders = new Set(Object.keys(tableData[0]));
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
@@ -499,6 +499,7 @@
         let total = 0;
         let daysCount = 0;
         tableData.forEach(row => {
+            console.log(row)
             const mins = hhmm2minutes(row.Hours); 
             for(const [prj, value] of Object.entries(row)){
                 if(!projects.includes(prj))
@@ -589,10 +590,10 @@
         if(projects.length === 1 && worksheet){
             x = Number(x);
             y = Number(y);
-            let hour = window.spreadTable.getCellFromCoords(x, y)?.textContent;
-            let percent = window.spreadTable.getCellFromCoords(x + 1, y)?.textContent;
-            if(hour && percent === ''){
-                window.spreadTable.updateCell(x + 1, y, "100"); // this will trigger onChange event again
+            let cell = window.spreadTable.getCellFromCoords(x, y)?.textContent;
+            let percent = window.spreadTable.getCellFromCoords(6, y)?.textContent;
+            if(cell && percent === ''){
+                window.spreadTable.updateCell(6, y, "100"); // this will trigger onChange event again
                 return
             }
         }
@@ -635,7 +636,10 @@
         const columns = [
             {type: 'text', title: 'Day', width: 80, readOnly: true},
             {type: 'text', title: 'WeekDay', width: 130, readOnly: true},
+            {type: 'text', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true},
             {type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
+            {type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
+            {type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
         ];
 
         for(const prj of getTableProjects(data)){
@@ -769,6 +773,76 @@
         $("#submit-month").prop("disabled", submitted);
         $("#submit-month").text(submitted? "Submitted": "Submit");
     }
+
+    function handleExcelImport(event) {
+        excelImmportLoadingStart()
+        var file = event.target.files[0];
+        var formData = new FormData();
+    
+        // Append the file to the form data
+        formData.append('file', file);
+        
+        // Send the file to the backend
+        const year = $("#year").val();
+        const month = $("#month").val();
+        const url = `{% url "sheets:hours_excel_import" year='yearHolder' month='monthHolder'  %}`
+            .replace("yearHolder", year)
+            .replace("monthHolder", month);
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{csrf_token}}',
+            },
+            body:  formData,
+        })
+        .then(res => {
+            if (res.ok) {
+                return res.json()
+            } else {
+                throw new Error('Network response was not ok');
+            }
+        })
+        .then(json =>{
+            if(json.users_not_found.length > 0){
+                showImportError(json.users_not_found)
+            }
+            else{
+                showImportSucces()
+            }
+            fillTable(year, month);
+            document.getElementById('excelFileInput').value = '';
+        })
+        .then(()=> {
+            excelImmportLoadingDone();
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function showImportError(missingUsersList){
+        $('#warningModal').modal('show')
+        $('#missing-users-list').empty(); // Clear existing list
+
+        $.each(missingUsersList, function(index, user) {
+            $('#missing-users-list').append(`<li>${user.name} (Id: ${user.user_id})</li>`);
+        });
+    }
+
+    function showImportSucces(){
+        $('#successModal').modal('show')
+        $('.modal-body').html("<p>succesfully updated✅</p>");
+    }
+
+    function excelImmportLoadingStart(){
+        $('#add-hour').prop("disabled", true);
+        $('#add-hour-spinner').show();
+        $('#add-hour-icon').hide()
+    }
+
+    function excelImmportLoadingDone(){
+        $('#add-hour').prop("disabled", false);
+        $('#add-hour-spinner').hide()
+        $('#add-hour-icon').show();
+    }
     
     $("document").ready(async function() {
 
@@ -806,7 +880,11 @@
 
         $("#submit").click(submitSheet);
 
+        $('#add-hour').click(function(){
+            $("#excelFileInput").click();
+        });
+
     });
-     
+
     </script>
 {% endblock body %}
