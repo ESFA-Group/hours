@@ -373,14 +373,58 @@
             are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
         */
         const headers = window.spreadTable.getHeaders(true);
+        let shouldSave = false;
         rawData.map(row => {
             for(let [key, value] of Object.entries(row)){
-                if(!headers.includes(key)){
-                    row[headers[key]] = value;
-                    delete row[key];
+                switch(key){
+                    case "Hours": 
+                        row["Remote"] = value;
+                        delete row[key];
+                        row["Auto Hours"] = '';
+                        row["Rest"] = value;
+                        shouldSave = true;
+                        break;
+                    default:
+                        if(!headers.includes(key)){
+                            if (headers[key] !=="Hours" && row[headers[key]] === undefined) {
+                                row[headers[key]] = value;
+                            }
+                            delete row[key];
+                        }
+                        break;
                 }
             }
         })
+        
+        // Then create a new array with ordered objects
+        const orderedData = [];
+        for (let i = 0; i < rawData.length; i++) {
+            const row = rawData[i];
+            const orderedRow = {};
+            
+            // Add fields in the exact order they appear in the headers
+            headers.forEach(header => {
+                if(header !== "Hours"){
+                    orderedRow[header] = row[header] !== undefined ? row[header] : '';
+                }
+            });
+            
+            orderedData.push(orderedRow);
+        }
+        
+        // Copy the ordered data back to the original array
+        for (let i = 0; i < rawData.length; i++) {
+            rawData[i] = orderedData[i];
+        }
+
+        if (shouldSave) {
+            saveSheet(rawData);
+        }
+
+        console.log("")
+        console.log('headers', headers)
+        console.log('convertTableData', rawData[3])
+        console.log('-raw-convertTableData', rawData)
         return rawData
     }
 
@@ -400,6 +444,7 @@
     // }
 
     function saveSheet(data){
+        console.log("saveSheet", data[3])
         const year = $("#year").val();
         const month = $("#month").val();
         const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
@@ -486,8 +531,8 @@
     }
 
     function getTableProjects(tableData){
-        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Hours', 'Remote', 'Rest']);
         const allHeaders = new Set(Object.keys(tableData[0]));
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Remote', 'Rest']);
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
     }
@@ -499,7 +544,6 @@
         let total = 0;
         let daysCount = 0;
         tableData.forEach(row => {
-            console.log(row)
             const mins = hhmm2minutes(row.Hours); 
             for(const [prj, value] of Object.entries(row)){
                 if(!projects.includes(prj))
@@ -585,6 +629,7 @@
     function onChangeHandler(worksheet, cell, x, y, value){
         const rawData = window.spreadTable.getJson();
         const tableData = convertTableData(rawData);
+
         // automatically fill 100% if there is only one project in table
         const projects = getTableProjects(tableData);
         if(projects.length === 1 && worksheet){
@@ -632,19 +677,19 @@
     }
 
     async function constructTable(data, readOnlyAll = false){
-        
         const columns = [
             {type: 'text', title: 'Day', width: 80, readOnly: true},
             {type: 'text', title: 'WeekDay', width: 130, readOnly: true},
-            {type: 'text', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true},
-            {type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
-            {type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
+            {type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true},
             {type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
+            {type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
         ];
 
         for(const prj of getTableProjects(data)){
             columns.push({type: 'numeric', title: prj, mask: '#,##0.00 %', width: 100, readOnly: readOnlyAll});
         }
+
+        console.log("constructTable", data[3])  
 
         window.spreadTable = jspreadsheet(document.getElementById('spreadsheet'), {
             data: data,
@@ -880,7 +925,7 @@
 
         $("#submit").click(submitSheet);
 
-        $('#add-hour').click(function(){
+        $('#add-hour').click(function(){   
             $("#excelFileInput").click();
         });
 
