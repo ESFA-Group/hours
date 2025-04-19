@@ -839,14 +839,18 @@
             }
         })
         .then(json =>{
-            if(json.users_not_found.length > 0){
-                showImportError(json.users_not_found)
+            if(json.status !== 'error'){
+                jSuites.notification({
+                    error: 1,
+                    name: 'Error',
+                    title: 'Failed to add Hours',
+                    message: json.message,
+                    timeout: 6000,
+                });
+                return;
             }
-            else{
-                showImportSucces()
-            }
-            fillTable(year, month);
-            document.getElementById('excelFileInput').value = '';
+
+            showImportSucces()            
         })
         .then(()=> {
             excelImmportLoadingDone();
@@ -861,11 +865,6 @@
         $.each(missingUsersList, function(index, user) {
             $('#missing-users-list').append(`<li>${user.name} (Id: ${user.user_id})</li>`);
         });
-    }
-
-    function showImportSucces(){
-        $('#successModal').modal('show')
-        $('.modal-body').html("<p>succesfully updated✅</p>");
     }
 
     function excelImmportLoadingStart(){
