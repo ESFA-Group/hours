@@ -373,7 +373,8 @@
             are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
         */
         const headers = window.spreadTable.getHeaders(true);
-        let shouldSave = false;
+        let shouldOrderAndSave = false;
+
         rawData.map(row => {
             for(let [key, value] of Object.entries(row)){
                 switch(key){
@@ -382,7 +383,7 @@
                         delete row[key];
                         row["Auto Hours"] = '';
                         row["Rest"] = '';
-                        shouldSave = true;
+                        shouldOrderAndSave = true;
                         break;
                     default:
                         if(!headers.includes(key)){
@@ -395,6 +396,10 @@
                 }
             }
         })
+        
+        if(!shouldOrderAndSave){
+            return rawData
+        }
         
         // Then create a new array with ordered objects
         const orderedData = [];
@@ -412,20 +417,9 @@
             orderedData.push(orderedRow);
         }
         
-        // Copy the ordered data back to the original array
-        for (let i = 0; i < rawData.length; i++) {
-            rawData[i] = orderedData[i];
-        }
+        saveSheet(orderedData);
 
-        if (shouldSave) {
-            saveSheet(rawData);
-        }
-
-        console.log("")
-        console.log('headers', headers)
-        console.log('convertTableData', rawData[3])
-        console.log('-raw-convertTableData', rawData)
-        return rawData
+        return orderedData
     }
 
     // function decodeTableData(data){
@@ -444,7 +438,6 @@
     // }
 
     function saveSheet(data){
-        console.log("saveSheet", data[3])
         const year = $("#year").val();
         const month = $("#month").val();
         const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
@@ -688,8 +681,6 @@
         for(const prj of getTableProjects(data)){
             columns.push({type: 'numeric', title: prj, mask: '#,##0.00 %', width: 100, readOnly: readOnlyAll});
         }
-
-        console.log("constructTable", data[3])  
 
         window.spreadTable = jspreadsheet(document.getElementById('spreadsheet'), {
             data: data,
