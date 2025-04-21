@@ -240,6 +240,70 @@
         </div>
     </div>
 
+    <!-- Success Modal -->
+    <div class="modal fade"
+        id="successModal"
+        data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Import Data Result
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-success">succesfully updated</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-success"
+                            data-bs-dismiss="modal"
+                            id="submit">
+                        Ok
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warrning Modal -->
+    <div class="modal fade"
+        id="warningModal"
+        data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Import Data Result
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-warning">partially updated ‼️</p>
+                    <p>Users not found:</p>
+                    <ul id="missing-users-list"></ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-success"
+                            data-bs-dismiss="modal"
+                            id="submit">
+                        Ok
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
     <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
     <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
@@ -839,7 +903,7 @@
             }
         })
         .then(json =>{
-            if(json.status !== 'error'){
+            if(json.status == 'error'){
                 jSuites.notification({
                     error: 1,
                     name: 'Error',
@@ -849,8 +913,12 @@
                 });
                 return;
             }
+            
+            if(json.users_not_found.length > 0){
+                showImportError(json.users_not_found)
+            }
 
-            showImportSucces()            
+            //showImportSucces()            
         })
         .then(()=> {
             excelImmportLoadingDone();
@@ -865,6 +933,11 @@
         $.each(missingUsersList, function(index, user) {
             $('#missing-users-list').append(`<li>${user.name} (Id: ${user.user_id})</li>`);
         });
+    }
+
+    function showImportSucces(){
+        $('#successModal').modal('show')
+        $('.modal-body').html("<p>succesfully updated✅</p>");
     }
 
     function excelImmportLoadingStart(){
