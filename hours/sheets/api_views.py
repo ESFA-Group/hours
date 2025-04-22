@@ -257,6 +257,7 @@ class MonthlyReportApiView(APIView):
     def get_sheet_sums(cls, sheets: QuerySet, sheetless_users: QuerySet) -> dict:
         projects = [p["name"] for p in Project.objects.values("name")]
         projects.append("Total")
+        # projects.append("Total 2")
 
         # a pandas Series which contains all projects.
         # a user's sheet sum should be added to this Series in order to contain all projects even the value is 0
