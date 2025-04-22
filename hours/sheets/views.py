@@ -17,7 +17,6 @@ from io import BytesIO
 
 from sheets.models import Sheet, User
 from sheets.api_views import AlterPaymentApiView, MonthlyReportApiView
-from sheets.utils import SheetUtils
 
 
 class JSONResponseMixin:
@@ -663,7 +662,7 @@ class HoursExcelImportView(View):
 				current_sheet = Sheet.objects.get(
 					user_id=user_id, year=year, month=month
 				)
-				self.normalize_sheet(current_sheet)
+				current_sheet.normalize_sheet()
 			
 			currentDayData = current_sheet.data[d-1]
 				
@@ -690,4 +689,4 @@ class HoursExcelImportView(View):
 				data["Auto Hours"] = 0
 				data["Rest"] = 0
 
-		SheetUtils.normalize_sheet_weekday_data(current_sheet)
+		current_sheet.normalize_sheet_weekday_data()

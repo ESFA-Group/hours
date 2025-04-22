@@ -18,7 +18,6 @@ import re
 
 from sheets.models import Project, Sheet, User, Food_data, Report, DailyReportSetting
 from sheets.serializers import ProjectSerializer, SheetSerializer
-from sheets.utils import SheetUtils
 
 def camel_to_snake(s: str) -> str:
     pattern = re.compile(r"(?<!^)(?=[A-Z])")
@@ -77,7 +76,7 @@ class SheetApiView(APIView):
             data = request.data.get("data", [])
             data.sort(key=lambda row: int(row.get("Day", 0)))
             sheet.data = request.data["data"]
-            SheetUtils.normalize_sheet_weekday_data(sheet)
+            sheet.normalize_sheet_weekday_data()
             sheet.save()
             return Response({"success": True}, status=status.HTTP_200_OK)
         elif "editSheet" in request.data:
@@ -268,6 +267,7 @@ class MonthlyReportApiView(APIView):
         hours = dict()
         payments = dict()
         for sheet in sheets:
+            sheet.normalize_sheet()
             sheet_sum = cls.get_sum(sheet)
             sheet_sum = projects_empty.add(sheet_sum, fill_value=0)
             projects_sum = projects_sum.add(sheet_sum, fill_value=0)
@@ -288,7 +288,7 @@ class MonthlyReportApiView(APIView):
     def get_sum(self, sheet: Sheet) -> pd.Series:
         """returns sheet column sums"""
         df = sheet.transform()
-        df.drop(["Day", "WeekDay"], axis=1, inplace=True)
+        df.drop(["Day", "WeekDay", "Auto Hours", "Remote", "Rest"], axis=1, inplace=True)
         df.rename(columns={"Hours": "Total"}, inplace=True)
         return df.sum()
 
