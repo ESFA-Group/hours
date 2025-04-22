@@ -338,7 +338,9 @@ class ProjectsYearlyReportView(View):
 			df = sheet.transform()
 			if "Hours" not in df:
 				continue
-			df.drop(["Day", "WeekDay", "Hours"], axis=1, inplace=True)
+			if "َAuto Hours" not in df:
+				continue
+			df.drop(["Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest"], axis=1, inplace=True)
 			df_all = df_all.add(df, fill_value=0)
 		return df_all.sum()
 

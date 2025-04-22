@@ -221,7 +221,7 @@ class Sheet(models.Model):
             return 0
 
     def get_sheet_projects(self, df: pd.DataFrame) -> list:
-        defaults = ["Day", "WeekDay", "Hours"]
+        defaults = ["Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest"]
         projects = df.columns.difference(defaults)
         return list(projects)
 
@@ -230,10 +230,17 @@ class Sheet(models.Model):
         all project cols and "Hours" col will contain minutes instead of hh:mm and percentage format
         """
         df = pd.DataFrame(self.data)
-        if "Hours" not in df.columns:
+        required = ["Auto Hours", "Remote", "Rest"]
+        if not all(col in df.columns for col in required):
             return df
+
         projects = self.get_sheet_projects(df)
-        df["Hours"] = df["Hours"].apply(self.hhmm2minutes)
+        
+        for col in required:
+            df[col] = df[col].apply(self.hhmm2minutes)
+
+        df["Hours"] = df["Auto Hours"] + df["Remote"] - df["Rest"]
+
         df[projects] = (
             df[projects]
             .map(self.parse_project_porp)

@@ -601,7 +601,10 @@
         let total = 0;
         let daysCount = 0;
         tableData.forEach(row => {
-            const mins = hhmm2minutes(row.Hours); 
+            const auto = hhmm2minutes(row["Auto Hours"]); 
+            const rem = hhmm2minutes(row["Remote"]); 
+            const rest = hhmm2minutes(row["Rest"]); 
+            const mins = auto + rem - rest;
             for(const [prj, value] of Object.entries(row)){
                 if(!projects.includes(prj))
                     continue
@@ -693,9 +696,9 @@
             x = Number(x);
             y = Number(y);
             let cell = window.spreadTable.getCellFromCoords(x, y)?.textContent;
-            let percent = window.spreadTable.getCellFromCoords(6, y)?.textContent;
+            let percent = window.spreadTable.getCellFromCoords(5, y)?.textContent;
             if(cell && percent === ''){
-                window.spreadTable.updateCell(6, y, "100"); // this will trigger onChange event again
+                window.spreadTable.updateCell(5, y, "100"); // this will trigger onChange event again
                 return
             }
         }
@@ -714,7 +717,7 @@
         }
         const minutesInfo = getMinutesByProject(tableData);
         let {totalTime, meanTime, ...minutesByProject} = minutesInfo;
-        const workedDaysCount = tableData.filter(row => hhmm2minutes(row.Hours) > 0).length;
+        const workedDaysCount = tableData.filter(row => hhmm2minutes(row["Auto Hours"]) > 0 || hhmm2minutes(row["Remote"]) > 0).length;
         updateHoursInfo(totalTime, meanTime, workedDaysCount);
         updateChart(minutesByProject);
         updatePaymentsValue()
