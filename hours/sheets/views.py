@@ -6,6 +6,7 @@ from django.utils.decorators import method_decorator
 from django.contrib.admin.views.decorators import staff_member_required
 from sheets.customDecorators import decorators, food_manager_required
 from django.db.models import QuerySet
+from django.core.files.storage import default_storage
 
 import pandas as pd
 import numpy as np
@@ -17,7 +18,7 @@ from io import BytesIO
 
 from sheets.models import Sheet, User
 from sheets.api_views import AlterPaymentApiView, MonthlyReportApiView
-
+from sheets.task import import_hours_task
 
 class JSONResponseMixin:
 	"""
@@ -628,65 +629,7 @@ class HoursExcelImportView(View):
 	}
 	
 	def post(self, request, year: str, month: str):
-
-		file = request.FILES["file"]
-		df = pd.read_excel(file)
-		df.fillna(0, inplace=True)
-		not_found_name = []
-
-		for index, row in df.iterrows():
-			try:
-				user_id = self.USER_ID_MAP[row["کد پرسنلي"]]
-			except:
-				if row["نام خانوادگي"] not in not_found_name:
-					not_found_name.append(row["نام خانوادگي"])
-				continue
-			date = row["تاريخ"]
-			hours = row["مدت کارکرد"]
-			current_sheet = None
-			y = date.split('/')[0]
-			m = date.split('/')[1]
-			if int(month) != int(m) or year != y:            
-				response_data = {
-					"status": "error",
-					"message": "year or month is not match",
-					"users_not_found": not_found_name,
-				}
-				return JsonResponse(response_data)
-			
-			d = int(date.split('/')[2])
-
-			if current_sheet==None or current_sheet.user_id != user_id:
-				if user_id == -1:
-					continue
-				current_sheet = Sheet.objects.get(
-					user_id=user_id, year=year, month=month
-				)
-				current_sheet.normalize_sheet()
-			
-			currentDayData = current_sheet.data[d-1]
-				
-			currentDayData["Auto Hours"] = f"{hours.hour}:{hours.minute}" 
-			current_sheet.save()
-		
-		response_data = {
-			"message": "success",
-			"users_not_found": not_found_name,
-		}
-
-		return JsonResponse(response_data)
-	
-	def normalize_sheet(self, current_sheet):
-		all_data = current_sheet.data
-
-		if "Hours" in all_data[0]:
-			for data in all_data:
-				# Replace "Hours" with "Remote"
-				hours_value = data.pop("Hours")
-				data["Remote"] = hours_value
-				
-				# Add additional keys with default values (modify defaults as needed)
-				data["Auto Hours"] = 0
-				data["Rest"] = 0
-
-		current_sheet.normalize_sheet_weekday_data()
+		uploaded = request.FILES['file']
+		path = default_storage.save(f"tmp/{uploaded.name}", uploaded)
+		task = import_hours_task.delay(path, year, month)
+		return JsonResponse({"task_id": task.id}, status=202)

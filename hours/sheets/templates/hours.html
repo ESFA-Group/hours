@@ -442,8 +442,9 @@
         rawData.map(row => {
             for(let [key, value] of Object.entries(row)){
                 switch(key){
-                    case "Hours": 
-                        row["Remote"] = value;
+                    case "Hours":
+                        if row["Remote"] !== "":
+                            row["Remote"] = value;                         
                         delete row[key];
                         row["Auto Hours"] = '';
                         row["Rest"] = '';
