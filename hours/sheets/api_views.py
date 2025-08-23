@@ -16,7 +16,7 @@ import pandas as pd
 import io
 import re
 
-from sheets.models import Project, Sheet, User, Food_data, Report, DailyReportSetting
+from sheets.models import Project, Sheet, User, Food_data, Report, DailyReportSetting, FinancialInfo
 from sheets.serializers import ProjectSerializer, SheetSerializer
 
 
@@ -1005,3 +1005,12 @@ class DailyReportSettingManager(APIView):
             {"message": "Report setting updated successfully"},
             status=status.HTTP_200_OK,
         )
+
+class Financial(APIView):
+    def get(self, request, year: str):
+        user = self.request.user
+        
+        FinancialInfo = FinancialInfo.objects.get_or_create(year=year)
+        
+        return Response(FinancialInfo, status=status.HTTP_200_OK)
+
