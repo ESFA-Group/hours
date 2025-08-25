@@ -1,10 +1,7 @@
 from django.views.generic.base import TemplateView, View
 from django.http import HttpResponse, JsonResponse
-from rest_framework.response import Response
-from rest_framework import status
 from django.utils.decorators import method_decorator
-from django.contrib.admin.views.decorators import staff_member_required
-from sheets.customDecorators import decorators, food_manager_required
+from sheets.customDecorators import *
 from django.db.models import QuerySet
 
 import pandas as pd
@@ -16,7 +13,7 @@ import openpyxl
 from io import BytesIO
 
 from sheets.models import Sheet, User
-from sheets.api_views import AlterPaymentApiView, MonthlyReportApiView
+from sheets.api_views import MonthlyReportApiView
 
 
 class JSONResponseMixin:
@@ -146,6 +143,7 @@ class DailyReport(BaseView):
             context = {"submitted": True}
             return super(TemplateView, self).render_to_response(context)
 
+@method_decorator([daily_report_manager_required], name="dispatch")
 class DailyReportManagement(BaseView):
     template_name = "daily_report_management.html"
 
@@ -178,17 +176,17 @@ class HoursInfoView(BaseView):
     template_name = "hours_info.html"
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([project_report_manager_required], name="dispatch")
 class ReportsView(BaseView):
     template_name = "reports.html"
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([financial_manager_required], name="dispatch")
 class PaymentHandleView(BaseView):
     template_name = "payment.html"
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([financial_manager_required], name="dispatch")
 class AlterPaymentHandleView(BaseView):
     template_name = "alter_payment.html"
 
@@ -202,7 +200,7 @@ class FoodDataView(BaseView):
     template_name = "food_data.html"
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([project_report_manager_required], name="dispatch")
 class DetailedReportView(View):
 
     def get(self, request):
@@ -228,7 +226,7 @@ class DetailedReportView(View):
         return response
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([project_report_manager_required], name="dispatch")
 class MainReportView(View):
 
     def get(self, request):
@@ -261,7 +259,7 @@ class MainReportView(View):
         return response
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([project_report_manager_required], name="dispatch")
 class UsersMonthlyReportView(View):
 
     def get(self, request):
@@ -295,7 +293,7 @@ class UsersMonthlyReportView(View):
         return response
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([project_report_manager_required], name="dispatch")
 class ProjectsYearlyReportView(View):
 
     def get(self, request):
@@ -342,7 +340,7 @@ class ProjectsYearlyReportView(View):
         return df_all.sum()
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([financial_manager_required], name="dispatch")
 class PaymentExportView(View):
 
     def post(self, request):
@@ -488,7 +486,7 @@ class PaymentExportView(View):
         return string
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([financial_manager_required], name="dispatch")
 class PaymentExcelExportView(View):
 
     def post(self, request, year: str, month: str):
@@ -524,7 +522,7 @@ class PaymentExcelExportView(View):
         return response
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([financial_manager_required], name="dispatch")
 class PaymentExcelImportView(View):
 
     def post(self, request, year: str, month: str):

@@ -24,12 +24,16 @@ class User(AbstractUser):
     addition1 = models.IntegerField("addition", default=0)
     addition2 = models.IntegerField("addition2", default=0)
     comment = models.TextField("comment", default="", blank=True)
-
-    # personal info
-    is_active = models.BooleanField("is_active", default=True)
+    
+    # access info
+    is_FinancialManager = models.BooleanField("is_FinancialManager", default=False)
+    is_ProjectReportManager = models.BooleanField("is_ProjectReportManager", default=False)
     is_FoodManager = models.BooleanField("is_FoodManager", default=False)
     is_SubReportManager = models.BooleanField("is_SubReportManager", default=False)
     is_MainReportManager = models.BooleanField("is_MainReportManager", default=False)
+
+    # personal info
+    is_active = models.BooleanField("is_active", default=True)
     national_ID = models.CharField("national_ID", max_length=10, blank=True, default="")
     mobile1 = models.CharField("mobile1", max_length=11, blank=True, default="")
     mobile2 = models.CharField("mobile2", max_length=11, blank=True, default="")

@@ -21,3 +21,41 @@ def food_manager_required(
     if view_func:
         return actual_decorator(view_func)
     return actual_decorator
+
+
+def daily_report_manager_required(
+    view_func=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url="admin:login"
+):
+    actual_decorator = user_passes_test(
+        lambda u: u.is_active and (u.is_SubReportManager or u.is_MainReportManager),
+        login_url=login_url,
+        redirect_field_name=redirect_field_name,
+    )
+    if view_func:
+        return actual_decorator(view_func)
+    return actual_decorator
+
+def financial_manager_required(
+    view_func=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url="admin:login"
+):
+    actual_decorator = user_passes_test(
+        lambda u: u.is_active and u.is_FinancialManager,
+        login_url=login_url,
+        redirect_field_name=redirect_field_name,
+    )
+    if view_func:
+        return actual_decorator(view_func)
+    return actual_decorator
+
+
+def project_report_manager_required(
+    view_func=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url="admin:login"
+):
+    actual_decorator = user_passes_test(
+        lambda u: u.is_active and u.is_ProjectReportManager,
+        login_url=login_url,
+        redirect_field_name=redirect_field_name,
+    )
+    if view_func:
+        return actual_decorator(view_func)
+    return actual_decorator

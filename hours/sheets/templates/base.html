@@ -33,7 +33,7 @@
         .logout:hover{
             color: red;
         }
-        {% comment %} /* Chrome, Safari, Edge, Opera */
+        /* Chrome, Safari, Edge, Opera */
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -42,7 +42,7 @@
         /* Firefox */
         input[type=number] {
             -moz-appearance: textfield;
-} {% endcomment %}
+        }
         </style>
 
         <script src="{% static 'sheets/js/JQuery-3.6.0.min.js' %}"></script>
@@ -99,17 +99,21 @@
                                 <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
                                    href="{% url 'sheets:personal_info' %}">Personal Info</a>
                             </li>
-                            {% if request.user.is_staff %}
-                                <li class="nav-item">
-                                    {% url 'sheets:reports' as temp_url %}
-                                    <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
-                                       href="{% url 'sheets:reports' %}">Reports</a>
-                                </li>
+                            {% if request.user.is_ProjectReportManager %}
+                            <li class="nav-item">
+                                {% url 'sheets:reports' as temp_url %}
+                                <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
+                                href="{% url 'sheets:reports' %}">Reports</a>
+                            </li>
+                            {% endif %}    
+                            {% if request.user.is_FinancialManager %}
                                 <li class="nav-item">
                                     {% url 'sheets:alter_payment' as temp_url %}
                                     <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
-                                       href="{% url 'sheets:alter_payment' %}">Alter Payments</a>
+                                    href="{% url 'sheets:alter_payment' %}">Alter Payments</a>
                                 </li>
+                            {% endif %}
+                            {% if request.user.is_staff %}
                                 <li class="nav-item">
                                     <a class="nav-link" href="{% url 'admin:index' %}">Admin</a>
                                 </li>
