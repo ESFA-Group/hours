@@ -4,7 +4,6 @@ from sheets.models import *
 
 admin.site.site_url = "/hours"
 
-admin.site.unregister(Group)
 
 admin.site.register(ProjectFamily)
 admin.site.register(Sheet)
@@ -13,6 +12,7 @@ admin.site.register(Sheet)
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
     ordering = ["last_name", "first_name"]
+    filter_horizontal = ('groups', 'user_permissions')
 
 
 @admin.register(Project)
