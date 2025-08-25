@@ -1,7 +1,6 @@
 "use strict";
 //CONSTANTS************************************************
 const TODAY = new JDate();
-console.log(TODAY.getDate());
 
 TODAY._d.setHours(0, 0, 0, 0)
 
