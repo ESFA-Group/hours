@@ -144,8 +144,8 @@
                 {% endif %}
                 {% if request.user.is_FinancialManager %}           
                     <a class="btn btn-danger mx-1"
-                    href="{% url 'sheets:alter_payment' %}"
-                    style="width: 200px">Alter Payments</a>
+                    href="{% url 'sheets:payment' %}"
+                    style="width: 200px">Payments</a>
                 {% endif %}
                 {% if request.user.is_FoodManager %}
                     <a class="btn btn-info mx-1"

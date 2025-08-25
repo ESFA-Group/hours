@@ -186,11 +186,6 @@ class PaymentHandleView(BaseView):
     template_name = "payment.html"
 
 
-@method_decorator([financial_manager_required], name="dispatch")
-class AlterPaymentHandleView(BaseView):
-    template_name = "alter_payment.html"
-
-
 class FoodFormView(BaseView):
     template_name = "food_form.html"
 

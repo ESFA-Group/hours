@@ -38,12 +38,42 @@
                                    height: 35px">
                         {{ 1|render_month_options }}
                     </select>
-                </div>
+            </div>
+            </div>
+            <div class="col col-12 col-md-4 col-lg-3">
+                <button id="export-excel"
+                        class="btn btn-success d-flex align-items-center justify-content-around"
+                        style="width: 160px;
+                               position: relative;
+                               top: 27px">
+                    <i class="fa fa-file-export"></i>
+                    <span>Export Excel</span>
+                </button>
+            </div>
+            <div class="col col-12 col-md-4 col-lg-3">
+                <input type="file"
+                       id="excelFileInput"
+                       style="display:none"
+                       accept=".xlsx,.xls"
+                       onchange="handleExcelImport(event)">
+                <button id="import-excel"
+                        class="btn btn-warning d-flex align-items-center justify-content-around"
+                        style="width: 160px;
+                               position: relative;
+                               top: 27px">
+                    <i id="import-excel-icon" class="fa fa-file-import"></i>
+                    <div id="import-excel-spinner" class="spinner-border text-dark">
+                    </div>                    
+                    <span>import Excel</span>
+                </button>
             </div>
         </div>
+
+        <br/>
         <hr>
+
         <div class="row">
-            <div class="col col-6 col-md-4 col-lg-3">
+            <div class="col col-6 col-md-4 col-lg-2">
                 <strong>Payment Method</strong>
                 <div class="mt-1">
                     <select name="paymentMethod"
@@ -51,16 +81,16 @@
                             style="min-width: 180px;
                                    border-radius: 5px;
                                    height: 35px">
-                        <option value="AN">
-                            Account number
-                        </option>
                         <option value="SN">
                             SHEBA number
+                        </option>
+                        <option value="AN">
+                            Account number
                         </option>
                     </select>
                 </div>
             </div>
-            <div class="col col-6 col-md-4 col-lg-3">
+            <div class="col col-6 col-md-4 col-lg-2">
                 <strong>Payment Type</strong>
                 <div class="mt-1">
                     <select name="paymentType"
@@ -107,23 +137,32 @@
                     <span>Export melli</span>
                 </button>
             </div>
+            <div class="col col-6 col-md-2 col-lg-2">
+                <button id="export-melli2"
+                        class="btn btn-primary d-flex align-items-center justify-content-around"
+                        style="width: 160px;
+                               position: relative;
+                               top: 27px">
+                    <i class="fa fa-file-export"></i>
+                    <span>Export melli New</span>
+                </button>
+            </div>
         </div>
+
         <br>
 
         <table id="payment-table"
-               data-show-export="true"
-               data-search="true"
                data-click-to-select="true"
+               data-search="true"
                class="table table-sm table-hover"
                style="table-layout: fixed;
                       text-align: center;
-                      min-width: 1000px">
-            <thead class="table-dark">
+                      min-width: 1600px">
+            <thead class="table-success">
                 <tr>
                     <th scope="col"
                         data-field="state"
                         data-checkbox="true"
-                        data-width="2"
                         data-width-unit="%">
                         #
                     </th>
@@ -131,23 +170,32 @@
                         ID
                     </th>
                     <th scope="col"
-                        data-field="user"
+                        data-field="paymentStatus"
+                        data-width-unit="%"
                         data-sortable="true"
                         data-width="14"
+                        data-formatter="statusFormatter">
+                        Payment Status
+                    </th>
+                    <th scope="col"
+                        data-field="user"
+                        data-sortable="true"
+                        data-width="8"
                         data-width-unit="%">
                         User
                     </th>
                     <th scope="col"
                         data-field="bankName"
                         data-sortable="true"
-                        data-width="6"
+                        data-width="7"
                         data-width-unit="%">
                         Bank
                     </th>
                     <th scope="col"
                         data-field="wage"
                         data-sortable="true"
-                        data-width="6"
+                        data-editable="true"
+                        data-width="7"
                         data-width-unit="%"
                         data-formatter="moneyFormatter"
                         data-always-use-formatter="true">
@@ -156,20 +204,22 @@
                     <th scope="col"
                         data-field="totalPayment"
                         data-sortable="true"
-                        data-width="9"
+                        data-width="8"
                         data-width-unit="%"
                         data-formatter="moneyFormatter">
                         Total (R)
                     </th>
                     <th scope="col"
                         data-field="basePayment"
-                        data-width="9"
+                        data-editable="true"
+                        data-width="7"
                         data-width-unit="%"
                         data-formatter="moneyFormatter">
                         Base (R)
                     </th>
                     <th scope="col"
                         data-field="reduction1"
+                        data-editable="true"
                         data-width="8"
                         data-width-unit="%"
                         data-formatter="moneyFormatter">
@@ -177,6 +227,7 @@
                     </th>
                     <th scope="col"
                         data-field="reduction2"
+                        data-editable="true"
                         data-width="8"
                         data-width-unit="%"
                         data-formatter="moneyFormatter">
@@ -184,13 +235,23 @@
                     </th>
                     <th scope="col"
                         data-field="reduction3"
+                        data-editable="true"
                         data-width="8"
                         data-width-unit="%"
                         data-formatter="moneyFormatter">
                         Reduction3 (R)
                     </th>
                     <th scope="col"
+                        data-field="food_reduction"
+                        data-editable="true"
+                        data-width="8"
+                        data-width-unit="%"
+                        data-formatter="moneyFormatter">
+                        food_reduction (R)
+                    </th>
+                    <th scope="col"
                         data-field="addition1"
+                        data-editable="true"
                         data-width="8"
                         data-width-unit="%"
                         data-formatter="moneyFormatter">
@@ -198,6 +259,7 @@
                     </th>
                     <th scope="col"
                         data-field="addition2"
+                        data-editable="true"
                         data-width="8"
                         data-width-unit="%"
                         data-formatter="moneyFormatter">
@@ -205,14 +267,14 @@
                     </th>
                     <th scope="col"
                         data-field="complementaryPayment"
-                        data-width="11"
+                        data-width="10"
                         data-width-unit="%"
                         data-formatter="colorMoneyFormatter">
                         Complementary (R)
                     </th>
                     <th scope="col"
                         data-field="finalPayment"
-                        data-width="9"
+                        data-width="8"
                         data-width-unit="%"
                         data-formatter="colorMoneyFormatter">
                         Final (R)
@@ -221,6 +283,71 @@
             </thead>
         </table>
     </div>
+
+    <!-- Success Modal -->
+    <div class="modal fade"
+         id="successModal"
+         data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Import Data Result
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-success">succesfully updated</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-success"
+                            data-bs-dismiss="modal"
+                            id="submit">
+                        Ok
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warrning Modal -->
+    <div class="modal fade"
+         id="warningModal"
+         data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Import Data Result
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-warning">partially updated ‼️</p>
+                    <p>Users not found:</p>
+                    <ul id="missing-users-list"></ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-success"
+                            data-bs-dismiss="modal"
+                            id="submit">
+                        Ok
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <br>
     <br>
     <script src="{% static 'sheets/js/bootstrap-editable.min.js' %}"></script>
@@ -244,13 +371,27 @@
         return moneyFormat(value)
     }
 
+    function statusFormatter(value, row) {
+        const selectedIndex = parseInt(value); // Convert to integer if value is a string
+        return `
+            <select class="form-select">
+                <option value="0"${selectedIndex === 0? 'selected' : ''}> Not Paid 😡</option>
+                <option value="1"${selectedIndex === 1? 'selected' : ''}> Only Base ☹️</option>
+                <option value="2"${selectedIndex === 2? 'selected' : ''}> Only Complementary😶‍🌫️</option>
+                <option value="3"${selectedIndex === 3? 'selected' : ''}> Base+Complementary🤑</option>
+                <option value="4"${selectedIndex === 4? 'selected' : ''}> Refund Needed😭</option>
+                <option value="5"${selectedIndex === 5? 'selected' : ''}> Refund Paid💔</option>
+            </select>`;
+    }
+
     async function getTableData(year, month){
         const url = `{% url "sheets:api_payment" year='yearHolder' month='monthHolder' %}`
-            .replace("yearHolder", year)
-            .replace("monthHolder", month);
+                .replace("yearHolder", year)
+                .replace("monthHolder", month);
         try{
             let res = await fetch(url);
-            return await res.json();
+            let data = await res.json();
+            return data;
         }
         catch(err){
             jSuites.notification({
@@ -280,6 +421,106 @@
         }
     }
 
+    function handleExcelImport(event) {
+        excelImmportLoadingStart()
+        var file = event.target.files[0];
+        var formData = new FormData();
+    
+        // Append the file to the form data
+        formData.append('file', file);
+        
+        // Send the file to the backend
+        const year = $("#year").val();
+        const month = $("#month").val();
+        const url = `{% url "sheets:payment_excel_import" year='yearHolder' month='monthHolder'  %}`
+            .replace("yearHolder", year)
+            .replace("monthHolder", month);
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{csrf_token}}',
+            },
+            body:  formData,
+        })
+        .then(res => {
+            if (res.ok) {
+                return res.json()
+            } else {
+                throw new Error('Network response was not ok');
+            }
+        })
+        .then(json =>{
+            if(json.users_not_found.length > 0){
+                showImportError(json.users_not_found)
+            }
+            else{
+                showImportSucces()
+            }
+            fillTable(year, month);
+            document.getElementById('excelFileInput').value = '';
+        })
+        .then(()=> {
+            excelImmportLoadingDone();
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function showImportError(missingUsersList){
+        $('#warningModal').modal('show')
+        $('#missing-users-list').empty(); // Clear existing list
+
+        $.each(missingUsersList, function(index, user) {
+            $('#missing-users-list').append(`<li>${user.name} (Id: ${user.user_id})</li>`);
+        });
+    }
+
+    function showImportSucces(){
+        $('#successModal').modal('show')
+        $('.modal-body').html("<p>succesfully updated✅</p>");
+    }
+
+    function excelImmportLoadingStart(){
+        $('#import-excel').prop("disabled", true);
+        $('#import-excel-spinner').show();
+        $('#import-excel-icon').hide()
+    }
+
+    function excelImmportLoadingDone(){
+        $('#import-excel').prop("disabled", false);
+        $('#import-excel-spinner').hide()
+        $('#import-excel-icon').show();
+    }
+
+    function updatePaymentTable(year, month, rowData, idx) {
+        const url = `{% url "sheets:api_payment" year='yearHolder' month='monthHolder' %}`
+           .replace("yearHolder", year)
+           .replace("monthHolder", month);
+    
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{csrf_token}}',
+            },
+            body: JSON.stringify({row: rowData}),
+        })
+       .then(res => res.json())
+       .then(res => {
+            Object.assign(rowData, res);      
+            $("#payment-table").bootstrapTable('load', rowData);
+            return true
+        })
+       .catch(err => {
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Editing Row",
+                message: "Error occurred while changing data.",
+            });
+            return false
+        });
+    }
+
     $("document").ready(async function(){
 
         const today = new JDate();
@@ -289,6 +530,7 @@
         $("#year").val(currentYear);
         $("#month").val(currentMonth);
         $("#current-sheet-date").text(`${currentYear}/${currentMonth}`);
+        $('#import-excel-spinner').hide()
 
         $("#payment-table").bootstrapTable({
             exportTypes: ['json', 'xml', 'csv', 'txt', 'excel'],
@@ -312,32 +554,21 @@
         $("#payment-table").on('editable-save.bs.table', function(e, field, row, idx, oldValue){
             const year = $("#year").val();
             const month = $("#month").val();
-            const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
-                .replace("yearHolder", year)
-                .replace("monthHolder", month);
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{csrf_token}}',
-                },
-                body: JSON.stringify({row: row, field: field, editSheet: true}),
-            })
-            .then(res => res.json())
-            .then(res => {
-                Object.assign(row, res);
-                $("#payment-table").bootstrapTable('updateRow', {index: idx, row: row});
-            })
-            .catch(err => {
-                jSuites.notification({
-                    error: 1,
-                    name: 'Error',
-                    title: "Editing Row",
-                    message: "Error occured while changing data.",
-                });
+            responsStatus = updatePaymentTable(year, month, row, idx)
+            if(responsStatus == false)
                 $("#payment-table").bootstrapTable('updateCell', {index: idx, field: field, value: oldValue});
-            });
         });
+
+        $('#payment-table').on('change', '.form-select', function(){
+            const $table = $(this).closest('table');
+            let idx = $(this).closest('tr').data('index');
+            row = $table.bootstrapTable('getData')[idx];
+            row.paymentStatus = $(this).val()
+
+            const year = $("#year").val();
+            const month = $("#month").val();
+            updatePaymentTable(year, month, row, idx)
+        })
 
         $("#export").click(function(){
             const userIDs = $("#payment-table").bootstrapTable("getSelections").map(row => row.userID);
@@ -348,10 +579,27 @@
             $form.append($("<input type='hidden' name='paymentMethod'>").val($("#paymentMethod").val()));
             $form.append($("<input type='hidden' name='paymentType'>").val($("#paymentType").val()));
             $form.append($("<input type='hidden' name='csrfmiddlewaretoken'>").val("{{csrf_token}}"));
-            $form.append($("<input type='hidden' name='exportType'>").val("default"));
             $("body").append($form);
             $form.submit();
         });
+
+        $("#export-excel").click(function(){
+            const year = $("#year").val();
+            const month = $("#month").val();
+            const $form = $("<form>", 
+                {action: `{% url "sheets:payment_excel_export" year='yearHolder' month='monthHolder'  %}`
+                    .replace("yearHolder", year)
+                    .replace("monthHolder", month),
+                method: "POST"});
+            $form.append($("<input type='hidden' name='csrfmiddlewaretoken'>").val("{{csrf_token}}"));
+            $("body").append($form);
+            $form.submit();
+        });
+
+        $("#import-excel").click(function(){
+            $("#excelFileInput").click();
+        });
+
         
         $("#export-sepah").click(function(){
             const userIDs = $("#payment-table").bootstrapTable("getSelections").map(row => row.userID);
@@ -380,7 +628,20 @@
             $("body").append($form);
             $form.submit();
         });
-
+        
+        $("#export-melli2").click(function(){
+            const userIDs = $("#payment-table").bootstrapTable("getSelections").map(row => row.userID);
+            const $form = $("<form>", {action: "{% url 'sheets:payment_export' %}", method: "POST"});
+            $form.append($("<input type='hidden' name='IDs'>").val(JSON.stringify(userIDs)));
+            $form.append($("<input type='hidden' name='month'>").val($("#month").val()));
+            $form.append($("<input type='hidden' name='year'>").val($("#year").val()));
+            $form.append($("<input type='hidden' name='paymentMethod'>").val($("#paymentMethod").val()));
+            $form.append($("<input type='hidden' name='paymentType'>").val($("#paymentType").val()));
+            $form.append($("<input type='hidden' name='csrfmiddlewaretoken'>").val("{{csrf_token}}"));
+            $form.append($("<input type='hidden' name='exportType'>").val("melli2"));
+            $("body").append($form);
+            $form.submit();
+        });
     });
     </script>
 {% endblock body %}

@@ -108,9 +108,9 @@
                             {% endif %}    
                             {% if request.user.is_FinancialManager %}
                                 <li class="nav-item">
-                                    {% url 'sheets:alter_payment' as temp_url %}
+                                    {% url 'sheets:payment' as temp_url %}
                                     <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
-                                    href="{% url 'sheets:alter_payment' %}">Alter Payments</a>
+                                    href="{% url 'sheets:payment' %}">Payments</a>
                                 </li>
                             {% endif %}
                             {% if request.user.is_staff %}

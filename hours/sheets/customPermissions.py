@@ -10,7 +10,7 @@ class IsFoodManager(permissions.BasePermission):
         return bool(request.user and request.user.is_FoodManager)
 
 
-class IsReportManager(permissions.BasePermission):
+class IsDailyReportManager(permissions.BasePermission):
     """
     Allows access only to Report management.
     """
@@ -20,3 +20,13 @@ class IsReportManager(permissions.BasePermission):
             request.user
             and (request.user.is_MainReportManager or request.user.is_SubReportManager)
         )
+
+
+class IsFinancialManager(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_FinancialManager)
+
+
+class IsProjectReportManager(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_ProjectReportManager)

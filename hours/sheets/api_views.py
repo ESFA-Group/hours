@@ -250,7 +250,7 @@ class PublicMonthlyReportApiView(APIView):
 
 class MonthlyReportApiView(APIView):
 
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [customPermissions.IsProjectReportManager]
 
     def get(self, request, year: str, month: str):
 
@@ -320,45 +320,7 @@ class MonthlyReportApiView(APIView):
 
 
 class PaymentApiView(APIView):
-
-    permission_classes = [permissions.IsAdminUser]
-
-    def get(self, request, year: str, month: str):
-        sheets = (
-            Sheet.objects.select_related("user")
-            .filter(year=year, month=month)
-            .order_by("user__last_name")
-        )
-        data = list()
-        for sheet in sheets:
-            user = sheet.user
-            if not sheet.user:
-                continue
-            payment_info = sheet.get_payment_info()
-            payment_info.update(
-                {
-                    "userID": user.id,
-                    "user": user.get_full_name() + (" ☑️" if sheet.submitted else ""),
-                    "bankName": user.bank_name,
-                }
-            )
-            data.append(payment_info)
-
-        return Response(data, status=status.HTTP_200_OK)
-
-
-class PublicPaymentApiView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, year: str, month: str):
-        sheet = Sheet.objects.get(user=self.request.user, year=year, month=month)
-        data = sheet.get_public_payment_info()
-        return Response(data, status=status.HTTP_200_OK)
-
-
-class AlterPaymentApiView(APIView):
-
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [customPermissions.IsFinancialManager]
 
     def get(self, request, year: str, month: str):
         users = User.objects.filter(is_active=1)
@@ -417,6 +379,15 @@ class AlterPaymentApiView(APIView):
         currentSheet.save()
 
         return Response(currentSheet.get_payment_info(), status=status.HTTP_200_OK)
+
+
+class PublicPaymentApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, year: str, month: str):
+        sheet = Sheet.objects.get(user=self.request.user, year=year, month=month)
+        data = sheet.get_public_payment_info()
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class OrderFoodApiView(APIView):
@@ -947,7 +918,7 @@ class DailyReportUser(APIView):
 
 
 class DailyReportManagement(APIView):
-    permission_classes = [customPermissions.IsReportManager]
+    permission_classes = [customPermissions.IsDailyReportManager]
 
     def get(self, request, year: str, month: str):
         reports = Report.objects.filter(year=year, month=month).order_by("user", "day")
@@ -1014,7 +985,7 @@ class DailyReportManagement(APIView):
 
 
 class DailyReportSettingManager(APIView):
-    permission_classes = [customPermissions.IsReportManager]
+    permission_classes = [customPermissions.IsDailyReportManager]
 
     def get(self, request):
         settign, _ = DailyReportSetting.objects.get_or_create()
