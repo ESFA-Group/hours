@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "sheets",
+    "esfa_eyes",
     "sheets.templatetags",
     "livereload",
 ]
