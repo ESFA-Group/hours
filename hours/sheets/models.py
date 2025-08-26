@@ -26,11 +26,12 @@ class User(AbstractUser):
     comment = models.TextField("comment", default="", blank=True)
     
     # access info
-    is_FinancialManager = models.BooleanField("is_FinancialManager", default=False)
     is_ProjectReportManager = models.BooleanField("is_ProjectReportManager", default=False)
-    is_FoodManager = models.BooleanField("is_FoodManager", default=False)
     is_SubReportManager = models.BooleanField("is_SubReportManager", default=False)
     is_MainReportManager = models.BooleanField("is_MainReportManager", default=False)
+    is_FoodManager = models.BooleanField("is_FoodManager", default=False)
+    # access to esfa eyes
+    is_FinancialManager = models.BooleanField("is_FinancialManager", default=False)
     is_InternationalFinanceManager = models.BooleanField("is_InternationalFinanceManager", default=False)
     is_InternationalSalesManager = models.BooleanField("is_InternationalSalesManager", default=False)
     is_ProductionManager = models.BooleanField("is_ProductionManager", default=False)
