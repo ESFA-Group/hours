@@ -1,6 +1,7 @@
 from django.db import models
 from .schemas import esfa_eyes_info as schemas
 from .schemas.esfa_eyes_info import EsfaEyesInfo, EsfaEyesMonltyInfo, EsfaEyesProductInfo
+from sheets.models import User
 
 def default_financial_info():
     return {
@@ -46,15 +47,15 @@ class EsfaEyes(models.Model):
     international_sales_info = models.JSONField(default=default_international_sales_info)
     products_info = models.JSONField(default=default_products_info)
 
-    def get(self, info=None):
-        """Return a DateInfo instance.
-
-        If `info` is omitted, a combined dict of the model's financial
-        fields is used as the payload.
-        """
-        if info is None:
-            info = {
-                "financial_info": self.financial_info,
-                "international_finance_info": self.international_finance_info,
-            }
-        return self.DateInfo(info)
+    def get(self, user: User):
+        if user:
+            if user.is_FinancialManager:
+                info = self.financial_info
+            elif user.is_InternationalFinanceManager:
+                info = self.international_finance_info
+            elif user.is_InternationalSalesManager:
+                info = self.international_sales_info
+            elif user.is_ProductionManager:
+                info = self.products_info
+            return info
+        return {}	
