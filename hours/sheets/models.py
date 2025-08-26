@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from functools import partial
 
 import pandas as pd
 import jdatetime as jdt
@@ -32,6 +31,8 @@ class User(AbstractUser):
     is_FoodManager = models.BooleanField("is_FoodManager", default=False)
     is_SubReportManager = models.BooleanField("is_SubReportManager", default=False)
     is_MainReportManager = models.BooleanField("is_MainReportManager", default=False)
+    is_InternationalFinanceManager = models.BooleanField("is_InternationalFinanceManager", default=False)
+    is_InternationalSalesManager = models.BooleanField("is_InternationalSalesManager", default=False)
 
     # personal info
     is_active = models.BooleanField("is_active", default=True)
@@ -374,25 +375,4 @@ class DailyReportSetting(models.Model):
     no_limit_submission = models.BooleanField(default=False)
     start_report_hour = models.PositiveIntegerField("start_report_hour", default=17)
     end_report_hour = models.PositiveIntegerField("end_report_hour", default=22)
-
-
-class FinancialInfo(models.Model):
-    class DateInfo():
-        date = 
-        info = 
-        
-    year = models.CharField('year', max_length=4, default='1404')
-    info = models.JSONField(default=partial(dict, 
-        {
-			'financial': {
-                'balance_rials': {},
-                'balance_dollars': {},
-                'checks': {},
-			},
-        }
-    ))
-
-
-    def get(self):
-        return self.info
       
