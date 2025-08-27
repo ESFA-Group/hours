@@ -44,6 +44,9 @@ class EsfaEyes(models.Model):
 	international_sales_info = models.JSONField(default=default_international_sales_info)
 	products_info = models.JSONField(default=default_products_info)
 
+	def __str__(self):
+		return f"ESFA Eyes - {self.year}"
+
 	def get(self, user: User):
 		info = {}
 		if user:
