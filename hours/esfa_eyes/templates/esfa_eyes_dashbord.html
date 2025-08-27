@@ -1,0 +1,627 @@
+{% extends "base.html" %}
+{% load static %}
+{% load connector_template_filters %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.css' %}">
+    <link rel="stylesheet"
+          href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
+    <link rel="stylesheet"
+          href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
+    <style>
+        :root {
+            --jexcel_header_color: #000;
+            --jexcel_header_color_highlighted: #000;
+            --jexcel_header_background: #f3f3f3;
+            --jexcel_header_background_highlighted: #dcdcdc;
+            --jexcel_content_color: #000;
+            --jexcel_content_color_highlighted: #000;
+            --jexcel_content_background: #fff;
+            --jexcel_content_background_highlighted: rgba(0,0,0,0.05);
+            --jexcel_menu_background: #fff;
+            --jexcel_menu_background_highlighted: #ebebeb;
+            --jexcel_menu_color: #555;
+            --jexcel_menu_color_highlighted: #555;
+            --jexcel_menu_box_shadow: 2px 2px 2px 0px rgba(143, 144, 145, 1);
+            --jexcel_border_color: #ccc;
+            --jexcel_border_color_highlighted: #000;
+            --jexcel_cursor: #eee;
+            --active_color: #007aff;
+        }
+        /* .jexcel tbody tr td{
+            background-color: rgba(200, 0, 0, 0.2);
+        } */
+        .redFont{
+            color: red;
+        }
+    </style>
+{% endblock extra_css %}
+{% block body %}
+
+    <div class="px-4">
+        <div class="row">
+
+            <div class="col col-12 col-lg-4 mt-2">
+
+                <div style="position: sticky; top: 10px;">
+                    <div class="row">
+                        <div class="col col-4 col-md-4">
+                            <strong>Year</strong>
+                            <div class="mt-1">
+                                <select name="year"
+                                        id="year"
+                                        style="min-width: 100px;
+                                               border-radius: 5px;
+                                               height: 35px">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                   
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
+    <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
+    <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
+    <script>
+
+    const [ BASE_PAYMENT, COMPLIMENTARY, FOOD_REDUCTION, TOTAL ] = get_payment_holders_eleements();
+
+    function get_payment_holders_eleements(){
+        let base = document.getElementById('base-payment');
+        let complimentary = document.getElementById('complimentary');
+        let food_reduction = document.getElementById('food_reduction');
+        let total = document.getElementById('total-pay');
+        return [ base, complimentary, food_reduction, total ];
+    }
+    
+    async function updatePaymentsValue(){
+        let public_payment_info = await getPaymentsValue();
+        
+        if (public_payment_info.paymentStatus === 0){ // Only Base
+            updateBase(public_payment_info.basePayment);
+            updateComplimentary(public_payment_info.complementaryPayment);
+            updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment)
+        }
+        if (public_payment_info.paymentStatus === 1){ // Only Base
+            updateBase(public_payment_info.basePayment, true);
+            updateComplimentary(public_payment_info.complementaryPayment);
+            updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment)
+        }
+        else if (public_payment_info.paymentStatus === 2){ //Only Complementary
+            updateBase(public_payment_info.basePayment);
+            updateComplimentary(public_payment_info.complementaryPayment, true);
+            updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment, public_payment_info.basePayment === 0);
+        }
+        else if (public_payment_info.paymentStatus === 3){ //Base+Complementary
+            updateBase(public_payment_info.basePayment, true);
+            updateComplimentary(public_payment_info.complementaryPayment, true);
+            updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment, true);
+        }
+        else if (public_payment_info.paymentStatus === 4){ //Refund Needed
+            updateBase(public_payment_info.basePayment, true);
+            updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment);
+            handleRefund(public_payment_info.complementaryPayment)
+        }      
+        else if (public_payment_info.paymentStatus === 5){ //Refund Paid
+            updateBase(public_payment_info.basePayment, true);
+            updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment, true);
+            handleRefund(public_payment_info.complementaryPayment, true)
+        }
+        handleFoodReduction(public_payment_info.food_reduction);   
+    }
+    function updateBase(value, isPayed = false){
+        value = value.toLocaleString('en-US');
+        const paymentStatus = isPayed || value === 0? "✅" : "";
+        BASE_PAYMENT.textContent = `${value}${paymentStatus}`;
+    }
+    function updateComplimentary(value, isPayed = false){
+        value = value.toLocaleString('en-US');
+        const paymentStatus = isPayed || value === 0? "✅" : "";
+        COMPLIMENTARY.textContent = `${value}${paymentStatus}`;
+    }
+    function updateTotal(value, isPayed = false){
+        value = value.toLocaleString('en-US');
+        TOTAL.textContent = `${value}${isPayed?"✅":""}`;
+    }
+    function handleRefund(value, isPayed = false){
+        value = (-value).toLocaleString('en-US');
+        const REFUND = document.getElementById('refund')
+        REFUND.parentNode.classList.remove('d-none');
+        COMPLIMENTARY.parentNode.classList.add('d-none');
+        const REFUND_TEXT = document.getElementById('refund-text')
+        if(!isPayed){
+            console.log("hi")
+            REFUND.textContent = `${value}`
+            REFUND_TEXT.textContent = `Please transfer ${value}R to account number:\n 1234 5678 9012 3456`;
+        }
+        else{
+            REFUND.textContent = `${value}✅`
+            REFUND.classList.remove("redFont")
+            REFUND_TEXT.textContent = ``;
+        }
+    }
+    function handleFoodReduction(food_reduction){
+        value = (food_reduction).toLocaleString('en-US');
+        FOOD_REDUCTION.parentNode.classList.remove('d-none');
+        FOOD_REDUCTION.textContent = value;
+    }
+
+    async function getPaymentsValue(){
+        const year = $("#year").val();
+        const month = $("#month").val();
+        const url = `{% url "sheets:api_public_payment" year='yearHolder' month='monthHolder' %}`
+            .replace("yearHolder", year)
+            .replace("monthHolder", month);
+
+        try{
+            let res = await fetch(url);
+            return await res.json();
+        }
+        catch (err){
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Fetching Projects",
+                message: err,
+                timeout: 6000,
+            });
+        }
+    }
+
+    function addColumnToTable(config, data=[]){
+        // config format: [{width:200, title: 'hi'}]
+        // data format:  [[1,2,3]]
+        window.spreadTable.options.allowInsertColumn = true;
+        window.spreadTable.insertColumn(1, null, false, config, data);
+        window.spreadTable.options.allowInsertColumn = false;
+        window.spreadTable.setHeader()
+    }
+
+    function convertTableData(rawData){
+        /*  table's getJson method won't return table data correctly, some headers (mostly created ones in project adding) 
+            are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
+        */
+        const headers = window.spreadTable.getHeaders(true);
+        rawData.map(row => {
+            for(let [key, value] of Object.entries(row)){
+                if(!headers.includes(key)){
+                    row[headers[key]] = value;
+                    delete row[key];
+                }
+            }
+        })
+        return rawData
+    }
+
+    // function decodeTableData(data){
+    //     const projects = getTableProjects(tableData);
+    //     data.map(row => {
+    //         for(let [key, value] of Object.entries(row)){
+    //             if(projects.includes(key)){
+    //                 row[key] = parseProjectPorp(value);
+    //             }
+    //             if(key === "Hours"){
+    //                 row[key] = hhmm2minutes(value);
+    //             }
+    //         }
+    //     });
+    //     return data
+    // }
+
+    function saveSheet(data){
+        const year = $("#year").val();
+        const month = $("#month").val();
+        const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
+            .replace("yearHolder", year)
+            .replace("monthHolder", month);
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{csrf_token}}',
+            },
+            body: JSON.stringify({"data": data, "saveSheet": true}),
+        })
+        .then(res => res.json())
+        .then(() => updatePaymentsValue() )
+        .catch(err => {
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Updating Sheet",
+                message: err,
+            });
+        });
+    }
+
+    function submitSheet(){
+        const year = $("#year").val();
+        const month = $("#month").val();
+        const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
+            .replace("yearHolder", year)
+            .replace("monthHolder", month);
+        fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{csrf_token}}',
+            },
+            body: JSON.stringify({"submit": true}),
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success){
+                handleSubmit(true);
+                initTable()
+                return
+            }
+            else if(data.flaw){
+                jSuites.notification({
+                    error: 1,
+                    name: 'Error',
+                    title: "Submitting Sheet",
+                    message: "Please first complete your personal information.",
+                });
+                return
+            }
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Submitting Sheet",
+                message: "No sheet has been defined for selected month",
+            });
+        })
+        .catch(err => {
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Submitting Sheet",
+                message: err,
+            });
+        });
+    }
+
+    function hhmm2minutes(str){
+        if(typeof str !=='string' || !str.includes(":"))
+            return 0
+        const [h, m] = str.split(":");
+        return Number(h) * 60 + Number(m)
+    }
+
+    function parseProjectPorp(str){
+        if(typeof str !=='string')
+            return 0
+        return Number(str.replaceAll("%", "").trim())
+    }
+
+    function getTableProjects(tableData){
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Hours']);
+        const allHeaders = new Set(Object.keys(tableData[0]));
+        const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
+        return [...tableProjects]
+    }
+
+    function getMinutesByProject(tableData){
+        const projects = getTableProjects(tableData);
+        const minutesByProject = new Object();
+        projects.forEach(prj => minutesByProject[prj] = 0);
+        let total = 0;
+        let daysCount = 0;
+        tableData.forEach(row => {
+            const mins = hhmm2minutes(row.Hours); 
+            for(const [prj, value] of Object.entries(row)){
+                if(!projects.includes(prj))
+                    continue
+                let percent = parseProjectPorp(row[prj]); 
+                const prjMinutes = mins * percent / 100;
+                minutesByProject[prj] += prjMinutes;
+            }
+            total += mins;
+            if(mins)
+                daysCount += 1;
+        });
+        minutesByProject.totalTime = total;
+        minutesByProject.meanTime = Math.floor(total / daysCount);
+        return minutesByProject
+    }
+
+    function updateHoursInfo(totalMinutes, minutesMean, workedDaysCount){
+        const totalH = Math.floor(totalMinutes / 60);
+        const totalM = totalMinutes % 60;
+        const meanH = Math.floor(minutesMean / 60);
+        const meanM = minutesMean % 60;
+        $("#total-hours").text(`${totalH < 10? 0: ''}${totalH}:${totalM < 10? 0: ''}${totalM}`); 
+        $("#mean-hours").text(`${meanH < 10? 0: ''}${meanH}:${meanM < 10? 0: ''}${meanM}`); 
+        $("#worked-days-count").text(workedDaysCount); 
+    }
+
+    function updateChart(minutesByProject){
+
+        const data = [{
+            type: 'pie',
+            values: Object.values(minutesByProject),
+            labels: Object.keys(minutesByProject),
+            textinfo: "label+percent",
+        }];
+
+        const layout = {
+            legend: {"orientation": "h"},
+            margin: {l: 5, r: 5, b: 10, t: 10, pad: 0},
+        };
+
+        const config = {responsive: true};
+
+        Plotly.newPlot('projects-chart', data, layout, config);
+    }
+
+    function validateSheet(tableData){
+        // validation function just indicates invalidity of row data
+        const projects = getTableProjects(tableData);
+        if(!projects.length){
+            $(`.jexcel tbody td`).css({"background-color": "rgba(255, 50, 75, 0.1)"});
+            return false
+        }
+        $(`.jexcel tbody td`).css({"background-color": "white"});
+
+        const today = new JDate().getDate();
+        const month = new JDate().getMonth();
+        let valid = true;
+
+        tableData.forEach((row, idx) => {
+            if(idx === today - 1 && month == $("#month").val())
+                $(`.jexcel tbody tr`).eq(idx).find("td").css({"background-color": "rgba(20, 150, 255, 0.1)"});
+
+            if(!row.Hours)
+                return
+
+            let percent = 0;
+            for(const [prj, value] of Object.entries(row)){
+                if(!projects.includes(prj))
+                    continue
+                percent += parseProjectPorp(row[prj]); 
+            }
+            const err = percent != 100;
+            valid = valid && !err;
+            
+            const bgcolor = err? "rgba(255, 50, 75, 0.1)": "white";
+            $(`.jexcel tbody tr`).eq(idx).find("td").css({"background-color": bgcolor});
+        });
+
+        return valid
+    }
+
+    function onChangeHandler(worksheet, cell, x, y, value){
+        const rawData = window.spreadTable.getJson();
+        const tableData = convertTableData(rawData);
+        // automatically fill 100% if there is only one project in table
+        const projects = getTableProjects(tableData);
+        if(projects.length === 1 && worksheet){
+            x = Number(x);
+            y = Number(y);
+            let hour = window.spreadTable.getCellFromCoords(x, y)?.textContent;
+            let percent = window.spreadTable.getCellFromCoords(x + 1, y)?.textContent;
+            if(hour && percent === ''){
+                window.spreadTable.updateCell(x + 1, y, "100"); // this will trigger onChange event again
+                return
+            }
+        }
+
+        const valid = validateSheet(tableData);
+        if(!valid){
+            const msg = `At least 1 project should be added to table, and sum of project proportions should be equal to 100%.`
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Invalid Data",
+                message: msg,
+                timeout: 8000,
+            });
+            // return false
+        }
+        const minutesInfo = getMinutesByProject(tableData);
+        let {totalTime, meanTime, ...minutesByProject} = minutesInfo;
+        const workedDaysCount = tableData.filter(row => hhmm2minutes(row.Hours) > 0).length;
+        updateHoursInfo(totalTime, meanTime, workedDaysCount);
+        updateChart(minutesByProject);
+        updatePaymentsValue()
+        if(worksheet){
+            saveSheet(tableData);
+        }
+    }
+
+    function onselectionHandler(worksheet, px, py, ux, uy, origin){
+        // scroll to element while working with arrow keys or sth when selected element is out of viewport
+        const td = $(worksheet).find('td.highlight-selected.highlight').get(0);
+        if(td === undefined)
+            return false
+        const box = td.getBoundingClientRect();
+        if(box.top > window.innerHeight || box.bottom <= 0)
+            td.scrollIntoView();
+    }
+
+    async function constructTable(data, readOnlyAll = false){
+        
+        const columns = [
+            {type: 'text', title: 'Day', width: 80, readOnly: true},
+            {type: 'text', title: 'WeekDay', width: 130, readOnly: true},
+            {type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
+        ];
+
+        for(const prj of getTableProjects(data)){
+            columns.push({type: 'numeric', title: prj, mask: '#,##0.00 %', width: 100, readOnly: readOnlyAll});
+        }
+
+        window.spreadTable = jspreadsheet(document.getElementById('spreadsheet'), {
+            data: data,
+            columns: columns,
+            allowInsertColumn: false,
+            allowInsertRow: false,
+            allowDeleteRow: false,
+            allowRenameColumn: false,
+            // columnSorting:false,
+            onundo: onChangeHandler,
+            onredo: onChangeHandler,
+            onchange: onChangeHandler,
+            ondeletecolumn: onChangeHandler,
+            onselection: onselectionHandler,
+            tableOverflow: true,
+            tableHeight: "150vh",
+            //tableWidth: "500px",
+            updateTable: function(el, cell, x, y, source, value, id) {
+                if(value == "Fri"){
+                    cell.style.color = 'red';
+                }
+            }
+        });
+        window.spreadTable.hideIndex();
+
+        const year = $("#year").val();
+        const month = $("#month").val();
+
+        EsfaPersianHolidays.getHolidays(year, month).then(holidays => {
+            window.spreadTable.rows.forEach(row => {
+                const dayColumn = 1;
+                const weekDayColumn = 2;
+                let day = Number(row.cells[dayColumn].textContent);
+
+                if (holidays.includes(day)) { 
+                    row.cells[weekDayColumn].style.color = 'red';
+                }
+            });
+        });
+    }
+
+    async function getProjects(){
+        const url = '{% url "sheets:api_projects"%}';
+        try{
+            let res = await fetch(url);
+            return await res.json();
+        }
+        catch (err){
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Fetching Projects",
+                message: err,
+                timeout: 6000,
+            });
+        }
+    }
+
+    async function fillProjects(){
+        $("#projects option").remove();
+        let projects = await getProjects();
+        for(prj of projects){
+            $("#projects").append(
+                $("<option>").text(prj.name),
+            );
+        }
+    }
+
+    function fillYears(year){
+        for(let i=window.START_YEAR; i<=year; i++){
+            $("#year").append($("<option>").text(i));
+        }
+    }
+
+    async function getSheet(year, month){
+        const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
+            .replace("yearHolder", year)
+            .replace("monthHolder", month);
+        try{
+            let res = await fetch(url);
+            return await res.json();
+        }
+        catch (err){
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Fetching This month's Sheet",
+                message: err,
+            });
+        }
+    }
+
+    function addProjectToTable(project){
+        const config = {type: 'numeric', title: project, mask: '#,##0.00 %', width: 100};
+        addColumnToTable(config);
+    }
+
+    async function initTable(){
+        const year = $("#year").val();
+        const month = $("#month").val();
+        let sheet = await getSheet(year, month);
+
+
+        if(typeof window.spreadTable === 'object')
+            window.spreadTable.destroy();
+        
+        handleSubmit(sheet.submitted);
+        toggleSubmit();
+        constructTable(sheet.data, sheet.submitted);
+        onChangeHandler();
+    }
+
+    function toggleSubmit(){
+        // shows or hides submit
+        const [y, m, d] = getToday();
+        const year = Number($("#year").val());
+        const month = Number($("#month").val());
+
+        $("#submit-month").toggle(
+            (year < y ) || (year === y && month < m) || (year === y && month === m && d > 28)
+        );
+    }
+
+    function handleSubmit(submitted){
+        // enables or disables submit
+        $("#submit-month").prop("disabled", submitted);
+        $("#submit-month").text(submitted? "Submitted": "Submit");
+    }
+    
+    $("document").ready(async function() {
+
+        fillProjects();
+
+        const today = new JDate();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        fillYears(currentYear); 
+        $("#month").val(currentMonth);
+        $("#year").val(currentYear);
+
+        initTable();
+        toggleSubmit();
+        $("#year, #month").change(function(){
+            initTable();
+            toggleSubmit();
+        });
+
+        $("#add-project").click(function(){
+            const project = $("#projects").val();
+            const headers = window.spreadTable.getHeaders(true);
+            if (headers.includes(project)){
+                jSuites.notification({
+                    name: "Adding Project",
+                    message: `Project "${project}" already exits in this sheet.`,
+                });
+                return false
+            }
+            addProjectToTable(project);
+            const rawData = window.spreadTable.getJson();
+            const tableData = convertTableData(rawData);
+            const valid = validateSheet(tableData);
+        });
+
+        $("#submit").click(submitSheet);
+
+    });
+     
+    </script>
+{% endblock body %}

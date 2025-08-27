@@ -135,6 +135,14 @@
                                     href="{% url 'sheets:daily_report_management' %}">Daily Report Management</a>
                                 </li>
                             {% endif %}
+
+                            {% if request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_InternationalSalesManager %}
+                                <li class="nav-item">
+                                    {% url 'esfa_eyes:Esfa Eyes Dashbord' as temp_url %}
+                                    <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
+                                    href="{% url 'esfa_eyes:Esfa Eyes Dashbord' %}">Esfa Eyes</a>
+                                </li>
+                            {% endif %}
                             
                             <li class="nav-item">
                                 <a class="nav-link logout" href="{% url 'sheets:logout' %}">Logout</a>
