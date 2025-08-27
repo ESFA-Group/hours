@@ -349,7 +349,9 @@ class Food_data(models.Model):
     order_mode = models.IntegerField("order_mode", choices=food_order_mode, default=0)
     data = models.JSONField(default=list)
     statistics_and_cost_data = models.JSONField(default=list)
-
+    
+    def __str__(self):
+        return f"Food - {self.year}/{self.month}"
 
 class Report(models.Model):
     user = models.ForeignKey(
