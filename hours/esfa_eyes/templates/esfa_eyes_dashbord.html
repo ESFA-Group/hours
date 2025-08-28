@@ -7,47 +7,40 @@
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
 <style>
-    :root {
-        --jexcel_header_color: #000;
-        --jexcel_header_color_highlighted: #000;
-        --jexcel_header_background: #f3f3f3;
-        --jexcel_header_background_highlighted: #dcdcdc;
-        --jexcel_content_color: #000;
-        --jexcel_content_color_highlighted: #000;
-        --jexcel_content_background: #fff;
-        --jexcel_content_background_highlighted: rgba(0, 0, 0, 0.05);
-        --jexcel_menu_background: #fff;
-        --jexcel_menu_background_highlighted: #ebebeb;
-        --jexcel_menu_color: #555;
-        --jexcel_menu_color_highlighted: #555;
-        --jexcel_menu_box_shadow: 2px 2px 2px 0px rgba(143, 144, 145, 1);
-        --jexcel_border_color: #ccc;
-        --jexcel_border_color_highlighted: #000;
-        --jexcel_cursor: #eee;
-        --active_color: #007aff;
-    }
 
-    /* .jexcel tbody tr td{
-            background-color: rgba(200, 0, 0, 0.2);
-        } */
-    .redFont {
-        color: red;
-    }
 </style>
 {% endblock extra_css %}
 {% block body %}
 
+<!-- ======================= body ======================= -->
+<div id="container" class="d-flex flex-column h-100 gap-1 m-1">
+    <div id="top-container" class="d-flex flex-row justify-content-between justify-content-md-start gap-md-3">
+        <div class="p-2 bg-primary">
+            <strong>Year</strong>
+            <div class="mt-1">
+                <select name="year" id="year" class="form-select">
+                </select>
+            </div>
+        </div>
+        <div class="p-2 bg-primary">
+            <strong>Dollar</strong>
+        </div>
+        <div class="p-2 bg-primary">
+            <strong>Yuan</strong>
+        </div>
+    </div>
 
-<div class="grid grid-cols-5 grid-rows-5 gap-3 bg-primary h-screen">
-    <div class=>.</div>
-    <div class=>2.</div>
-    <div class=>.</div>
+    <div id="tables-container" class="flex-grow-1 bg-warning">
+        4
+    </div>
 </div>
 
 
+<!-- ======================= scripts ======================= -->
 <script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
 <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
 <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
+<script src="{% static 'esfa_eyes/js/dollar-tomans-api.min.js' %}"></script>
 <script>
 
     async function initTable() {
@@ -55,7 +48,7 @@
         //let sheet = await getEsfaEyesInfo(year);
 
         //constructTable(sheet.data, sheet.submitted);
-        onChangeHandler();
+        //onChangeHandler();
     }
 
     async function getEsfaEyesInfo(year) {
@@ -112,8 +105,11 @@
     }
 
 
+    // =================== document ready ============================
     $("document").ready(async function () {
-
+        //var lastPrice = await dollar-tomans-api.fetchAll();
+        console.log("document ready!");
+        
         const today = new JDate();
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth();
