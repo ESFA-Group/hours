@@ -81,9 +81,15 @@ class APIService {
                     errorData = await response.json();
                 } catch (e) {
                     errorData = { message: `Request failed with status ${response.status}` };
-                }
+                }				
                 // Throw an error to be caught by the calling function's .catch() block.
-                throw new Error(errorData.detail || JSON.stringify(errorData));
+				jSuites.notification({
+					error: 1,
+					name: 'Error',
+					title: errorTitle,
+					message: errorData.message || JSON.stringify(errorData),
+				});
+				return { success: false, error: errorData, status: response.status };				
             }
 
             // If the response has no content (e.g., a 204 No Content response for a DELETE request)
@@ -112,13 +118,14 @@ class APIService {
 
         } catch (error) {
             console.error('APIService Error:', error);
-            // Re-throw the error so the calling component can handle it if needed.
 			jSuites.notification({
 				error: 1,
 				name: 'Error',
 				title: errorTitle,
 				message: error,
 			});
+			// Re-throw the error so the calling component can handle it if needed.
+			throw error;
         }
     }
 

@@ -14,5 +14,6 @@ class EsfaEyesApiView(APIView):
 		
 		esfa_eyes_object ,created  = EsfaEyes.objects.get_or_create(year=year)
 		data = esfa_eyes_object.get(user)
-		
+
 		return Response(data, status=status.HTTP_200_OK)
+		return Response({"message": f"eyes in {year} not found"}, status=status.HTTP_404_NOT_FOUND)

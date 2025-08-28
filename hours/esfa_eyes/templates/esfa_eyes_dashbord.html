@@ -24,11 +24,11 @@
         </div>
         <div class="p-2anann">
             <strong>Dollar:</strong>
-            <div id="dollar-holder" class="border rounded p-2 text-muted bg-light pe-none">100,000 T</div>
+            <div id="dollar-holder" class="border rounded p-2 text-muted bg-light pe-none">N/a</div>
         </div>
         <div class="p-2anann">
             <strong>Yuan:</strong>
-            <div id="yuan-holder" class="border rounded p-2 text-muted bg-light pe-none">100,000 T</div>
+            <div id="yuan-holder" class="border rounded p-2 text-muted bg-light pe-none">N/a</div>
         </div>
     </div>
 
@@ -43,9 +43,9 @@
 <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
 <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
 <script>
-    async function updateCurrencies() {
-        //result = await getCurrencies();
-        result = {
+    //get data========================
+    async function getCurrencies() {
+        return {
             "USD": {
                 "date": "1404/06/06",
                 "time": "12:16",
@@ -72,27 +72,40 @@
             }
         };
 
-        $('#dollar-holder').text(result.USD.price.toLocaleString() + ' T');
-        $('#yuan-holder').text(result.CNY.price.toLocaleString() + ' T');
-    }
-
-    async function getCurrencies() {
         return apiService.get('https://BrsApi.ir/Api/Market/Gold_Currency.php?key=BfTErgVQ4YHlDZ33IcmWap9FhgiWU17H', {}, {}, "failed to get currencies")
             .then(result => {
                 if (result.success) {
                     return { "USD": result.data.currency[1], "CNY": result.data.currency[9] };
-                } else {
-                    console.error('Error:', result.error);
+                }
+                else{
+                    throw new Error()
                 }
             });
     }
 
+    async function getEyesData(year) {
+        return apiService.get(`/eyes/${year}`, {}, {}, "Failed to get eyes data")
+            .then(result => {
+                if (result.success) {
+                    return result.data;
+                }
+                else{
+                    throw new Error()
+                }
+            });
+    }
 
+    //handle data ========================
+    async function updateCurrencies() {
+        result = await getCurrencies();
 
-
+        $('#dollar-holder').text(result.USD.price.toLocaleString() + ' T');
+        $('#yuan-holder').text(result.CNY.price.toLocaleString() + ' T');
+    }
 
     async function initTable() {
-        const year = $("#year").val();
+        let data = await getEyesData($("#year").val());
+        console.log(data);
         //let sheet = await getEsfaEyesInfo(year);
 
         //constructTable(sheet.data, sheet.submitted);
@@ -114,7 +127,6 @@
                 message: err,
             });
         }
-        apiService.get($`eyes/${year}`)
     }
 
     async function constructTable(data, readOnlyAll = false) {
