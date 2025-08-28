@@ -13,20 +13,22 @@
 {% block body %}
 
 <!-- ======================= body ======================= -->
-<div id="container" class="d-flex flex-column h-100 gap-1 m-1">
-    <div id="top-container" class="d-flex flex-row justify-content-between justify-content-md-start gap-md-3">
-        <div class="p-2 bg-primary">
+<div id="container" class="d-flex flex-column h-100 gap-1 gap-md-2 m-2 mx-md-4">
+    <div id="top-container" class="d-flex flex-row justify-content-between justify-content-md-start gap-md-5">
+        <div class="p-2anann">
             <strong>Year</strong>
             <div class="mt-1">
                 <select name="year" id="year" class="form-select">
                 </select>
             </div>
         </div>
-        <div class="p-2 bg-primary">
-            <strong>Dollar</strong>
+        <div class="p-2anann">
+            <strong>Dollar:</strong>
+            <div id="dollar-holder" class="border rounded p-2 text-muted bg-light pe-none">100,000 T</div>
         </div>
-        <div class="p-2 bg-primary">
-            <strong>Yuan</strong>
+        <div class="p-2anann">
+            <strong>Yuan:</strong>
+            <div id="yuan-holder" class="border rounded p-2 text-muted bg-light pe-none">100,000 T</div>
         </div>
     </div>
 
@@ -40,8 +42,54 @@
 <script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
 <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
 <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
-<script src="{% static 'esfa_eyes/js/dollar-tomans-api.min.js' %}"></script>
 <script>
+    async function updateCurrencies() {
+        //result = await getCurrencies();
+        result = {
+            "USD": {
+                "date": "1404/06/06",
+                "time": "12:16",
+                "time_unix": 1756370760,
+                "symbol": "USD",
+                "name_en": "US Dollar",
+                "name": "دلار",
+                "price": 100150,
+                "change_value": -300,
+                "change_percent": -0.3,
+                "unit": "تومان"
+            },
+            "CNY": {
+                "date": "1404/06/06",
+                "time": "12:17",
+                "time_unix": 1756370820,
+                "symbol": "CNY",
+                "name_en": "Chinese Yuan",
+                "name": "یوآن چین",
+                "price": 14170,
+                "change_value": 130,
+                "change_percent": 0.93,
+                "unit": "تومان"
+            }
+        };
+
+        $('#dollar-holder').text(result.USD.price.toLocaleString() + ' T');
+        $('#yuan-holder').text(result.CNY.price.toLocaleString() + ' T');
+    }
+
+    async function getCurrencies() {
+        return apiService.get('https://BrsApi.ir/Api/Market/Gold_Currency.php?key=BfTErgVQ4YHlDZ33IcmWap9FhgiWU17H', {}, {}, "failed to get currencies")
+            .then(result => {
+                if (result.success) {
+                    return { "USD": result.data.currency[1], "CNY": result.data.currency[9] };
+                } else {
+                    console.error('Error:', result.error);
+                }
+            });
+    }
+
+
+
+
 
     async function initTable() {
         const year = $("#year").val();
@@ -66,6 +114,7 @@
                 message: err,
             });
         }
+        apiService.get($`eyes/${year}`)
     }
 
     async function constructTable(data, readOnlyAll = false) {
@@ -107,12 +156,11 @@
 
     // =================== document ready ============================
     $("document").ready(async function () {
-        //var lastPrice = await dollar-tomans-api.fetchAll();
-        console.log("document ready!");
-        
         const today = new JDate();
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth();
+        updateCurrencies();
+
         fillYears(currentYear);
         $("#year").val(currentYear);
 
