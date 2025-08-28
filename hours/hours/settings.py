@@ -15,12 +15,12 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "livereload",
     "django.contrib.staticfiles",
     "rest_framework",
     "sheets",
     "esfa_eyes",
     "sheets.templatetags",
-    "livereload",
 ]
 
 
