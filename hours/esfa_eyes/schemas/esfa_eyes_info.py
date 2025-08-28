@@ -35,12 +35,12 @@ class EsfaEyesMonltyInfo(EsfaEyesInfo):
 class EsfaEyesProductInfo(EsfaEyesInfo):
     def __init__(self, info={
                 "kavosh": 0,
-                "tan_module": 0,
-                "other_modules": 0,
+                "tan module": 0,
+                "other modules": 0,
                 "mcm": 0,
                 "captan12": 0,
-                "esfa_meter": 0,
-                "kia_meter": 0,
+                "esfa meter": 0,
+                "kia meter": 0,
                 "pishtaz": 0,
                 "121": 0,
                 "131": 0,

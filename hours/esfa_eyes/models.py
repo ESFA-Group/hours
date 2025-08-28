@@ -8,6 +8,7 @@ def default_financial_info():
 		'balance_rials_official': EsfaEyesInfo(0).__dict__,
 		'balance_rials': EsfaEyesInfo(0).__dict__,
 		'montly_checks_recieved': EsfaEyesMonltyInfo().__dict__,
+		'montly_checks_issued': EsfaEyesMonltyInfo().__dict__,
 		'montly_installment': EsfaEyesMonltyInfo().__dict__,
 		'montly_total_sales': EsfaEyesMonltyInfo().__dict__,
 		'individual_sales': EsfaEyesProductInfo().__dict__,
@@ -27,7 +28,7 @@ def default_international_sales_info():
 	return {
 		"montly_international_total_sales": EsfaEyesMonltyInfo().__dict__,
 		"international_individual_sales": EsfaEyesProductInfo().__dict__,
-		"china_production_orders": EsfaEyesProductInfo().__dict__,
+		"turkiye_inventory": EsfaEyesProductInfo().__dict__,
 	}
 
 def default_products_info():
