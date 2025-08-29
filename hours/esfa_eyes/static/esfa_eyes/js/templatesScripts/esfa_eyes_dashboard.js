@@ -187,19 +187,13 @@ function getBackgroundColor(lastModifyTime, updateIntervalDays) {
 
 async function initTables() {
 	let data = await getEyesData($("#year").val());
-	console.log(data);
 
 	createNumericTable(data, 'موجودی‌ها', ['balance_dollars', 'balance_rials', 'balance_rials_official']);
 	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_recieved', 'montly_installment']);
 	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales']);
-	createObjectTable(data, 'فروش فردی', ['individual_sales', 'international_individual_sales']);
+	createObjectTable(data, 'فروش تفکیکی', ['individual_sales', 'international_individual_sales']);
 	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders']);
-	createNumericTable(data, 'کارکنان', ['total_insured_staffs', 'total_uninsured_staffs', 'total_salary_paid', 'total_insurance_paid']);
-
-	//let sheet = await getEsfaEyesInfo(year);
-
-	//constructTable(sheet.data, sheet.submitted);
-	//onChangeHandler();
+	createNumericTable(data, 'حقوق کارکنان', ['total_insured_staffs', 'total_uninsured_staffs', 'total_salary_paid', 'total_insurance_paid']);
 }
 
 async function getEsfaEyesInfo(year) {

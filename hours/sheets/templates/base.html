@@ -24,8 +24,18 @@
             src: local('Lato'),
                  url('{% static "sheets/fonts/Lato-Italic.ttf" %}');
         }
+        @font-face {
+            font-family: 'IRAN-Sans';
+            src: local('IRANSans'),
+                 url('{% static "sheets/fonts/IRANSans-Regular.ttf" %}');
+
+        }
         body{
-            font-family: 'Lato', sans-serif;
+            font-family: 'Lato','IRAN-Sans';
+        }
+        :lang(fa) {
+            font-family: 'IRAN-Sans';
+            direction: rtl;
         }
         .logout{
             color: rgba(255, 0, 0, 0.7);
