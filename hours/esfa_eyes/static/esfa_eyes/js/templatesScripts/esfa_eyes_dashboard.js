@@ -111,7 +111,28 @@ function createNumericTable(data, title, itemKeys) {
 	});
 
 	// CHANGE: Added ${cardBgColor} to the table header row <tr>
-	card.innerHTML = `<div class="card h-100"><div class="card-header ${cardBgColor}">${title}</div><div class="card-body p-0"><div class="table-responsive"><table class="table table-striped table-hover table-vertical-lines"><thead><tr class="${cardBgColor}"><th>عنوان</th><th>مقدار</th><th>آخرین بروزرسانی</th></tr></thead><tbody>${tableBody}</tbody></table></div></div><div class="card-footer text-center"><button class="btn btn-primary">ثبت تغییرات</button></div></div>`;
+	card.innerHTML = `
+		<div class="card h-100">
+			<div class="card-header ${cardBgColor}">${title}</div>
+			<div class="card-body p-0">
+				<div class="table-responsive">
+					<table class="table table-striped table-hover table-vertical-lines">
+						<thead>
+							<tr class="${cardBgColor}">
+								<th>عنوان</th>
+								<th>مقدار</th>
+								<th>آخرین بروزرسانی</th>
+							</tr>
+						</thead>
+						<tbody>${tableBody}</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="card-footer text-center">
+				<button class="btn btn-primary">ثبت تغییرات</button>
+			</div>
+		</div>
+	`;
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
@@ -144,7 +165,22 @@ function createObjectTable(data, title, itemKeys) {
 	});
 
 	// CHANGE: Added ${cardBgColor} to the table header row <tr>
-	card.innerHTML = `<div class="card h-100"><div class="card-header ${cardBgColor}">${title}</div><div class="card-body p-0"><div class="table-responsive"><table class="table table-striped table-hover table-vertical-lines"><thead><tr class="${cardBgColor}">${tableHeader}</tr></thead><tbody>${tableBody}</tbody></table></div></div><div class="card-footer text-center"><button class="btn btn-primary">ثبت تغییرات</button></div></div>`;
+	card.innerHTML = `
+		<div class="card h-100">
+			<div class="card-header ${cardBgColor}">${title}</div>
+			<div class="card-body p-0">
+				<div class="table-responsive">
+					<table class="table table-striped table-hover table-vertical-lines">
+						<thead>
+							<tr class="${cardBgColor}">${tableHeader}</tr>
+						</thead>
+						<tbody>${tableBody}</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="card-footer text-center"><button class="btn btn-primary">ثبت تغییرات</button></div>
+		</div>
+	`;
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
