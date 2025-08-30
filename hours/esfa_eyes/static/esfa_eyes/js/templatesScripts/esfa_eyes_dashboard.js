@@ -1,3 +1,5 @@
+let originalApiData = {};
+
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی',
 	balance_rials: 'موجودی حساب‌های غیر رسمی',
@@ -19,7 +21,35 @@ const titleMapping = {
 	total_insurance_paid: 'مجموع بیمه پرداختی'
 };
 
-//get data========================
+const keyToModelFieldMap = {
+	// financial_info
+	'balance_rials_official': 'financial_info',
+	'balance_rials': 'financial_info',
+	'montly_checks_recieved': 'financial_info',
+	'montly_checks_issued': 'financial_info',
+	'montly_installment': 'financial_info',
+	'montly_total_sales': 'financial_info',
+	'individual_sales': 'financial_info',
+	'total_insured_staffs': 'financial_info',
+	'total_uninsured_staffs': 'financial_info',
+	'total_salary_paid': 'financial_info',
+	'total_insurance_paid': 'financial_info',
+
+	// international_finance_info
+	'balance_dollars': 'international_finance_info',
+	'china_production_orders': 'international_finance_info',
+
+	// international_sales_info
+	'montly_international_total_sales': 'international_sales_info',
+	'international_individual_sales': 'international_sales_info',
+	'turkiye_inventory': 'international_sales_info',
+
+	// products_info
+	'unproduced_workshop_inventory': 'products_info',
+	'ready_products': 'products_info'
+};
+
+// data backend connection ========================
 async function getCurrencies() {
 	return {
 		"USD": {
@@ -71,6 +101,12 @@ async function getEyesData(year) {
 		});
 }
 
+async function postEyesData(year, payload) {
+	console.log("Submitting to API Endpoint:", `/eyes/${year}`);
+	console.log("Payload for this request:", payload);
+	// await apiService.post(`/eyes/${year}`, {}, {}, "Failed to get eyes data")
+}
+
 //handle data ========================
 async function updateCurrencies() {
 	result = await getCurrencies();
@@ -107,32 +143,14 @@ function createNumericTable(data, title, itemKeys) {
 		const [datePart, timePart] = item.last_modify_time.split(' ');
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
-		tableBody += `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td><td contenteditable="true">${item._info.toLocaleString()}</td><td>${formattedDate}</td></tr>`;
+		tableBody += `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td><td contenteditable="true" data-key="${key}">${item._info.toLocaleString()}</td><td>${formattedDate}</td></tr>`;
 	});
-
-	// CHANGE: Added ${cardBgColor} to the table header row <tr>
 	card.innerHTML = `
-		<div class="card h-100">
-			<div class="card-header ${cardBgColor}">${title}</div>
-			<div class="card-body p-0">
-				<div class="table-responsive">
-					<table class="table table-striped table-hover table-vertical-lines">
-						<thead>
-							<tr class="${cardBgColor}">
-								<th>عنوان</th>
-								<th>مقدار</th>
-								<th>آخرین بروزرسانی</th>
-							</tr>
-						</thead>
-						<tbody>${tableBody}</tbody>
-					</table>
-				</div>
-			</div>
-			<div class="card-footer text-center">
-				<button class="btn btn-primary">ثبت تغییرات</button>
-			</div>
-		</div>
-	`;
+        <div class="card h-100">
+            <div class="card-header ${cardBgColor}">${title}</div>
+            <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped table-hover table-vertical-lines"><thead><tr class="${cardBgColor}"><th>عنوان</th><th>مقدار</th><th>آخرین بروزرسانی</th></tr></thead><tbody>${tableBody}</tbody></table></div></div>
+            <div class="card-footer text-center"><button class="btn btn-primary btn-submit">ثبت تغییرات</button></div>
+        </div>`;
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
@@ -158,29 +176,17 @@ function createObjectTable(data, title, itemKeys) {
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 		let row = `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td>`;
 		subItemHeaders.forEach(header => {
-			row += `<td contenteditable="true">${(item._info[header] || 0).toLocaleString()}</td>`;
+			row += `<td contenteditable="true" data-key="${key}" data-subkey="${header}">${(item._info[header] || 0).toLocaleString()}</td>`;
 		});
 		row += `<td>${formattedDate}</td></tr>`;
 		tableBody += row;
 	});
-
-	// CHANGE: Added ${cardBgColor} to the table header row <tr>
 	card.innerHTML = `
-		<div class="card h-100">
-			<div class="card-header ${cardBgColor}">${title}</div>
-			<div class="card-body p-0">
-				<div class="table-responsive">
-					<table class="table table-striped table-hover table-vertical-lines">
-						<thead>
-							<tr class="${cardBgColor}">${tableHeader}</tr>
-						</thead>
-						<tbody>${tableBody}</tbody>
-					</table>
-				</div>
-			</div>
-			<div class="card-footer text-center"><button class="btn btn-primary">ثبت تغییرات</button></div>
-		</div>
-	`;
+        <div class="card h-100">
+            <div class="card-header ${cardBgColor}">${title}</div>
+            <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped table-hover table-vertical-lines"><thead><tr class="${cardBgColor}">${tableHeader}</tr></thead><tbody>${tableBody}</tbody></table></div></div>
+            <div class="card-footer text-center"><button class="btn btn-primary btn-submit">ثبت تغییرات</button></div>
+        </div>`;
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
@@ -200,7 +206,10 @@ function getBackgroundColor(lastModifyTime, updateIntervalDays) {
 }
 
 async function initTables() {
-	let data = await getEyesData($("#year").val());
+	originalApiData = await getEyesData($("#year").val());
+	const data = originalApiData;
+
+	document.getElementById('dashboard-container').innerHTML = '';
 
 	createNumericTable(data, 'موجودی‌ها', ['balance_dollars', 'balance_rials', 'balance_rials_official']);
 	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_recieved', 'montly_installment']);
@@ -210,72 +219,87 @@ async function initTables() {
 	createNumericTable(data, 'حقوق کارکنان', ['total_insured_staffs', 'total_uninsured_staffs', 'total_salary_paid', 'total_insurance_paid']);
 }
 
-async function getEsfaEyesInfo(year) {
-	const url = `{% url "esfa_eyes:api_eyes" year='yearHolder' %}`
-		.replace("yearHolder", year)
-	try {
-		let res = await fetch(url);
-		return await res.json();
-	}
-	catch (err) {
-		jSuites.notification({
-			error: 1,
-			name: 'Error',
-			title: "Fetching This month's Sheet",
-			message: err,
-		});
-	}
-}
-
-async function constructTable(data, readOnlyAll = false) {
-
-}
-
-function saveSheet(data) {
-	const year = $("#year").val();
-	const month = $("#month").val();
-	const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
-		.replace("yearHolder", year)
-		.replace("monthHolder", month);
-	fetch(url, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'X-CSRFToken': '{{csrf_token}}',
-		},
-		body: JSON.stringify({ "data": data, "saveSheet": true }),
-	})
-		.then(res => res.json())
-		.then(() => updatePaymentsValue())
-		.catch(err => {
-			jSuites.notification({
-				error: 1,
-				name: 'Error',
-				title: "Updating Sheet",
-				message: err,
-			});
-		});
-}
-
 function fillYears(year) {
 	for (let i = window.START_YEAR; i <= year; i++) {
 		$("#year").append($("<option>").text(i));
 	}
 }
 
+// =================== interactions ============================
+async function handleSubmit(button) {
+	const card = button.closest('.card');
+	const editableCells = card.querySelectorAll('[contenteditable="true"]');
 
+	// This object will group the updates by their target model field
+	const groupedUpdates = {};
+
+	editableCells.forEach(cell => {
+		const key = cell.dataset.key;
+		const subkey = cell.dataset.subkey;
+		const value = parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+
+		// Find the correct model field for this piece of data using the map
+		const modelField = keyToModelFieldMap[key];
+		if (!modelField) {
+			console.warn(`No model field mapping found for key: ${key}`);
+			return; // Skip this cell if we don't know where it belongs
+		}
+
+		// Initialize objects if they don't exist
+		if (!groupedUpdates[modelField]) groupedUpdates[modelField] = {};
+
+		// **CHANGE HERE**: Create a new, clean object for each key that will only hold the _info property.
+		if (!groupedUpdates[modelField][key]) {
+			groupedUpdates[modelField][key] = {
+				_info: subkey ? {} : 0
+			};
+		}
+
+		// Update the value
+		if (subkey) { // Object type (e.g., monthly sales)
+			groupedUpdates[modelField][key]._info[subkey] = value;
+		} else { // Numeric type (e.g., balances)
+			groupedUpdates[modelField][key]._info = value;
+		}
+	});
+
+	const year = $("#year").val();
+	button.disabled = true;
+	button.innerText = 'درحال ذخیره...';
+
+	try {
+		// Loop through the grouped updates and send one API request for each model field
+		for (const fieldName in groupedUpdates) {
+			const dataForField = groupedUpdates[fieldName];
+			const payload = { [fieldName]: dataForField };
+			await postEyesData(year, payload);
+		}
+		alert('تغییرات با موفقیت ذخیره شد!');
+	} catch (error) {
+		console.error('Failed to save data:', error);
+		alert('خطا در ذخیره تغییرات.');
+	} finally {
+		button.disabled = false;
+		button.innerText = 'ثبت تغییرات';
+	}
+}
 // =================== document ready ============================
 $("document").ready(async function () {
 	const today = new JDate();
 	const currentYear = today.getFullYear();
-	const currentMonth = today.getMonth();
 	updateCurrencies();
 
 	fillYears(currentYear);
 	$("#year").val(currentYear);
 
 	initTables();
+
+	//events
 	$("#year, #month").change(function () {
 		initTables();
+	});
+
+	$('#dashboard-container').on('click', '.btn-submit', function () {
+		handleSubmit(this);
 	});
 });
