@@ -116,6 +116,7 @@ function parseJalaliDateTime(dateTimeString) {
 function createNumericTable(data, title, itemKeys) {
 	const availableItems = itemKeys.filter(key => data[key]);
 	if (availableItems.length === 0) return;
+
 	const card = document.createElement('div');
 	card.className = 'col-lg-12 mb-4';
 	let tableBody = '';
@@ -130,18 +131,39 @@ function createNumericTable(data, title, itemKeys) {
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 		tableBody += `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td><td contenteditable="true" data-key="${key}">${item._info.toLocaleString()}</td><td>${formattedDate}</td></tr>`;
 	});
+	const cardBorderColor = cardBgColor.replace('bg-', 'border-').replace('-subtle', '');
 	card.innerHTML = `
-        <div class="card h-100">
-            <div class="card-header ${cardBgColor}">${title}</div>
-            <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped table-hover table-vertical-lines"><thead><tr class="${cardBgColor}"><th>عنوان</th><th>مقدار</th><th>آخرین بروزرسانی</th></tr></thead><tbody>${tableBody}</tbody></table></div></div>
-            <div class="card-footer text-center"><button class="btn btn-primary btn-submit">ثبت تغییرات</button></div>
-        </div>`;
+		<div class="card h-100 ${cardBorderColor} border-2">
+            <div class="card-header ${cardBgColor} ${cardBorderColor}">
+				${title}
+			</div>
+			<div class="card-body p-0">
+				<div class="table-responsive">
+					<table class="table table-striped table-hover table-vertical-lines">
+						<thead>
+							<tr class="${cardBgColor}">
+								<th>عنوان</th>
+								<th>مقدار</th>
+								<th>آخرین بروزرسانی</th>
+							</tr>
+						</thead>
+						<tbody>${tableBody}</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="card-footer text-center">
+				<button class="btn btn-primary btn-submit">
+					ثبت تغییرات
+				</button>
+			</div>
+		</div>`;
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
 function createObjectTable(data, title, itemKeys) {
 	const availableItems = itemKeys.filter(key => data[key] && typeof data[key]._info === 'object');
 	if (availableItems.length === 0) return;
+
 	const card = document.createElement('div');
 	card.className = 'col-lg-12 mb-4';
 	const firstItemInfo = data[availableItems[0]]._info;
@@ -166,12 +188,31 @@ function createObjectTable(data, title, itemKeys) {
 		row += `<td>${formattedDate}</td></tr>`;
 		tableBody += row;
 	});
+	const cardBorderColor = cardBgColor.replace('bg-', 'border-').replace('-subtle', '');
+
 	card.innerHTML = `
-        <div class="card h-100">
-            <div class="card-header ${cardBgColor}">${title}</div>
-            <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped table-hover table-vertical-lines"><thead><tr class="${cardBgColor}">${tableHeader}</tr></thead><tbody>${tableBody}</tbody></table></div></div>
-            <div class="card-footer text-center"><button class="btn btn-primary btn-submit">ثبت تغییرات</button></div>
-        </div>`;
+		<div class="card h-100 ${cardBorderColor} border-2">
+            <div class="card-header ${cardBgColor} ${cardBorderColor}">
+				${title}
+			</div>
+			<div class="card-body p-0">
+				<div class="table-responsive">
+					<table class="table table-striped table-hover table-vertical-lines">
+						<thead>
+							<tr class="${cardBgColor}">
+								${tableHeader}
+							</tr>
+						</thead>
+						<tbody>${tableBody}</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="card-footer text-center">
+				<button class="btn btn-primary btn-submit">
+					ثبت تغییرات
+				</button>
+			</div>
+		</div>`;
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
@@ -192,7 +233,7 @@ function getBackgroundColor(lastModifyTime, updateIntervalDays) {
 
 async function initTables(data = null) {
 	if (data == null)
-		data = await getEyesData($("#year").val());	
+		data = await getEyesData($("#year").val());
 
 	document.getElementById('dashboard-container').innerHTML = '';
 
@@ -211,7 +252,7 @@ function fillYears(year) {
 }
 
 // =================== interactions ============================
-async function handleSubmit(button) {	
+async function handleSubmit(button) {
 	const card = button.closest('.card');
 	const editableCells = card.querySelectorAll('[contenteditable="true"]');
 
@@ -251,19 +292,25 @@ async function handleSubmit(button) {
 	const year = $("#year").val();
 	button.disabled = true;
 	button.innerText = 'درحال ذخیره...';
-	
+
 	try {
 		// Loop through the grouped updates and send one API request for each model field
 		for (const fieldName in groupedUpdates) {
 			const dataForField = groupedUpdates[fieldName];
 			const payload = { [fieldName]: dataForField };
 			let result = await postEyesData(year, payload);
-			await initTables(result.data);
+			if (result.ok) {	
+				await initTables(result.data);
+			}
 		}
-		alert('تغییرات با موفقیت ذخیره شد!');
 	} catch (error) {
 		console.error('Failed to save data:', error);
-		alert('خطا در ذخیره تغییرات.');
+		jSuites.notification({
+			error: 1,
+			name: 'Error',
+			title: "خطا در ثبت تغییرات",
+			message: error,
+		});
 	} finally {
 		button.disabled = false;
 		button.innerText = 'ثبت تغییرات';
