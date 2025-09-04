@@ -14,9 +14,9 @@ class APIService {
     }
 
     _getCsrfToken() {
-		if (window.CSRF_TOKEN) {
-			return window.CSRF_TOKEN;
-		}
+        if (window.CSRF_TOKEN) {
+            return window.CSRF_TOKEN;
+        }
 
         const token = document.cookie.split('; ')
             .find(row => row.startsWith('csrftoken='))
@@ -24,11 +24,11 @@ class APIService {
         return token || null;
     }
 
-	_isFullPath(url) {
-        return url.startsWith('http://') || 
-               url.startsWith('https://') || 
-               url.startsWith('//') ||
-               url.startsWith('www.');
+    _isFullPath(url) {
+        return url.startsWith('http://') ||
+            url.startsWith('https://') ||
+            url.startsWith('//') ||
+            url.startsWith('www.');
     }
 
     _constructURL(path) {
@@ -81,15 +81,15 @@ class APIService {
                     errorData = await response.json();
                 } catch (e) {
                     errorData = { message: `Request failed with status ${response.status}` };
-                }				
+                }
                 // Throw an error to be caught by the calling function's .catch() block.
-				jSuites.notification({
-					error: 1,
-					name: 'Error',
-					title: errorTitle,
-					message: errorData.message || JSON.stringify(errorData),
-				});
-				return { success: false, error: errorData, status: response.status };				
+                jSuites.notification({
+                    error: 1,
+                    name: 'Error',
+                    title: errorTitle,
+                    message: errorData.message || JSON.stringify(errorData),
+                });
+                return { success: false, error: errorData, status: response.status };
             }
 
             // If the response has no content (e.g., a 204 No Content response for a DELETE request)
@@ -100,7 +100,7 @@ class APIService {
             // Handle different response types
             const contentType = response.headers.get('content-type');
             let data;
-            
+
             if (contentType && contentType.includes('application/json')) {
                 data = await response.json();
             } else if (contentType && contentType.includes('text/')) {
@@ -108,7 +108,7 @@ class APIService {
             } else {
                 data = await response.blob();
             }
-            
+
             return {
                 success: true,
                 data: data,
@@ -118,14 +118,14 @@ class APIService {
 
         } catch (error) {
             console.error('APIService Error:', error);
-			jSuites.notification({
-				error: 1,
-				name: 'Error',
-				title: errorTitle,
-				message: error,
-			});
-			// Re-throw the error so the calling component can handle it if needed.
-			throw error;
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: errorTitle,
+                message: error,
+            });
+            // Re-throw the error so the calling component can handle it if needed.
+            throw error;
         }
     }
 
@@ -139,7 +139,15 @@ class APIService {
     get(path, params = {}, options = {}, errorTitle = 'Error Fetching Data') {
         const query = new URLSearchParams(params).toString();
         const fullPath = query ? `${path}?${query}` : path;
-        return this._request(fullPath, { method: 'GET', ...options }, errorTitle);
+        return this._request(fullPath, { method: 'GET', ...options }, errorTitle)
+            .then(result => {
+                if (result.success) {
+                    return result.data;
+                }
+                else {
+                    throw new Error()
+                }
+            });;
     }
 
     /**
