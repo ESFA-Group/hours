@@ -60,3 +60,10 @@ class EsfaEyes(models.Model):
 			if user.is_ProductionManager:
 				info.update(self.products_info)
 		return info
+	
+	def update(self, newData, field_name):
+		print(self.international_finance_info)
+		for fields in newData:
+			print(fields) 
+		info = {}
+ 

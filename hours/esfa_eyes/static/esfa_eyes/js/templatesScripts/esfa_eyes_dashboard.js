@@ -79,32 +79,17 @@ async function getCurrencies() {
 	};
 
 	return apiService.get('https://BrsApi.ir/Api/Market/Gold_Currency.php?key=BfTErgVQ4YHlDZ33IcmWap9FhgiWU17H', {}, {}, "failed to get currencies")
-		.then(result => {
-			if (result.success) {
-				return { "USD": result.data.currency[1], "CNY": result.data.currency[9] };
-			}
-			else {
-				throw new Error()
-			}
+		.then(data => {
+			return { "USD": data.currency[1], "CNY": data.currency[9] };
 		});
 }
 
 async function getEyesData(year) {
-	return apiService.get(`/eyes/${year}`, {}, {}, "Failed to get eyes data")
-		.then(result => {
-			if (result.success) {
-				return result.data;
-			}
-			else {
-				throw new Error()
-			}
-		});
+	return apiService.get(`/eyes/${year}`, {}, {}, "Failed to get eyes data");
 }
 
 async function postEyesData(year, payload) {
-	console.log("Submitting to API Endpoint:", `/eyes/${year}`);
-	console.log("Payload for this request:", payload);
-	// await apiService.post(`/eyes/${year}`, {}, {}, "Failed to get eyes data")
+	return apiService.post(`/eyes/${year}`, payload, {}, "Failed to post eyes data");
 }
 
 //handle data ========================
@@ -205,9 +190,9 @@ function getBackgroundColor(lastModifyTime, updateIntervalDays) {
 	}
 }
 
-async function initTables() {
-	originalApiData = await getEyesData($("#year").val());
-	const data = originalApiData;
+async function initTables(data = null) {
+	if (data == null)
+		data = await getEyesData($("#year").val());	
 
 	document.getElementById('dashboard-container').innerHTML = '';
 
@@ -226,7 +211,7 @@ function fillYears(year) {
 }
 
 // =================== interactions ============================
-async function handleSubmit(button) {
+async function handleSubmit(button) {	
 	const card = button.closest('.card');
 	const editableCells = card.querySelectorAll('[contenteditable="true"]');
 
@@ -266,13 +251,14 @@ async function handleSubmit(button) {
 	const year = $("#year").val();
 	button.disabled = true;
 	button.innerText = 'درحال ذخیره...';
-
+	
 	try {
 		// Loop through the grouped updates and send one API request for each model field
 		for (const fieldName in groupedUpdates) {
 			const dataForField = groupedUpdates[fieldName];
 			const payload = { [fieldName]: dataForField };
-			await postEyesData(year, payload);
+			let result = await postEyesData(year, payload);
+			await initTables(result.data);
 		}
 		alert('تغییرات با موفقیت ذخیره شد!');
 	} catch (error) {
