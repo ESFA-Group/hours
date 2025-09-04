@@ -298,8 +298,8 @@ async function handleSubmit(button) {
 		for (const fieldName in groupedUpdates) {
 			const dataForField = groupedUpdates[fieldName];
 			const payload = { [fieldName]: dataForField };
-			let result = await postEyesData(year, payload);
-			if (result.ok) {	
+			let result = await postEyesData(year, payload);			
+			if (result.success) {	
 				await initTables(result.data);
 			}
 		}
