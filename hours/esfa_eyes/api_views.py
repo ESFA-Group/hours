@@ -22,7 +22,10 @@ class EsfaEyesApiView(APIView):
 	def post(self, request, year: str):
 		user = self.request.user
 		esfa_eyes_obj, created = EsfaEyes.objects.get_or_create(year=year)
-				
+		
+		if user.is_superuser:
+			return Response({"message": "Superuser cannot edit esfa eyes data"}, status=status.HTTP_403_FORBIDDEN)
+
 		# Process each field in the request
 		for field_name in request.data:		
 			new_field_data = request.data[field_name]
