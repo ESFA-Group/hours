@@ -222,9 +222,9 @@ function getBackgroundColor(lastModifyTime, updateIntervalDays) {
 	const diffMilliseconds = now.getTime() - lastUpdate.getTime();
 	const diffDays = diffMilliseconds / (1000 * 3600 * 24);
 
-	if (diffDays <= updateIntervalDays) {
+	if (diffDays * 2 <= updateIntervalDays) {
 		return 'bg-success-subtle';
-	} else if (diffDays <= updateIntervalDays * 2) {
+	} else if (diffDays <= updateIntervalDays ) {
 		return 'bg-warning-subtle';
 	} else {
 		return 'bg-danger-subtle';
