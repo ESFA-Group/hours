@@ -10,12 +10,12 @@ def default_financial_info():
 		'montly_checks_recieved': EsfaEyesMonltyInfo().__dict__,
 		'montly_checks_issued': EsfaEyesMonltyInfo().__dict__,
 		'montly_installment': EsfaEyesMonltyInfo().__dict__,
-		'montly_total_sales': EsfaEyesMonltyInfo().__dict__,
+		'montly_total_sales': EsfaEyesMonltyInfo(update_interval_days=14).__dict__,
 		'individual_sales': EsfaEyesProductInfo().__dict__,
-		'total_insured_staffs': EsfaEyesInfo(0).__dict__,
-		'total_uninsured_staffs': EsfaEyesInfo(0).__dict__,
-		'total_salary_paid': EsfaEyesInfo(0).__dict__,
-		'total_insurance_paid': EsfaEyesInfo(0).__dict__,
+		'total_insured_staffs': EsfaEyesInfo(0, 31).__dict__,
+		'total_uninsured_staffs': EsfaEyesInfo(0, 31).__dict__,
+		'total_salary_paid': EsfaEyesInfo(0, 31).__dict__,
+		'total_insurance_paid': EsfaEyesInfo(0, 31).__dict__,
 	}
 
 def default_international_finance_info():
@@ -26,15 +26,15 @@ def default_international_finance_info():
 
 def default_international_sales_info():
 	return {
-		"montly_international_total_sales": EsfaEyesMonltyInfo().__dict__,
+		"montly_international_total_sales": EsfaEyesMonltyInfo(update_interval_days=14).__dict__,
 		"international_individual_sales": EsfaEyesProductInfo().__dict__,
 		"turkiye_inventory": EsfaEyesProductInfo().__dict__,
 	}
 
 def default_products_info():
 	return {
-		"unproduced_workshop_inventory": EsfaEyesProductInfo().__dict__,
-		"ready_products": EsfaEyesProductInfo().__dict__,
+		"unproduced_workshop_inventory": EsfaEyesProductInfo(update_interval_days=7).__dict__,
+		"ready_products": EsfaEyesProductInfo(update_interval_days=7).__dict__,
 	}
 
 

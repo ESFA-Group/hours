@@ -1,7 +1,7 @@
 import jdatetime as jdt
 
 class EsfaEyesInfo:
-    def __init__(self, info={}, update_interval_days=1):
+    def __init__(self, info={}, update_interval_days=2):
         self.UPDATE_INTERVAL_DAYS =  update_interval_days
         self.last_modify_time = jdt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._info = info if info is not None else {}
@@ -29,7 +29,7 @@ class EsfaEyesMonltyInfo(EsfaEyesInfo):
                 "دی": 0,
                 "بهمن": 0,
                 "اسفند": 0,
-            }, update_interval_days=1):
+            }, update_interval_days=31):
         super().__init__(info, update_interval_days)
 
 class EsfaEyesProductInfo(EsfaEyesInfo):
@@ -45,5 +45,5 @@ class EsfaEyesProductInfo(EsfaEyesInfo):
                 "121": 0,
                 "131": 0,
                 "Software": 0,
-            }, update_interval_days=1):
+            }, update_interval_days=31):
         super().__init__(info, update_interval_days)
