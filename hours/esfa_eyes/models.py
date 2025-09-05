@@ -48,6 +48,9 @@ class EsfaEyes(models.Model):
 	def __str__(self):
 		return f"ESFA Eyes - {self.year}"
 
+	def __getitem__(self, key):
+		return getattr(self, key)
+
 	def get(self, user: User):
 		info = {}
 		if user:
