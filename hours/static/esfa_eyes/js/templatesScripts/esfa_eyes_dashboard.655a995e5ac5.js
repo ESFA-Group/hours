@@ -1,4 +1,5 @@
 let originalApiData = {};
+let Debug = false;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی',
@@ -51,32 +52,34 @@ const keyToModelFieldMap = {
 
 // data backend connection ========================
 async function getCurrencies() {
-	return {
-		"USD": {
-			"date": "1404/06/06",
-			"time": "12:16",
-			"time_unix": 1756370760,
-			"symbol": "USD",
-			"name_en": "US Dollar",
-			"name": "دلار",
-			"price": 100150,
-			"change_value": -300,
-			"change_percent": -0.3,
-			"unit": "تومان"
-		},
-		"CNY": {
-			"date": "1404/06/06",
-			"time": "12:17",
-			"time_unix": 1756370820,
-			"symbol": "CNY",
-			"name_en": "Chinese Yuan",
-			"name": "یوآن چین",
-			"price": 14170,
-			"change_value": 130,
-			"change_percent": 0.93,
-			"unit": "تومان"
-		}
-	};
+	if (Debug) {
+		return {
+			"USD": {
+				"date": "1404/06/06",
+				"time": "12:16",
+				"time_unix": 1756370760,
+				"symbol": "USD",
+				"name_en": "US Dollar",
+				"name": "دلار",
+				"price": 100150,
+				"change_value": -300,
+				"change_percent": -0.3,
+				"unit": "تومان"
+			},
+			"CNY": {
+				"date": "1404/06/06",
+				"time": "12:17",
+				"time_unix": 1756370820,
+				"symbol": "CNY",
+				"name_en": "Chinese Yuan",
+				"name": "یوآن چین",
+				"price": 14170,
+				"change_value": 130,
+				"change_percent": 0.93,
+				"unit": "تومان"
+			}
+		};
+	}
 
 	return apiService.get('https://BrsApi.ir/Api/Market/Gold_Currency.php?key=BfTErgVQ4YHlDZ33IcmWap9FhgiWU17H', {}, {}, "failed to get currencies")
 		.then(data => {
@@ -224,7 +227,7 @@ function getBackgroundColor(lastModifyTime, updateIntervalDays) {
 
 	if (diffDays * 2 <= updateIntervalDays) {
 		return 'bg-success-subtle';
-	} else if (diffDays <= updateIntervalDays ) {
+	} else if (diffDays <= updateIntervalDays) {
 		return 'bg-warning-subtle';
 	} else {
 		return 'bg-danger-subtle';
@@ -298,8 +301,8 @@ async function handleSubmit(button) {
 		for (const fieldName in groupedUpdates) {
 			const dataForField = groupedUpdates[fieldName];
 			const payload = { [fieldName]: dataForField };
-			let result = await postEyesData(year, payload);			
-			if (result.success) {	
+			let result = await postEyesData(year, payload);
+			if (result.success) {
 				await initTables(result.data);
 			}
 		}
