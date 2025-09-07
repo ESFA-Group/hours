@@ -240,7 +240,8 @@ async function initTables(data = null) {
 
 	document.getElementById('dashboard-container').innerHTML = '';
 
-	createNumericTable(data, 'موجودی‌ها', ['balance_dollars', 'balance_rials', 'balance_rials_official']);
+	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official']);
+	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars']);
 	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_recieved', 'montly_installment']);
 	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales']);
 	createObjectTable(data, 'فروش تفکیکی', ['individual_sales', 'international_individual_sales']);

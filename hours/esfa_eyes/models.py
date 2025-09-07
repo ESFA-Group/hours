@@ -20,7 +20,14 @@ def default_financial_info():
 
 def default_international_finance_info():
 	return {
-		"balance_dollars": EsfaEyesInfo(0).__dict__,
+		"balance_dollars": EsfaEyesProductInfo({
+                "مقدار 1": 0,
+                "مقدار 2": 0,
+                "مقدار 3": 0,
+                "مقدار 4": 0,
+                "مقدار 5": 0,
+                "مقدار کل": 0,
+            }, 2).__dict__,
 		"china_production_orders": EsfaEyesProductInfo().__dict__,
 	}
 
