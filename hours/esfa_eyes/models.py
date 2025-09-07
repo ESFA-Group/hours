@@ -62,7 +62,7 @@ class EsfaEyes(models.Model):
 				info.update(self.international_sales_info)
 			if user.is_ProductionManager:
 				info.update(self.products_info)
-			if user.is_superuser:
+			if user.is_superuser and len(info) == 0:
 				info.update(self.financial_info)
 				info.update(self.international_finance_info)
 				info.update(self.international_sales_info)
