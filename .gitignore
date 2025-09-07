@@ -16,3 +16,4 @@ error.log
 *.zip
 *.hex
 hours/*.sqlite3
+temp.py

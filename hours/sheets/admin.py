@@ -6,7 +6,10 @@ admin.site.site_url = "/hours"
 
 
 admin.site.register(ProjectFamily)
-admin.site.register(Sheet)
+
+@admin.register(Sheet)
+class SheetAdmin(admin.ModelAdmin):
+    ordering = ["-year", "-month", "user_name"]
 
 
 @admin.register(User)
@@ -21,7 +24,7 @@ class ProjectAdmin(admin.ModelAdmin):
 
 @admin.register(Food_data)
 class Food_dataAdmin(admin.ModelAdmin):
-    ordering = ["year", "month"]
+    ordering = ["-year", "-month"]
 
 @admin.register(Report)
 class ReportAdmin(admin.ModelAdmin):

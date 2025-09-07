@@ -26,11 +26,15 @@ class User(AbstractUser):
     comment = models.TextField("comment", default="", blank=True)
     
     # access info
-    is_FinancialManager = models.BooleanField("is_FinancialManager", default=False)
     is_ProjectReportManager = models.BooleanField("is_ProjectReportManager", default=False)
-    is_FoodManager = models.BooleanField("is_FoodManager", default=False)
     is_SubReportManager = models.BooleanField("is_SubReportManager", default=False)
     is_MainReportManager = models.BooleanField("is_MainReportManager", default=False)
+    is_FoodManager = models.BooleanField("is_FoodManager", default=False)
+    # access to esfa eyes
+    is_FinancialManager = models.BooleanField("is_FinancialManager", default=False)
+    is_InternationalFinanceManager = models.BooleanField("is_InternationalFinanceManager", default=False)
+    is_InternationalSalesManager = models.BooleanField("is_InternationalSalesManager", default=False)
+    is_ProductionManager = models.BooleanField("is_ProductionManager", default=False)
 
     # personal info
     is_active = models.BooleanField("is_active", default=True)
@@ -345,7 +349,9 @@ class Food_data(models.Model):
     order_mode = models.IntegerField("order_mode", choices=food_order_mode, default=0)
     data = models.JSONField(default=list)
     statistics_and_cost_data = models.JSONField(default=list)
-
+    
+    def __str__(self):
+        return f"Food - {self.year}/{self.month}"
 
 class Report(models.Model):
     user = models.ForeignKey(
@@ -373,3 +379,4 @@ class DailyReportSetting(models.Model):
     no_limit_submission = models.BooleanField(default=False)
     start_report_hour = models.PositiveIntegerField("start_report_hour", default=17)
     end_report_hour = models.PositiveIntegerField("end_report_hour", default=22)
+      

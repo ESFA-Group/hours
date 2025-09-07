@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+{% load connector_template_filters %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.css' %}">
+<link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
+<link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
+<link rel="stylesheet" href="{% static 'esfa_eyes/css/templatesScripts/esfa_eyes_dashboard.css' %}">
+
+{% endblock extra_css %}
+{% block body %}
+
+<!-- ======================= body ======================= -->
+<div id="container" class="d-flex flex-column h-100 gap-3 gap-md-4 m-2 mx-md-4">
+    <div id="top-container" class="d-flex flex-row justify-content-between justify-content-md-start gap-md-5">
+        <div class="p-2anann">
+            <strong>Year</strong>
+            <div class="mt-1">
+                <select name="year" id="year" class="form-select">
+                </select>
+            </div>
+        </div>
+        <div class="p-2anann">
+            <strong>Dollar:</strong>
+            <div id="dollar-holder" class="border rounded p-2 text-muted bg-light pe-none">N/a</div>
+        </div>
+        <div class="p-2anann">
+            <strong>Yuan:</strong>
+            <div id="yuan-holder" class="border rounded p-2 text-muted bg-light pe-none">N/a</div>
+        </div>
+    </div>
+
+    <div id="tables-container" class="flex-grow-1 " dir="rtl">
+        <div id="dashboard-container" class="row">
+        </div>
+    </div>
+</div>
+
+
+<!-- ======================= scripts ======================= -->
+<script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
+<script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
+<script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
+<script src="{% static 'esfa_eyes/js/templatesScripts/esfa_eyes_dashboard.js' %}"></script>
+{% endblock body %}

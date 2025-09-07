@@ -17,6 +17,7 @@ import io
 import re
 
 from sheets.models import Project, Sheet, User, Food_data, Report, DailyReportSetting
+from esfa_eyes.models import EsfaEyes
 from sheets.serializers import ProjectSerializer, SheetSerializer
 
 

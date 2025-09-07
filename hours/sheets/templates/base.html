@@ -24,8 +24,18 @@
             src: local('Lato'),
                  url('{% static "sheets/fonts/Lato-Italic.ttf" %}');
         }
+        @font-face {
+            font-family: 'IRAN-Sans';
+            src: local('IRANSans'),
+                 url('{% static "sheets/fonts/IRANSans-Regular.ttf" %}');
+
+        }
         body{
-            font-family: 'Lato', sans-serif;
+            font-family: 'Lato','IRAN-Sans';
+        }
+        :lang(fa) {
+            font-family: 'IRAN-Sans';
+            direction: rtl;
         }
         .logout{
             color: rgba(255, 0, 0, 0.7);
@@ -51,10 +61,10 @@
         <script src="{% static 'sheets/js/jdate.min.js' %}"></script>
         <script src="{% static 'sheets/js/jsuites.js' %}"></script>
         <script src="{% static 'sheets/js/utils.js' %}"></script>
+        <script src="{% static 'esfa_eyes/js/utils/apiService.js' %}"></script>
     </head>
 
-    <body style="letter-spacing: 0.5px;">
-
+    <body class="d-flex flex-column vh-100" style="letter-spacing: 0.5px;">
         {% block navbar %}
             <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
                 <div class="container-fluid">
@@ -133,6 +143,14 @@
                                     {% url 'sheets:daily_report_management' as temp_url %}
                                     <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
                                     href="{% url 'sheets:daily_report_management' %}">Daily Report Management</a>
+                                </li>
+                            {% endif %}
+
+                            {% if request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_InternationalSalesManager %}
+                                <li class="nav-item">
+                                    {% url 'esfa_eyes:Esfa Eyes Dashbord' as temp_url %}
+                                    <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
+                                    href="{% url 'esfa_eyes:Esfa Eyes Dashbord' %}">Esfa Eyes</a>
                                 </li>
                             {% endif %}
                             

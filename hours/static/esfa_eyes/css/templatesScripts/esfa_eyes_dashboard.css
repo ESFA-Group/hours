@@ -1,0 +1,44 @@
+body {
+	background-color: #f8f9fa;
+}
+
+/* CHANGE: Larger title font size */
+.card-header {
+	font-weight: bolder;
+	font-size: 1.3rem;
+	border-bottom: 2px solid;
+}
+
+/* CHANGE: Added min-width for mobile readability */
+.table {
+	margin-bottom: 0;
+}
+
+/* Style for editable cells */
+[contenteditable="true"] {
+	background-color: #e9ecef;
+	font-weight: bold;
+}
+
+[contenteditable="true"]:hover,
+[contenteditable="true"]:focus {
+	background-color: #dde1e4;
+	outline: 2px solid #0d6efd;
+}
+
+/* A more robust selector for vertical lines */
+.table-vertical-lines> :not(caption)>*>th,
+.table-vertical-lines> :not(caption)>*>td {
+	border-left: 1px solid var(--bs-border-color-translucent, #dee2e6);
+}
+
+.table th,
+.table td {
+	white-space: nowrap;
+}
+
+/* Give the first column ("عنوان") a larger minimum width */
+.table th:first-child,
+.table td:first-child {
+	min-width: 80px;
+}
