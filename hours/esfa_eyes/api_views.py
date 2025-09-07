@@ -23,7 +23,7 @@ class EsfaEyesApiView(APIView):
 		user = self.request.user
 		esfa_eyes_obj, created = EsfaEyes.objects.get_or_create(year=year)
 		
-		if user.is_superuser:
+		if user.is_superuser and not (user.is_FinancialManager or user.is_InternationalFinanceManager or user.is_InternationalSalesManager or user.is_ProductionManager):
 			return Response({"message": "Superuser cannot edit esfa eyes data"}, status=status.HTTP_403_FORBIDDEN)
 
 		# Process each field in the request
