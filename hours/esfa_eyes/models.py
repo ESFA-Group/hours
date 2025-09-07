@@ -54,6 +54,12 @@ class EsfaEyes(models.Model):
 	def get(self, user: User):
 		info = {}
 		if user:
+			if user.is_superuser:
+				info.update(self.financial_info)
+				info.update(self.international_finance_info)
+				info.update(self.international_sales_info)
+				info.update(self.products_info)
+				return info
 			if user.is_FinancialManager:
 				info.update(self.financial_info)
 			if user.is_InternationalFinanceManager:
@@ -63,10 +69,3 @@ class EsfaEyes(models.Model):
 			if user.is_ProductionManager:
 				info.update(self.products_info)
 		return info
-	
-	def update(self, newData, field_name):
-		print(self.international_finance_info)
-		for fields in newData:
-			print(fields) 
-		info = {}
- 
