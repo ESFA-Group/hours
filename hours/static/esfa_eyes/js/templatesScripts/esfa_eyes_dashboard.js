@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = true;
+let Debug = false;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی',
@@ -132,7 +132,7 @@ function createNumericTable(data, title, itemKeys, editable = false) {
 		const [datePart, timePart] = item.last_modify_time.split(' ');
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
-		tableBody += `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td><td contenteditable="true" data-key="${key}">${item._info.toLocaleString()}</td><td>${formattedDate}</td></tr>`;
+		tableBody += `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td><td contenteditable="${editable}" data-key="${key}">${item._info.toLocaleString()}</td><td>${formattedDate}</td></tr>`;
 	});
 	const cardBorderColor = cardBgColor.replace('bg-', 'border-').replace('-subtle', '');
 	const cardFooter = editable ? `
@@ -188,7 +188,7 @@ function createObjectTable(data, title, itemKeys, editable=false) {
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 		let row = `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td>`;
 		subItemHeaders.forEach(header => {
-			row += `<td contenteditable="true" data-key="${key}" data-subkey="${header}">${(item._info[header] || 0).toLocaleString()}</td>`;
+			row += `<td contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${(item._info[header] || 0).toLocaleString()}</td>`;
 		});
 		row += `<td>${formattedDate}</td></tr>`;
 		tableBody += row;
@@ -243,8 +243,6 @@ async function initTables(data = null) {
 
 	document.getElementById('dashboard-container').innerHTML = '';
 
-	console.log(window.USER.is_FinancialManager);
-	
 	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars'], window.USER.is_InternationalFinanceManager);
 	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_recieved', 'montly_installment'],window.USER.is_FinancialManager);
