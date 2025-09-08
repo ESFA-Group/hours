@@ -339,4 +339,20 @@ $("document").ready(async function () {
 	$('#dashboard-container').on('click', '.btn-submit', function () {
 		handleSubmit(this);
 	});
+
+	$('#toggleButton').on('click', function () {
+		const $graph = $('#graph-container');
+		const $dash = $('#dashboard-container');
+
+		// If graph is currently hidden, show it and hide dashboard
+		if ($graph.is('[hidden]')) {
+			$graph.removeAttr('hidden');
+			$dash.attr('hidden', '');
+			$(this).text('Show Dashboard');
+		} else {
+			$graph.attr('hidden', '');
+			$dash.removeAttr('hidden');
+			$(this).text('Show Graphs');
+		}
+	});
 });

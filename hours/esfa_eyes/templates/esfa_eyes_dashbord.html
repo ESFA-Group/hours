@@ -12,7 +12,7 @@
 {% block body %}
 
 <!-- ======================= body ======================= -->
-<div id="container" class="d-flex flex-column h-100 gap-3 gap-md-4 m-2 mx-md-4">
+<div id="container" class="d-flex flex-column h-100 gap-3 gap-md-0  m-2 mx-md-4">
     <div id="top-container" class="d-flex flex-row justify-content-between justify-content-md-start gap-md-5">
         <div class="p-2anann">
             <strong>Year</strong>
@@ -32,8 +32,16 @@
     </div>
 
     <div id="tables-container" class="flex-grow-1 " dir="rtl">
+        {% if request.user.is_superuser %}
+        <button id="toggleButton" class="btn btn-info d-block mb-3">Show Graphs</button>
+        {% endif %}
+
         <div id="dashboard-container" class="row">
         </div>
+
+        <div id="graph-container" class="row" hidden>
+        </div>
+
     </div>
 </div>
 
