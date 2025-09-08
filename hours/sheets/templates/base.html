@@ -170,7 +170,21 @@
         <script>
         window.START_YEAR = 1401;
         window.CSRF_TOKEN = "{{ csrf_token }}";
-
+        window.USER = {
+            username: "{{ request.user.username|escapejs }}",
+            is_superuser: "{{ request.user.is_superuser|lower }}" === "true",
+            //acess info
+            is_ProjectReportManager: "{{ request.user.is_ProjectReportManager|lower }}" === "true",
+            is_SubReportManager: "{{ request.user.is_SubReportManager|lower }}" === "true",
+            is_MainReportManager: "{{ request.user.is_MainReportManager|lower }}" === "true",
+            is_FoodManager: "{{ request.user.is_FoodManager|lower }}" === "true",
+            is_PaymentManager: "{{ request.user.is_PaymentManager|lower }}" === "true",
+            //esfa eyes
+            is_FinancialManager: "{{ request.user.is_FinancialManager|lower }}" === "true",
+            is_InternationalFinanceManager: "{{ request.user.is_InternationalFinanceManager|lower }}" === "true",
+            is_InternationalSalesManager: "{{ request.user.is_InternationalSalesManager|lower }}" === "true",
+            is_ProductionManager: "{{ request.user.is_ProductionManager|lower }}" === "true",
+        };
         function getToday(){
             const today = new JDate();
             const y = today.getFullYear();

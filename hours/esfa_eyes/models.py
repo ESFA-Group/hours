@@ -58,21 +58,23 @@ class EsfaEyes(models.Model):
 	def __getitem__(self, key):
 		return getattr(self, key)
 
-	def get(self, user: User):
+	def get(self, user: User, editable=False):
 		info = {}
-		if user:
-			if user.is_FinancialManager:
-				info.update(self.financial_info)
-			if user.is_InternationalFinanceManager:
-				info.update(self.international_finance_info)
-			if user.is_InternationalSalesManager:
-				info.update(self.international_sales_info)
-			if user.is_ProductionManager:
-				info.update(self.products_info)
-			if user.is_superuser and len(info) == 0:
-				info.update(self.financial_info)
-				info.update(self.international_finance_info)
-				info.update(self.international_sales_info)
-				info.update(self.products_info)
-				return info
+		if not user:
+			return info
+
+		if user.is_superuser and not editable:
+			info.update(self.financial_info)
+			info.update(self.international_finance_info)
+			info.update(self.international_sales_info)
+			info.update(self.products_info)
+			return info
+		if user.is_FinancialManager:
+			info.update(self.financial_info)
+		if user.is_InternationalFinanceManager:
+			info.update(self.international_finance_info)
+		if user.is_InternationalSalesManager:
+			info.update(self.international_sales_info)
+		if user.is_ProductionManager:
+			info.update(self.products_info)
 		return info

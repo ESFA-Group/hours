@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی',
@@ -116,7 +116,7 @@ function parseJalaliDateTime(dateTimeString) {
 	return gregorianDate;
 }
 
-function createNumericTable(data, title, itemKeys) {
+function createNumericTable(data, title, itemKeys, editable = false) {
 	const availableItems = itemKeys.filter(key => data[key]);
 	if (availableItems.length === 0) return;
 
@@ -135,6 +135,12 @@ function createNumericTable(data, title, itemKeys) {
 		tableBody += `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td><td contenteditable="true" data-key="${key}">${item._info.toLocaleString()}</td><td>${formattedDate}</td></tr>`;
 	});
 	const cardBorderColor = cardBgColor.replace('bg-', 'border-').replace('-subtle', '');
+	const cardFooter = editable ? `
+        <div class="card-footer text-center">
+            <button class="btn btn-primary btn-submit">
+                ثبت تغییرات
+            </button>
+        </div>` : '';
 	card.innerHTML = `
 		<div class="card h-100 ${cardBorderColor} border-2">
             <div class="card-header ${cardBgColor} ${cardBorderColor}">
@@ -154,16 +160,12 @@ function createNumericTable(data, title, itemKeys) {
 					</table>
 				</div>
 			</div>
-			<div class="card-footer text-center">
-				<button class="btn btn-primary btn-submit">
-					ثبت تغییرات
-				</button>
-			</div>
+			${cardFooter}
 		</div>`;
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
-function createObjectTable(data, title, itemKeys) {
+function createObjectTable(data, title, itemKeys, editable=false) {
 	const availableItems = itemKeys.filter(key => data[key] && typeof data[key]._info === 'object');
 	if (availableItems.length === 0) return;
 
@@ -192,7 +194,12 @@ function createObjectTable(data, title, itemKeys) {
 		tableBody += row;
 	});
 	const cardBorderColor = cardBgColor.replace('bg-', 'border-').replace('-subtle', '');
-
+    const cardFooter = editable ? `
+        <div class="card-footer text-center">
+            <button class="btn btn-primary btn-submit">
+                ثبت تغییرات
+            </button>
+        </div>` : '';
 	card.innerHTML = `
 		<div class="card h-100 ${cardBorderColor} border-2">
             <div class="card-header ${cardBgColor} ${cardBorderColor}">
@@ -210,11 +217,7 @@ function createObjectTable(data, title, itemKeys) {
 					</table>
 				</div>
 			</div>
-			<div class="card-footer text-center">
-				<button class="btn btn-primary btn-submit">
-					ثبت تغییرات
-				</button>
-			</div>
+			${cardFooter}
 		</div>`;
 	document.getElementById('dashboard-container').appendChild(card);
 }
@@ -240,13 +243,15 @@ async function initTables(data = null) {
 
 	document.getElementById('dashboard-container').innerHTML = '';
 
-	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official']);
-	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars']);
-	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_recieved', 'montly_installment']);
-	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales']);
-	createObjectTable(data, 'فروش تفکیکی', ['individual_sales', 'international_individual_sales']);
-	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders']);
-	createNumericTable(data, 'حقوق کارکنان', ['total_insured_staffs', 'total_uninsured_staffs', 'total_salary_paid', 'total_insurance_paid']);
+	console.log(window.USER.is_FinancialManager);
+	
+	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official'], window.USER.is_FinancialManager);
+	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars'], window.USER.is_InternationalFinanceManager);
+	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_recieved', 'montly_installment'],window.USER.is_FinancialManager);
+	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager);
+	createObjectTable(data, 'فروش تفکیکی', ['individual_sales', 'international_individual_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager);
+	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager || window.USER.is_ProductionManager);
+	createNumericTable(data, 'حقوق کارکنان', ['total_insured_staffs', 'total_uninsured_staffs', 'total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager);
 }
 
 function fillYears(year) {
@@ -298,14 +303,14 @@ async function handleSubmit(button) {
 	button.innerText = 'درحال ذخیره...';
 
 	try {
+		const payload = {}
 		// Loop through the grouped updates and send one API request for each model field
 		for (const fieldName in groupedUpdates) {
-			const dataForField = groupedUpdates[fieldName];
-			const payload = { [fieldName]: dataForField };
-			let result = await postEyesData(year, payload);
-			if (result.success) {
-				await initTables(result.data);
-			}
+			payload[fieldName] = groupedUpdates[fieldName];
+		}
+		let result = await postEyesData(year, payload);
+		if (result.success) {
+			await initTables(result.data);
 		}
 	} catch (error) {
 		console.error('Failed to save data:', error);
@@ -322,6 +327,8 @@ async function handleSubmit(button) {
 }
 // =================== document ready ============================
 $("document").ready(async function () {
+	console.log("is_superuser: " + window.USER.is_superuser);
+
 	const today = new JDate();
 	const currentYear = today.getFullYear();
 	updateCurrencies();

@@ -80,13 +80,13 @@ class APIService {
                 try {
                     errorData = await response.json();
                 } catch (e) {
-                    errorData = { message: `Request failed with status ${response.status}` };
+                    errorData = {title: errorTitle, message: `Request failed with status ${response.status}` };
                 }
                 // Throw an error to be caught by the calling function's .catch() block.
                 jSuites.notification({
                     error: 1,
                     name: 'Error',
-                    title: errorTitle,
+                    title: errorData.title || errorTitle,
                     message: errorData.message || JSON.stringify(errorData),
                 });
                 return { success: false, error: errorData, status: response.status };

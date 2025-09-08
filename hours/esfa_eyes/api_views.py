@@ -24,13 +24,22 @@ class EsfaEyesApiView(APIView):
 		esfa_eyes_obj, created = EsfaEyes.objects.get_or_create(year=year)
 		
 		if user.is_superuser and not (user.is_FinancialManager or user.is_InternationalFinanceManager or user.is_InternationalSalesManager or user.is_ProductionManager):
-			return Response({"message": "Superuser cannot edit esfa eyes data"}, status=status.HTTP_403_FORBIDDEN)
+			return Response({"title": "Access denied", "message": "Superuser cannot edit esfa eyes data"}, status=status.HTTP_403_FORBIDDEN)
 
-		# Process each field in the request
-		for field_name in request.data:		
+		shared_keys_found = False
+		access_data = esfa_eyes_obj.get(user, True)
+
+		for field_name in request.data:
 			new_field_data = request.data[field_name]
-			updated_esfa_eyes_obj = self._update_esfaEyes(esfa_eyes_obj, new_field_data, field_name)
-		return Response(updated_esfa_eyes_obj.get(self.request.user), status=status.HTTP_200_OK)
+			shared_keys = list(set(access_data.keys()) & set(new_field_data.keys()))
+			
+			if len(shared_keys) > 0:
+				shared_keys_found = True
+				updated_esfa_eyes_obj = self._update_esfaEyes(esfa_eyes_obj, new_field_data, field_name)
+				return Response(updated_esfa_eyes_obj.get(self.request.user), status=status.HTTP_200_OK)
+
+		if not shared_keys_found:
+			return Response({"title": "Access denied", "message": "You don't have permission to edit this data."}, status=status.HTTP_403_FORBIDDEN)
 
 	def _update_esfaEyes(self, esfa_eyes_obj, new_field_data, field_name):
 		current_field_data = getattr(esfa_eyes_obj, field_name)
