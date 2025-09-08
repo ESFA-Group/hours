@@ -321,7 +321,7 @@ class MonthlyReportApiView(APIView):
 
 
 class PaymentApiView(APIView):
-    permission_classes = [customPermissions.IsFinancialManager]
+    permission_classes = [customPermissions.IsPaymentManager]
 
     def get(self, request, year: str, month: str):
         users = User.objects.filter(is_active=1)

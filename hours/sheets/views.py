@@ -181,7 +181,7 @@ class ReportsView(BaseView):
     template_name = "reports.html"
 
 
-@method_decorator([financial_manager_required], name="dispatch")
+@method_decorator([payment_manager_required], name="dispatch")
 class PaymentHandleView(BaseView):
     template_name = "payment.html"
 
@@ -335,7 +335,7 @@ class ProjectsYearlyReportView(View):
         return df_all.sum()
 
 
-@method_decorator([financial_manager_required], name="dispatch")
+@method_decorator([payment_manager_required], name="dispatch")
 class PaymentExportView(View):
 
     def post(self, request):
@@ -481,7 +481,7 @@ class PaymentExportView(View):
         return string
 
 
-@method_decorator([financial_manager_required], name="dispatch")
+@method_decorator([payment_manager_required], name="dispatch")
 class PaymentExcelExportView(View):
 
     def post(self, request, year: str, month: str):
@@ -517,7 +517,7 @@ class PaymentExcelExportView(View):
         return response
 
 
-@method_decorator([financial_manager_required], name="dispatch")
+@method_decorator([payment_manager_required], name="dispatch")
 class PaymentExcelImportView(View):
 
     def post(self, request, year: str, month: str):

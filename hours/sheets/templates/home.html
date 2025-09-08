@@ -142,7 +142,7 @@
                     href="{% url 'sheets:reports' %}"
                     style="width: 180px">Reports</a>
                 {% endif %}
-                {% if request.user.is_FinancialManager or request.user.is_InternationalFinanceManager %}           
+                {% if request.user.is_PaymentManager %}           
                     <a class="btn btn-danger mx-1"
                     href="{% url 'sheets:payment' %}"
                     style="width: 180px">Payments</a>

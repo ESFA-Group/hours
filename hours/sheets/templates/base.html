@@ -117,7 +117,7 @@
                                 href="{% url 'sheets:reports' %}">Reports</a>
                             </li>
                             {% endif %}    
-                            {% if request.user.is_FinancialManager or request.user.is_InternationalFinanceManager%}
+                            {% if request.user.is_PaymentManager %}
                                 <li class="nav-item">
                                     {% url 'sheets:payment' as temp_url %}
                                     <a class="nav-link {% if request.path == temp_url %}active{% endif %}"

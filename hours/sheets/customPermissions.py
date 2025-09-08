@@ -22,9 +22,9 @@ class IsDailyReportManager(permissions.BasePermission):
         )
 
 
-class IsFinancialManager(permissions.BasePermission):
+class IsPaymentManager(permissions.BasePermission):
     def has_permission(self, request, view):
-        return bool(request.user and (request.user.is_FinancialManager or request.user.is_InternationalFinanceManager))
+        return bool(request.user and (request.user.is_PaymentManager))
 
 
 class IsProjectReportManager(permissions.BasePermission):
