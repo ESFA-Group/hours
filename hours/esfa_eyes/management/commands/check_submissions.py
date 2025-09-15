@@ -25,10 +25,27 @@ class Command(BaseCommand):
         
         overdue_count = 0
         sent_count = 0
-        
         report = EsfaEyes.objects.last()
-        print(datetime.now())
-        print(jdt.datetime.now())
+        if not report:
+            self.stdout.write("No valid report data found.")    
+        
+        current_date = jdt.datetime.now()
+        data_date_str = '1404-06-12 21:32:00'
+        date_format = '%Y-%m-%d %H:%M:%S'
+        # Convert the string into a jdatetime object
+        parsed_data_date = jdt.datetime.strptime(data_date_str, date_format)
+        diff = current_date - parsed_data_date
+        diff_in_hours = diff.total_seconds() / 3600
+        interval = 2
+        interval_in_hours = interval*24
+        half_interval_in_hours = interval_in_hours / 2
+        
+        if diff_in_hours > interval_in_hours:
+            print("outdated")
+        elif diff_in_hours > half_interval_in_hours:
+            print("warning")
+        else:
+            print("update")
         
         return
         # Calculate next due time
