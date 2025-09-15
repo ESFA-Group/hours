@@ -16,6 +16,28 @@ class SheetAdmin(admin.ModelAdmin):
 class UserAdmin(admin.ModelAdmin):
     ordering = ["last_name", "first_name"]
     filter_horizontal = ('groups', 'user_permissions')
+    RESTRICTED_FIELDS = [
+        'is_superuser',
+        'is_staff',
+        'is_ProjectReportManager',
+        'is_SubReportManager',
+        'is_MainReportManager',
+        'is_FoodManager',
+        'is_FinancialManager',
+        'is_InternationalFinanceManager',
+        'is_InternationalSalesManager',
+        'is_ProductionManager',
+        'is_PaymentManager',
+        'user_permissions',
+        'groups'
+    ]
+    
+    def get_exclude(self, request, obj=None):
+        exclude = super().get_exclude(request, obj) or []
+        
+        if not request.user.is_superuser:
+            return exclude + self.RESTRICTED_FIELDS
+        return exclude
 
 
 @admin.register(Project)
