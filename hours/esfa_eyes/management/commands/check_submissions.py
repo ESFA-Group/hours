@@ -25,28 +25,29 @@ class Command(BaseCommand):
         
         overdue_count = 0
         sent_count = 0
-        report = EsfaEyes.objects.last()
+        report = EsfaEyes.objects.latest('year')
         if not report:
-            self.stdout.write("No valid report data found.")    
+            self.stdout.write("No valid report data found.")
+            return   
         
         current_date = jdt.datetime.now()
-        data_date_str = '1404-06-12 21:32:00'
         date_format = '%Y-%m-%d %H:%M:%S'
-        # Convert the string into a jdatetime object
-        parsed_data_date = jdt.datetime.strptime(data_date_str, date_format)
-        diff = current_date - parsed_data_date
-        diff_in_hours = diff.total_seconds() / 3600
-        interval = 2
-        interval_in_hours = interval*24
-        half_interval_in_hours = interval_in_hours / 2
         
-        if diff_in_hours > interval_in_hours:
-            print("outdated")
-        elif diff_in_hours > half_interval_in_hours:
-            print("warning")
-        else:
-            print("update")
-        
+        field_names = [attr for attr in dir(report) if attr.endswith('_info')]
+        for report_field in field_names:
+            for field in getattr(report, report_field):
+                interval_in_hours =  getattr(report, report_field)[field]['UPDATE_INTERVAL_DAYS']*24
+                last_modify_time =  getattr(report, report_field)[field]['last_modify_time']
+                parsed_last_modify_time = jdt.datetime.strptime(last_modify_time, date_format)
+                diff = current_date - parsed_last_modify_time
+                diff_in_hours = diff.total_seconds() / 3600
+
+                if diff_in_hours > interval_in_hours:
+                    print("outdated")
+                elif diff_in_hours * 2 > interval_in_hours:
+                    print("warning")
+                else:
+                    print("update")
         return
         # Calculate next due time
         next_due = report.last_submission + timedelta(hours=report.update_interval_hours)
