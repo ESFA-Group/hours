@@ -1,10 +1,12 @@
+import time
+import random
 from django.core.management.base import BaseCommand
 import jdatetime as jdt 
 import logging
 from esfa_eyes.models import EsfaEyes
 
 import requests
-from requests.exceptions import ProxyError, Timeout, ConnectionError
+from requests.exceptions import ProxyError, Timeout, ConnectionError, RequestException
 
 logger = logging.getLogger(__name__)
 ESFAEYES_FIELD_NAMES = ['financial_info', 'international_finance_info', 'international_sales_info', 'products_info']
@@ -70,7 +72,7 @@ class Command(BaseCommand):
             print("bot is sleeping...")
             return
         persian_subfields =["محموع حقوق پرداختی", "وام های گرفته شده"]
-        formatted_subfields = ''.join(f"\n    \\- {s}" for s in persian_subfields)
+        formatted_subfields = '\n'.join(f"    \\- {s}" for s in persian_subfields)
         
         message=f""" *درود*
 مدتی است که گزارش *ESFA Eyes* خود را ارسال نکرده اید\\.
@@ -78,8 +80,7 @@ class Command(BaseCommand):
 {formatted_subfields} 
 [ESFA Eyes](https://kavosh\\.online/hours/esfa_eyes_dashbord)
 """
-        response = self.send_telegram_api_message(ADMIN_ID[0], message)
-        print(response)
+        self.send_telegram_message_with_retry(ADMIN_ID[0], message)
     
     def is_inside_valid_hours(self):
         current_time = jdt.datetime.now().hour
@@ -114,10 +115,10 @@ class Command(BaseCommand):
                 elif diff_in_hours * 2 > interval_in_hours:
                     warning_subfields_dictionary[report_field].append(sub_field)
                     
-        self.send_telegram_alert(require_to_update_subfields_dictionary)
+        self.send_warning_alerts_users(require_to_update_subfields_dictionary)
     
-    def send_telegram_alert(self, subfields_dict):
-        """Send Telegram alert to user"""
+    def send_warning_alerts_users(self, subfields_dict):
+        """Send Telegram alert to user with retry logic"""
         for field_name in subfields_dict:   # international_finance_info, ...
             if subfields_dict[field_name]:  # ['balance_dollars', 'china_production_orders'], ...
                 print("\n-----")
@@ -126,31 +127,97 @@ class Command(BaseCommand):
                 persian_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]]
                 formatted_subfields = '\n'.join(f"    \\-{s}" for s in persian_subfields)
                 print(formatted_subfields)
-                for chat_id in ESFAEYES_FIELD_TO_TELEGRAM_ID[field_name]:
-                    try:
-                        message=f""" *درود*
+                
+                message = f""" *درود*
 مدتی است که گزارش *Esfa Eyes* خود را ارسال نکرده اید\\.
-لطفا در اسرع وقت گزارش خود را اپدیت نمایید\\.
-
+لطفا در اسرع وقت گزارشات زیر را اپدیت نمایید\\:
 {formatted_subfields} 
-
+[ESFA Eyes](https://kavosh\\.online/hours/esfa_eyes_dashbord)
 """
-                        res = self.send_telegram_api_message(chat_id, message)                    
-                        
-                    except requests.exceptions.ProxyError as e:
-                        str = f"Proxy connection failed for {chat_id}: {e}"
-                        logger.error(str)
+                for chat_id in ESFAEYES_FIELD_TO_TELEGRAM_ID[field_name]:
+                    success = self.send_telegram_message_with_retry(chat_id, message)
+                    if not success:
+                        logger.error(f"Failed to send message to {chat_id} after all retry attempts")
                         self.stdout.write(
-                            self.style.ERROR(str)
-                        )
-                    except requests.exceptions.RequestException as e:
-                        str = f"Failed to send Telegram message to {chat_id}: {e}"
-                        logger.error(str)
-                        self.stdout.write(
-                            self.style.ERROR(str)
+                            self.style.ERROR(f"Failed to send message to {chat_id} after all retry attempts")
                         )
 
-    def send_telegram_api_message(self, chat_id, message, timeout=30):
+    def send_telegram_message_with_retry(self, chat_id, message, max_retries=10):
+        for attempt in range(max_retries + 1):
+            try:
+                response = self._send_telegram_api_message(chat_id, message)
+                if response and response.status_code == 200:
+                    self.stdout.write(
+                        self.style.SUCCESS(f"Message sent successfully to {chat_id} on attempt {attempt + 1}")
+                    )
+                    return True
+                else:
+                    raise RequestException(f"HTTP {response.status_code if response else 'No response'}")
+                    
+            except (ProxyError, Timeout, ConnectionError) as e:
+                if attempt < max_retries:
+                    base_delay = 60  # 1 minute base delay
+                    exponential_delay = min(60 * (2 ** attempt), 300)  # Max 5 minutes
+                    jitter = random.uniform(0, 30)  # 0-30 seconds random jitter
+                    total_delay = base_delay + exponential_delay + jitter
+                    
+                    logger.warning(
+                        f"Network error sending to {chat_id} (attempt {attempt + 1}/{max_retries + 1}): {e}. "
+                        f"Retrying in {total_delay:.1f} seconds..."
+                    )
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Network error for {chat_id} (attempt {attempt + 1}). "
+                            f"Retrying in {total_delay:.1f} seconds..."
+                        )
+                    )
+                    time.sleep(total_delay)
+                else:
+                    logger.error(f"Network error sending to {chat_id} after {max_retries + 1} attempts: {e}")
+                    return False
+                    
+            except RequestException as e:
+                if hasattr(e, 'response') and e.response is not None and e.response.status_code == 400:
+                    logger.info(f"User {chat_id} hasn't started the bot yet (HTTP 400). Skipping retries.")
+                    self.stdout.write(
+                        self.style.WARNING(f"User {chat_id} hasn't started the bot yet. Message not delivered.")
+                    )
+                    return False
+
+                if attempt < max_retries:
+                    # For other request exceptions, use shorter delays
+                    base_delay = 30  # 30 seconds base delay
+                    exponential_delay = min(30 * (2 ** attempt), 120)  # Max 2 minutes
+                    jitter = random.uniform(0, 15)  # 0-15 seconds random jitter
+                    total_delay = base_delay + exponential_delay + jitter
+                    
+                    logger.warning(
+                        f"Request error sending to {chat_id} (attempt {attempt + 1}/{max_retries + 1}): {e}. "
+                        f"Retrying in {total_delay:.1f} seconds..."
+                    )
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Request error for {chat_id} (attempt {attempt + 1}). "
+                            f"Retrying in {total_delay:.1f} seconds..."
+                        )
+                    )
+                    time.sleep(total_delay)
+                else:
+                    logger.error(f"Request error sending to {chat_id} after {max_retries + 1} attempts: {e}")
+                    return False
+                    
+            except Exception as e:
+                # For unexpected exceptions, don't retry
+                logger.error(f"Unexpected error sending to {chat_id}: {e}")
+                self.stdout.write(
+                    self.style.ERROR(f"Unexpected error for {chat_id}: {e}")
+                )
+                return False
+                
+        return False
+
+    def _send_telegram_api_message(self, chat_id, message, timeout=30):
+        """Send a single Telegram API message"""
         payload = {
             "chat_id": chat_id,
             "text": message,
@@ -168,6 +235,6 @@ class Command(BaseCommand):
         except (ProxyError, Timeout, ConnectionError) as e:
             logger.error(f"Network-related error sending to {chat_id}: {e}")
             raise
-        except requests.exceptions.RequestException as e:
+        except RequestException as e:
             logger.error(f"Failed to send Telegram message to {chat_id}: {e}")
-            return None
+            raise
