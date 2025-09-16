@@ -9,18 +9,19 @@ from requests.exceptions import ProxyError, Timeout, ConnectionError
 logger = logging.getLogger(__name__)
 ESFAEYES_FIELD_NAMES = ['financial_info', 'international_finance_info', 'international_sales_info', 'products_info']
 ESFAEYES_FIELD_TO_TELEGRAM_ID = {
-    'financial_info': [78510872, 106243900],    # amiri, bayat
+    'financial_info': [78510872],               # amiri
     'international_finance_info': [63708619],   # zahedi
     'international_sales_info': [352162682],    # dadashi
     'products_info': [237628637],               # colaji
 }
 BOSS_ID = [103813581]
+ADMIN_ID = [293224143, 1320393742, 6372380391]
 BOT_TOKEN= "7985758239:AAECktRZy7htev_itYxdriN5YPJXyLgs4EI"
 BOT_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/"
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 PROXIES = {
-    'http': 'http://0:0',
-    'https': 'http://0:0',
+    'http': 'http://127.0.0.1:12334',
+    'https': 'http://127.0.0.1:12334',
 }
 
 TITLEMAPPING = {
@@ -58,10 +59,42 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         dry_run = options['dry_run']
         self.stdout.write(f"Checking for overdue reports... Dry run: {dry_run}")
+        if dry_run:
+            self.dry_run()
+            return
+
+        self.alert()
+    
+    def dry_run(self):
+        if not self.is_inside_valid_hours():
+            print("bot is sleeping...")
+            return
+        persian_subfields =["محموع حقوق پرداختی", "وام های گرفته شده"]
+        formatted_subfields = ''.join(f"\n    \\- {s}" for s in persian_subfields)
+        
+        message=f""" *درود*
+مدتی است که گزارش *ESFA Eyes* خود را ارسال نکرده اید\\.
+لطفا در اسرع وقت گزارشات زیر را اپدیت نمایید\\:
+{formatted_subfields} 
+[ESFA Eyes](https://kavosh\\.online/hours/esfa_eyes_dashbord)
+"""
+        response = self.send_telegram_api_message(ADMIN_ID[0], message)
+        print(response)
+    
+    def is_inside_valid_hours(self):
+        current_time = jdt.datetime.now().hour
+        if current_time < 6:
+            return False
+        return True
+        
+    def alert(self):
+        if not self.is_inside_valid_hours():
+            print("bot is sleeping...")
+            return
         Eyes_report = EsfaEyes.objects.latest('year')
         if not Eyes_report:
             self.stdout.write("No valid report data found.")
-            return   
+            return
         
         current_date = jdt.datetime.now()
         
@@ -82,28 +115,28 @@ class Command(BaseCommand):
                     warning_subfields_dictionary[report_field].append(sub_field)
                     
         self.send_telegram_alert(require_to_update_subfields_dictionary)
-        
     
     def send_telegram_alert(self, subfields_dict):
         """Send Telegram alert to user"""
-        for field_name in subfields_dict: # international_finance_info, ...
-            if subfields_dict[field_name]: # ['balance_dollars', 'china_production_orders'], ...
+        for field_name in subfields_dict:   # international_finance_info, ...
+            if subfields_dict[field_name]:  # ['balance_dollars', 'china_production_orders'], ...
                 print("\n-----")
                 print(field_name)
                 print(subfields_dict[field_name])
                 persian_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]]
-                formatted_subfields = '\n'.join(f"\\-{s}" for s in persian_subfields)
+                formatted_subfields = '\n'.join(f"    \\-{s}" for s in persian_subfields)
                 print(formatted_subfields)
                 for chat_id in ESFAEYES_FIELD_TO_TELEGRAM_ID[field_name]:
                     try:
-                        message=f"""
-                        *درود*
-                        مدتی است که گزارش *Esfa Eyes* خود را ارسال نکرده اید\\.
-                        لطفا در اسرع وقت گزارش خود را اپدیت نمایید\\.
-                        {formatted_subfields}
-                        """
+                        message=f""" *درود*
+مدتی است که گزارش *Esfa Eyes* خود را ارسال نکرده اید\\.
+لطفا در اسرع وقت گزارش خود را اپدیت نمایید\\.
+
+{formatted_subfields} 
+
+"""
+                        res = self.send_telegram_api_message(chat_id, message)                    
                         
-                        self.send_telegram_message(chat_id, message)                    
                     except requests.exceptions.ProxyError as e:
                         str = f"Proxy connection failed for {chat_id}: {e}"
                         logger.error(str)
@@ -117,8 +150,7 @@ class Command(BaseCommand):
                             self.style.ERROR(str)
                         )
 
-
-    def send_telegram_message(self, chat_id, message, timeout=30):
+    def send_telegram_api_message(self, chat_id, message, timeout=30):
         payload = {
             "chat_id": chat_id,
             "text": message,
