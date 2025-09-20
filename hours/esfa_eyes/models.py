@@ -2,6 +2,7 @@ from django.db import models
 from .schemas import esfa_eyes_info as schemas
 from .schemas.esfa_eyes_info import EsfaEyesInfo, EsfaEyesMonltyInfo, EsfaEyesProductInfo
 from sheets.models import User
+import copy
 
 def default_financial_info():
 	return {
@@ -77,6 +78,28 @@ class EsfaEyes(models.Model):
 			info.update(self.international_finance_info)
 		if user.is_InternationalSalesManager:
 			info.update(self.international_sales_info)
-		if user.is_ProductionManager or user.is_R131ProductionManager or user.is_ProductionManagerReadonly:
-			info.update(self.products_info)
+
+		obj = self._get_production_info(user)
+		info.update(obj)
 		return info 
+
+	def _get_production_info(self, user: User):
+		if not user:
+			return {}
+		
+		if user.is_ProductionManagerReadonly or (user.is_ProductionManager and user.is_R131ProductionManager):
+			return copy.deepcopy(self.products_info)
+
+		valid_production_info = copy.deepcopy(self.products_info)
+		rp = valid_production_info["ready_products"]["_info"]
+		selected_keys = ["121", "Kia Meter", "131"]
+		
+		if user.is_ProductionManager:
+			valid_rp_info = {k: v for k, v in rp.items() if k not in selected_keys}
+			valid_production_info["ready_products"]["_info"] = valid_rp_info
+   
+		if user.is_R131ProductionManager:
+			valid_rp_info = {key: rp[key] for key in selected_keys if key in rp}
+			valid_production_info["ready_products"]["_info"] = valid_rp_info
+
+		return valid_production_info
