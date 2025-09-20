@@ -77,6 +77,6 @@ class EsfaEyes(models.Model):
 			info.update(self.international_finance_info)
 		if user.is_InternationalSalesManager:
 			info.update(self.international_sales_info)
-		if user.is_ProductionManager:
+		if user.is_ProductionManager or user.is_R131ProductionManager or user.is_ProductionManagerReadonly:
 			info.update(self.products_info)
-		return info
+		return info 
