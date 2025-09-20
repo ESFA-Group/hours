@@ -157,7 +157,7 @@
                     href="{% url 'sheets:daily_report_management' %}"
                     style="width: 250px">Daily report management</a>
                 {% endif %}
-                {% if request.user.is_superuser or request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_InternationalSalesManager %}
+                {% if request.user.is_superuser or request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_ProductionManager %}
                     <a class="btn btn-info mx-1"
                     href="{% url 'esfa_eyes:Esfa Eyes Dashbord' %}"
                     style="width: 180px">Esfa Eyes</a>

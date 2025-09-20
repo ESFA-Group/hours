@@ -146,7 +146,7 @@
                                 </li>
                             {% endif %}
 
-                            {% if request.user.is_superuser or request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_InternationalSalesManager %}
+                            {% if request.user.is_superuser or request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_ProductionManager %}
                                 <li class="nav-item">
                                     {% url 'esfa_eyes:Esfa Eyes Dashbord' as temp_url %}
                                     <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
