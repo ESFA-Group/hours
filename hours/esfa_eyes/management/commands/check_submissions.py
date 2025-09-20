@@ -62,8 +62,6 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         self.stdout.write(f"Checking for overdue reports... Dry run: {dry_run}")
         if dry_run:
-            # self.alert()
-            # return
             self.dry_run()
             return
 
