@@ -2,17 +2,17 @@ let originalApiData = {};
 let Debug = true;
 
 const titleMapping = {
-	balance_rials_official: '(تومان) موجودی حساب‌های رسمی',
-	balance_rials: '(تومان) موجودی حساب‌های غیر رسمی',
+	balance_rials_official: 'موجودی حساب‌های رسمی (تومان)',
+	balance_rials: 'موجودی حساب‌های غیر رسمی (تومان)',
 	balance_dollars: 'موجودی دلاری',
-	montly_checks_recieved: '(تومان) چک‌های دریافتی',
-	montly_checks_issued: '(تومان) چک‌های صادر شده',
-	montly_installment: '(تومان) اقساط وام های دریافتی',
-	montly_total_sales: '(تومان) فروش کل داخل',
-	montly_international_total_sales: '(دلار) فروش کل خارج',
-	individual_sales: '(تومان) فروش تفکیکی داخل',
+	montly_checks_recieved: 'چک‌های دریافتی (تومان)',
+	montly_checks_issued: 'چک‌های صادر شده (تومان)',
+	montly_installment: 'اقساط وام های دریافتی (تومان)',
+	montly_total_sales: 'فروش کل داخل (تومان)',
+	montly_international_total_sales: 'فروش کل خارج (دلار)',
+	individual_sales: 'فروش تفکیکی داخل (تومان)',
 	individual_sales_quantities: '(تعداد) فروش تفکیکی داخل',
-	international_individual_sales: '(تومان) فروش تفکیکی خارج',
+	international_individual_sales: 'فروش تفکیکی خارج (تومان)',
 	international_individual_sales_quantities: '(تعداد) فروش تفکیکی خارج',
 	ready_products: 'موجودی تولیدشده آماده تحویل',
 	unproduced_workshop_inventory: 'موجودی کارگاه تولید نشده',
@@ -20,8 +20,8 @@ const titleMapping = {
 	china_production_orders: 'سفارشات چین درحال تولید',
 	total_insured_staffs: 'تعداد کارکنان بیمه‌ای',
 	total_uninsured_staffs: 'تعداد کارکنان غیر بیمه',
-	total_salary_paid: '(تومان) مجموع کل حقوق',
-	total_insurance_paid: '(تومان) مجموع بیمه پرداختی'
+	total_salary_paid: 'مجموع کل حقوق (تومان)',
+	total_insurance_paid: 'مجموع بیمه پرداختی (تومان)'
 };
 
 const keyToModelFieldMap = {
@@ -247,10 +247,10 @@ async function initTables(data = null) {
 
 	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars'], window.USER.is_InternationalFinanceManager);
-	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_recieved', 'montly_installment'],window.USER.is_FinancialManager);
+	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_recieved', 'montly_installment'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager);
 	createObjectTable(data, 'فروش تفکیکی', ['individual_sales', 'international_individual_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager);
-	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager || window.USER.is_ProductionManager);
+	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager || window.USER.is_ProductionManager || window.USER.is_R131ProductionManager); // dont add || window.USER.is_ProductionManagerReadonly
 	createNumericTable(data, 'حقوق کارکنان', ['total_insured_staffs', 'total_uninsured_staffs', 'total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager);
 }
 
