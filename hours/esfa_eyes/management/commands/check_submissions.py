@@ -62,6 +62,8 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         self.stdout.write(f"Checking for overdue reports... Dry run: {dry_run}")
         if dry_run:
+            # self.alert()
+            # return
             self.dry_run()
             return
 
@@ -71,15 +73,21 @@ class Command(BaseCommand):
         if not self.is_inside_valid_hours():
             print("bot is sleeping...")
             return
-        persian_subfields =["محموع حقوق پرداختی", "وام های گرفته شده"]
-        formatted_subfields = '\n'.join(f"    \\- {s}" for s in persian_subfields)
+        persian_subfields =["محموع حقوق پرداختی", "وام های گرفته شده", "موجودی حساب‌های غیر رسمی"]
+        formatted_persian_require_to_update_subfields = '\n'.join(f"    \\- {s}" for s in persian_subfields)
         
-        message=f""" *درود*
-مدتی است که گزارش *ESFA Eyes* خود را ارسال نکرده اید\\.
+        warning_subfields =["فروش کل داخل", "موجودی دلاری"]
+        formatted_persian_warning_subfields = '\n'.join(f"    \\- {s}" for s in warning_subfields)
+        
+        message = f""" *درود*
+مدتی است که گزارش *Esfa Eyes* خود را ارسال نکرده اید\\.
 لطفا در اسرع وقت گزارشات زیر را اپدیت نمایید\\:
-{formatted_subfields} 
-[ESFA Eyes](https://kavosh\\.online/hours/esfa_eyes_dashbord)
-"""
+‏🔴
+{formatted_persian_require_to_update_subfields}
+‏🟠
+{formatted_persian_warning_subfields}
+[Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)"""
+
         self.send_telegram_message_with_retry(ADMIN_ID[0], message)
     
     def is_inside_valid_hours(self):
@@ -99,8 +107,7 @@ class Command(BaseCommand):
         
         current_date = jdt.datetime.now()
         
-        require_to_update_subfields_dictionary = {field_name: [] for field_name in ESFAEYES_FIELD_NAMES}
-        warning_subfields_dictionary = {field_name: [] for field_name in ESFAEYES_FIELD_NAMES}
+        subfields_dictionary = {field_name: {"require_to_update": [], "warning": []} for field_name in ESFAEYES_FIELD_NAMES}
         
         for report_field in ESFAEYES_FIELD_NAMES:
             for sub_field in Eyes_report[report_field]:
@@ -111,19 +118,17 @@ class Command(BaseCommand):
                 diff_in_hours = diff.total_seconds() / 3600
 
                 if diff_in_hours > interval_in_hours:
-                    require_to_update_subfields_dictionary[report_field].append(sub_field)
+                    subfields_dictionary[report_field]["require_to_update"].append(sub_field)
                 elif diff_in_hours * 2 > interval_in_hours:
-                    warning_subfields_dictionary[report_field].append(sub_field)
+                    subfields_dictionary[report_field]["warning"].append(sub_field)
                     
-        self.send_warning_alerts_users(require_to_update_subfields_dictionary)
+        # self.send_warning_alerts_users(subfields_dictionary)
+        self.send_warning_alerts_admin(subfields_dictionary)
     
     def send_warning_alerts_users(self, subfields_dict):
         """Send Telegram alert to user with retry logic"""
         for field_name in subfields_dict:   # international_finance_info, ...
             if subfields_dict[field_name]:  # ['balance_dollars', 'china_production_orders'], ...
-                print("\n-----")
-                print(field_name)
-                print(subfields_dict[field_name])
                 persian_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]]
                 formatted_subfields = '\n'.join(f"    \\-{s}" for s in persian_subfields)
                 print(formatted_subfields)
@@ -142,6 +147,33 @@ class Command(BaseCommand):
                             self.style.ERROR(f"Failed to send message to {chat_id} after all retry attempts")
                         )
 
+    def send_warning_alerts_admin(self, subfields_dict):
+        for field_name in subfields_dict:   # financial_info, international_finance_info, ...
+            if subfields_dict[field_name]["require_to_update"]:
+                print("\n-----")
+                print(field_name)
+                print(f"req: { subfields_dict[field_name]['require_to_update'] }") 
+                print(f"warning: { subfields_dict[field_name]['warning'] }")
+                persian_require_to_update_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]['require_to_update']]
+                formatted_persian_require_to_update_subfields = '\n'.join(f"    \\-{s}" for s in persian_require_to_update_subfields)
+                persian_warning_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]['warning']]
+                formatted_persian_warning_subfields = '\n'.join(f"    \\-{s}" for s in persian_warning_subfields)
+                message = f""" *درود*
+مدتی است که گزارش *Esfa Eyes* خود را ارسال نکرده اید\\.
+لطفا در اسرع وقت گزارشات زیر را اپدیت نمایید\\:
+🔴
+{formatted_persian_require_to_update_subfields} 
+🟠
+{formatted_persian_warning_subfields} 
+Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
+"""
+                success = self.send_telegram_message_with_retry(ADMIN_ID[0], message)
+                if not success:
+                    logger.error(f"\nADMIN---Failed to send message to {ADMIN_ID[0]} after all retry attempts")
+                    self.stdout.write(
+                        self.style.ERROR(f"ADMIN---Failed to send message to {ADMIN_ID[0]} after all retry attempts")
+                    )
+                
     def send_telegram_message_with_retry(self, chat_id, message, max_retries=10):
         for attempt in range(max_retries + 1):
             try:
@@ -178,11 +210,38 @@ class Command(BaseCommand):
                     
             except RequestException as e:
                 if hasattr(e, 'response') and e.response is not None and e.response.status_code == 400:
-                    logger.info(f"User {chat_id} hasn't started the bot yet (HTTP 400). Skipping retries.")
-                    self.stdout.write(
-                        self.style.WARNING(f"User {chat_id} hasn't started the bot yet. Message not delivered.")
+                    try:
+                        error_text = e.response.text if hasattr(e.response, 'text') else str(e.response.content)
+                        # Try to parse JSON error response
+                        import json
+                        try:
+                            error_data = json.loads(e.response.text)
+                            error_description = error_data.get('description', 'Unknown error')
+                            error_code = error_data.get('error_code', 400)
+                        except (json.JSONDecodeError, AttributeError):
+                            error_description = error_text
+                            error_code = 400
+                    except Exception:
+                        error_description = str(e)
+                        error_code = 400
+                    
+                    logger.error(
+                        f"Telegram API 400 error for {chat_id} - Code: {error_code}, "
+                        f"Description: {error_description}"
                     )
-                    return False
+                    self.stdout.write(
+                        self.style.ERROR(
+                            f"Telegram API error for {chat_id}: {error_description}"
+                        )
+                    )
+                    
+                    # Check if it's specifically a "user hasn't started bot" error
+                    if "chat not found" in error_description.lower() or "bot was blocked" in error_description.lower():
+                        logger.info(f"User {chat_id} hasn't started the bot or blocked it. Skipping retries.")
+                        return False
+                    else:
+                        # For other 400 errors (like parsing errors), don't retry but show the actual error
+                        return False
 
                 if attempt < max_retries:
                     # For other request exceptions, use shorter delays
