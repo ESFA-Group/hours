@@ -36,6 +36,7 @@ class User(AbstractUser):
     is_InternationalFinanceManager = models.BooleanField("is_InternationalFinanceManager", default=False)
     is_InternationalSalesManager = models.BooleanField("is_InternationalSalesManager", default=False)
     is_ProductionManager = models.BooleanField("is_ProductionManager", default=False)
+    is_ProductionManagerR131 = models.BooleanField("is_ProductionManager", default=False)
 
     # personal info
     is_active = models.BooleanField("is_active", default=True)
