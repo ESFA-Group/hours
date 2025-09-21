@@ -27,6 +27,8 @@ class UserAdmin(admin.ModelAdmin):
         'is_InternationalFinanceManager',
         'is_InternationalSalesManager',
         'is_ProductionManager',
+        'is_ProductionManagerReadonly',
+        'is_R131ProductionManager',
         'is_PaymentManager',
         'user_permissions',
         'groups'

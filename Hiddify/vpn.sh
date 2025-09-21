@@ -1,0 +1,1 @@
+HiddifyCli run -c https://de11pooya.1qwertyuiopasdfghjklzxcvbnmmnbvcxzlkjhgfdsapoiuytrewq1234567890.com:2096/1qwertyuiopasdfghjklzxcvbnmmnbvcxzlkjhgfdsapoiuytrewq1234567890/ESFAGroup_2

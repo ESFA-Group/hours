@@ -16,4 +16,7 @@ error.log
 *.zip
 *.hex
 hours/*.sqlite3
-temp.py
+temp*.py
+Hiddify/data
+Hiddify/webui
+Hiddify/cache.db

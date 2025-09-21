@@ -23,7 +23,7 @@ class EsfaEyesApiView(APIView):
 		user = self.request.user
 		esfa_eyes_obj, created = EsfaEyes.objects.get_or_create(year=year)
 		
-		if user.is_superuser and not (user.is_FinancialManager or user.is_InternationalFinanceManager or user.is_InternationalSalesManager or user.is_ProductionManager):
+		if user.is_superuser and not (user.is_FinancialManager or user.is_InternationalFinanceManager or user.is_InternationalSalesManager or user.is_ProductionManager or user.is_R131ProductionManager or user.is_ProductionManagerReadonly):
 			return Response({"title": "Access denied", "message": "Superuser cannot edit esfa eyes data"}, status=status.HTTP_403_FORBIDDEN)
 
 		shared_keys_found = False
@@ -46,7 +46,14 @@ class EsfaEyesApiView(APIView):
 		for innerfield in new_field_data:
 			old = current_field_data[innerfield]
 			new = new_field_data[innerfield]
-			new_structed_data = EsfaEyesInfo(new['_info'], old['UPDATE_INTERVAL_DAYS']).__dict__
+			
+			updated_info = old['_info'].copy()
+			
+			for key, value in new['_info'].items():
+				if key in updated_info:
+					updated_info[key] = value
+			
+			new_structed_data = EsfaEyesInfo(updated_info, old['UPDATE_INTERVAL_DAYS']).__dict__
 			current_field_data[innerfield] = new_structed_data
 		setattr(esfa_eyes_obj, field_name, current_field_data)
 		esfa_eyes_obj.save()
