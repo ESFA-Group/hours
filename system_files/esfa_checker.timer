@@ -2,8 +2,7 @@
 Description=Run ESFA Submission Checker every 6 hours
 
 [Timer]
-OnBootSec=10min
-OnUnitActiveSec=
+OnUnitActiveSec=10s
 Unit=esfa_checker.service
 
 [Install]

@@ -62,7 +62,8 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         self.stdout.write(f"Checking for overdue reports... Dry run: {dry_run}")
         if dry_run:
-            self.dry_run()
+            # self.dry_run()
+            print(f"run in dry run {jdt.datetime.now().hour}:{jdt.datetime.now().minute}:{jdt.datetime.now().second}")
             return
 
         self.alert()
