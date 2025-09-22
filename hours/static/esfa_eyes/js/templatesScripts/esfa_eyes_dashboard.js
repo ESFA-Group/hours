@@ -172,7 +172,7 @@ function createNumericTable(data, title, itemKeys, editable = false) {
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
-function createObjectTable(data, title, itemKeys, editable = false, add_sum = false) {
+function createObjectTable(data, title, itemKeys, editable = false, add_sum = false, percentageConfig = null) {
 	const availableItems = itemKeys.filter(key => data[key] && typeof data[key]._info === 'object');
 	if (availableItems.length === 0) return;
 
@@ -181,10 +181,9 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 	const firstItemInfo = data[availableItems[0]]._info;
 	const subItemHeaders = Object.keys(firstItemInfo);
 
-	// --- MODIFIED: Header order changed ---
 	let tableHeader = '<th>عنوان</th>';
 	if (add_sum) {
-		tableHeader += '<th>مجموع</th>'; // Sum header now comes first
+		tableHeader += '<th class="table-info">مجموع</th>';
 	}
 	subItemHeaders.forEach(header => tableHeader += `<th>${header}</th>`);
 	tableHeader += '<th>آخرین بروزرسانی</th>';
@@ -201,10 +200,8 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 
-		// --- MODIFIED: Row construction logic updated ---
 		let rowSum = 0;
-		let dataCells = ''; // We'll build the data cells string first
-
+		let dataCells = '';
 		subItemHeaders.forEach(header => {
 			const value = item._info[header] || 0;
 			if (add_sum) {
@@ -213,16 +210,47 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 			dataCells += `<td class="data-cell" contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
 
-		// Now, assemble the full row in the correct order
-		let row = `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td>`;
+		let row = `<tr class="${bgColor}" data-row-key="${key}"><td>${titleMapping[key] || key}</td>`;
 		if (add_sum) {
-			row += `<td class="row-sum-cell" data-key="${key}" style="font-weight: bold;">${rowSum.toLocaleString()}</td>`;
+			row += `<td class="row-sum-cell table-info" data-key="${key}" style="font-weight: bold;">${rowSum.toLocaleString()}</td>`;
 		}
-		row += dataCells; // Add the monthly data cells
-		row += `<td>${formattedDate}</td></tr>`; // Add the final date cell
-
+		row += dataCells;
+		row += `<td>${formattedDate}</td></tr>`;
 		tableBody += row;
 	});
+
+	if (percentageConfig) {
+		const numData = data[percentageConfig.numeratorKey];
+		const denKeysData = percentageConfig.denominatorKeys.map(key => data[key]);
+
+		if (numData && denKeysData.every(d => d)) {
+			let pRow = `<tr class="percentage-row table-info" style="font-weight: bold;"><td>${percentageConfig.title}</td>`;
+
+			if (add_sum) {
+				let totalNum = 0;
+				let totalDen = 0;
+				subItemHeaders.forEach(header => {
+					totalNum += numData._info[header] || 0;
+					denKeysData.forEach(denData => {
+						totalDen += denData._info[header] || 0;
+					});
+				});
+				const totalPercentage = totalDen === 0 ? 0 : (totalNum / totalDen) * 100;
+				pRow += `<td class="percentage-cell-sum table-info">${totalPercentage.toFixed(1)}%</td>`;
+			}
+
+			subItemHeaders.forEach(header => {
+				const numerator = numData._info[header] || 0;
+				const denominator = denKeysData.reduce((sum, denData) => sum + (denData._info[header] || 0), 0);
+				const percentage = denominator === 0 ? 0 : (numerator / denominator) * 100;
+				pRow += `<td class="percentage-cell" data-subkey="${header}">${percentage.toFixed(1)}%</td>`;
+			});
+
+			pRow += '<td>-</td></tr>';
+			tableBody += pRow;
+		}
+	}
+
 
 	const cardBorderColor = cardBgColor.replace('bg-', 'border-').replace('-subtle', '');
 	const cardFooter = editable ? `
@@ -232,25 +260,21 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
             </button>
         </div>` : '';
 	card.innerHTML = `
-		<div class="card h-100 ${cardBorderColor} border-2">
+        <div class="card h-100 ${cardBorderColor} border-2">
             <div class="card-header ${cardBgColor} ${cardBorderColor}">${title}</div>
-			<div class="card-body p-0">
-				<div class="table-responsive">
-					<table class="table table-striped table-hover table-vertical-lines">
-						<thead>
-							<tr class="${cardBgColor}">${tableHeader}</tr>
-						</thead>
-						<tbody>${tableBody}</tbody>
-					</table>
-				</div>
-			</div>
-			${cardFooter}
-		</div>`;
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover table-vertical-lines">
+                        <thead><tr class="${cardBgColor}">${tableHeader}</tr></thead>
+                        <tbody>${tableBody}</tbody>
+                    </table>
+                </div>
+            </div>
+            ${cardFooter}
+        </div>`;
 	document.getElementById('dashboard-container').appendChild(card);
 
-	// The event listener does not need to be changed. It correctly finds the
-	// row and sum cell using data-key, regardless of column order.
-	if (add_sum && editable) {
+	if (editable) {
 		const table = card.querySelector('table');
 		table.addEventListener('input', (event) => {
 			const targetCell = event.target;
@@ -258,14 +282,36 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 				const key = targetCell.dataset.key;
 				if (!key) return;
 
-				let newRowSum = 0;
-				table.querySelectorAll(`.data-cell[data-key="${key}"]`).forEach(cell => {
-					newRowSum += parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
-				});
+				if (add_sum) {
+					let newRowSum = 0;
+					table.querySelectorAll(`.data-cell[data-key="${key}"]`).forEach(cell => {
+						newRowSum += parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+					});
+					const sumCell = table.querySelector(`.row-sum-cell[data-key="${key}"]`);
+					if (sumCell) sumCell.innerText = newRowSum.toLocaleString();
+				}
 
-				const sumCell = table.querySelector(`.row-sum-cell[data-key="${key}"]`);
-				if (sumCell) {
-					sumCell.innerText = newRowSum.toLocaleString();
+				if (percentageConfig) {
+					const subkey = targetCell.dataset.subkey;
+					const numVal = parseInt(table.querySelector(`.data-cell[data-key="${percentageConfig.numeratorKey}"][data-subkey="${subkey}"]`)?.innerText.replace(/,/g, '') || '0', 10);
+					const denVal = percentageConfig.denominatorKeys.reduce((sum, dKey) => {
+						const cellVal = table.querySelector(`.data-cell[data-key="${dKey}"][data-subkey="${subkey}"]`)?.innerText.replace(/,/g, '') || '0';
+						return sum + parseInt(cellVal, 10);
+					}, 0);
+					const newPercentage = denVal === 0 ? 0 : (numVal / denVal) * 100;
+					const pCell = table.querySelector(`.percentage-cell[data-subkey="${subkey}"]`);
+					if (pCell) pCell.innerText = `${newPercentage.toFixed(1)}%`;
+
+					if (add_sum) {
+						const totalNum = parseInt(table.querySelector(`.row-sum-cell[data-key="${percentageConfig.numeratorKey}"]`)?.innerText.replace(/,/g, '') || '0', 10);
+						const totalDen = percentageConfig.denominatorKeys.reduce((sum, dKey) => {
+							const cellVal = table.querySelector(`.row-sum-cell[data-key="${dKey}"]`)?.innerText.replace(/,/g, '') || '0';
+							return sum + parseInt(cellVal, 10);
+						}, 0);
+						const totalPercentage = totalDen === 0 ? 0 : (totalNum / totalDen) * 100;
+						const pSumCell = table.querySelector('.percentage-cell-sum');
+						if (pSumCell) pSumCell.innerText = `${totalPercentage.toFixed(1)}%`;
+					}
 				}
 			}
 		});
@@ -297,7 +343,13 @@ async function initTables(data = null) {
 	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars'], window.USER.is_InternationalFinanceManager);
 	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_received', 'montly_installment'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager, true);
-	createObjectTable(data, 'فروش تفکیکی (بدون ارزش افزوده)', ['individual_sales', 'individual_sales_quantities', 'individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown',], window.USER.is_FinancialManager, true);
+
+	const receivedPercentageConfig = {
+		title: 'درصد دریافت شده',
+		numeratorKey: 'individual_sales_total_received',
+		denominatorKeys: ['individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown']
+	};
+	createObjectTable(data, 'فروش تفکیکی (بدون ارزش افزوده)', ['individual_sales', 'individual_sales_quantities', 'individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown',], window.USER.is_FinancialManager, true, receivedPercentageConfig);
 	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager || window.USER.is_ProductionManager || window.USER.is_R131ProductionManager); // dont add || window.USER.is_ProductionManagerReadonly
 	createNumericTable(data, 'حقوق کارکنان', ['total_insured_staffs', 'total_uninsured_staffs', 'total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager);
 }
