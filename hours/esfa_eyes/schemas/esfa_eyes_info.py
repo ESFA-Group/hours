@@ -44,6 +44,6 @@ class EsfaEyesProductInfo(EsfaEyesInfo):
                 "Pishtaz": 0,
                 "121": 0,
                 "131": 0,
-                "Software": 0,
+                "Other": 0,
             }, update_interval_days=31):
         super().__init__(info, update_interval_days)

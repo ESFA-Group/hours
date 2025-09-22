@@ -1,17 +1,20 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (تومان)',
 	balance_rials: 'موجودی حساب‌های غیر رسمی (تومان)',
 	balance_dollars: 'موجودی دلاری',
-	montly_checks_recieved: 'چک‌های دریافتی (تومان)',
+	montly_checks_received: 'چک‌های دریافتی (تومان)',
 	montly_checks_issued: 'چک‌های صادر شده (تومان)',
 	montly_installment: 'اقساط وام های دریافتی (تومان)',
 	montly_total_sales: 'فروش کل داخل (تومان)',
 	montly_international_total_sales: 'فروش کل خارج (دلار)',
 	individual_sales: 'فروش تفکیکی داخل (تومان)',
-	individual_sales_quantities: '(تعداد) فروش تفکیکی داخل',
+	individual_sales_quantities: 'فروش تفکیکی داخل (تعداد)',
+	individual_sales_total_received: 'مجموع دریافتی تا این لحظه (تومان)',
+	individual_sales_check_received: 'مقدار چک دریافت شده (تومان)',
+	individual_sales_unknown: 'مقدار نامعلوم (تومان)',
 	international_individual_sales: 'فروش تفکیکی خارج (تومان)',
 	international_individual_sales_quantities: '(تعداد) فروش تفکیکی خارج',
 	ready_products: 'موجودی تولیدشده آماده تحویل',
@@ -28,11 +31,12 @@ const keyToModelFieldMap = {
 	// financial_info
 	'balance_rials_official': 'financial_info',
 	'balance_rials': 'financial_info',
-	'montly_checks_recieved': 'financial_info',
+	'montly_checks_received': 'financial_info',
 	'montly_checks_issued': 'financial_info',
 	'montly_installment': 'financial_info',
 	'montly_total_sales': 'financial_info',
 	'individual_sales': 'financial_info',
+	'individual_sales_quantities': 'financial_info',
 	'total_insured_staffs': 'financial_info',
 	'total_uninsured_staffs': 'financial_info',
 	'total_salary_paid': 'financial_info',
@@ -45,6 +49,7 @@ const keyToModelFieldMap = {
 	// international_sales_info
 	'montly_international_total_sales': 'international_sales_info',
 	'international_individual_sales': 'international_sales_info',
+	'international_individual_sales_quantities': 'international_sales_info',
 	'turkiye_inventory': 'international_sales_info',
 
 	// products_info
@@ -167,7 +172,7 @@ function createNumericTable(data, title, itemKeys, editable = false) {
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
-function createObjectTable(data, title, itemKeys, editable = false) {
+function createObjectTable(data, title, itemKeys, editable = false, add_sum = false) {
 	const availableItems = itemKeys.filter(key => data[key] && typeof data[key]._info === 'object');
 	if (availableItems.length === 0) return;
 
@@ -175,11 +180,18 @@ function createObjectTable(data, title, itemKeys, editable = false) {
 	card.className = 'col-lg-12 mb-4';
 	const firstItemInfo = data[availableItems[0]]._info;
 	const subItemHeaders = Object.keys(firstItemInfo);
+
+	// --- MODIFIED: Header order changed ---
 	let tableHeader = '<th>عنوان</th>';
+	if (add_sum) {
+		tableHeader += '<th>مجموع</th>'; // Sum header now comes first
+	}
 	subItemHeaders.forEach(header => tableHeader += `<th>${header}</th>`);
 	tableHeader += '<th>آخرین بروزرسانی</th>';
+
 	let tableBody = '';
 	let cardBgColor = 'bg-success-subtle';
+
 	availableItems.forEach(key => {
 		const item = data[key];
 		const bgColor = getBackgroundColor(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
@@ -188,13 +200,30 @@ function createObjectTable(data, title, itemKeys, editable = false) {
 		const [datePart, timePart] = item.last_modify_time.split(' ');
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
-		let row = `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td>`;
+
+		// --- MODIFIED: Row construction logic updated ---
+		let rowSum = 0;
+		let dataCells = ''; // We'll build the data cells string first
+
 		subItemHeaders.forEach(header => {
-			row += `<td contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${(item._info[header] || 0).toLocaleString()}</td>`;
+			const value = item._info[header] || 0;
+			if (add_sum) {
+				rowSum += value;
+			}
+			dataCells += `<td class="data-cell" contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
-		row += `<td>${formattedDate}</td></tr>`;
+
+		// Now, assemble the full row in the correct order
+		let row = `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td>`;
+		if (add_sum) {
+			row += `<td class="row-sum-cell" data-key="${key}" style="font-weight: bold;">${rowSum.toLocaleString()}</td>`;
+		}
+		row += dataCells; // Add the monthly data cells
+		row += `<td>${formattedDate}</td></tr>`; // Add the final date cell
+
 		tableBody += row;
 	});
+
 	const cardBorderColor = cardBgColor.replace('bg-', 'border-').replace('-subtle', '');
 	const cardFooter = editable ? `
         <div class="card-footer text-center">
@@ -204,16 +233,12 @@ function createObjectTable(data, title, itemKeys, editable = false) {
         </div>` : '';
 	card.innerHTML = `
 		<div class="card h-100 ${cardBorderColor} border-2">
-            <div class="card-header ${cardBgColor} ${cardBorderColor}">
-				${title}
-			</div>
+            <div class="card-header ${cardBgColor} ${cardBorderColor}">${title}</div>
 			<div class="card-body p-0">
 				<div class="table-responsive">
 					<table class="table table-striped table-hover table-vertical-lines">
 						<thead>
-							<tr class="${cardBgColor}">
-								${tableHeader}
-							</tr>
+							<tr class="${cardBgColor}">${tableHeader}</tr>
 						</thead>
 						<tbody>${tableBody}</tbody>
 					</table>
@@ -222,6 +247,29 @@ function createObjectTable(data, title, itemKeys, editable = false) {
 			${cardFooter}
 		</div>`;
 	document.getElementById('dashboard-container').appendChild(card);
+
+	// The event listener does not need to be changed. It correctly finds the
+	// row and sum cell using data-key, regardless of column order.
+	if (add_sum && editable) {
+		const table = card.querySelector('table');
+		table.addEventListener('input', (event) => {
+			const targetCell = event.target;
+			if (targetCell.classList.contains('data-cell')) {
+				const key = targetCell.dataset.key;
+				if (!key) return;
+
+				let newRowSum = 0;
+				table.querySelectorAll(`.data-cell[data-key="${key}"]`).forEach(cell => {
+					newRowSum += parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+				});
+
+				const sumCell = table.querySelector(`.row-sum-cell[data-key="${key}"]`);
+				if (sumCell) {
+					sumCell.innerText = newRowSum.toLocaleString();
+				}
+			}
+		});
+	}
 }
 
 function getBackgroundColor(lastModifyTime, updateIntervalDays) {
@@ -247,9 +295,9 @@ async function initTables(data = null) {
 
 	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars'], window.USER.is_InternationalFinanceManager);
-	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_recieved', 'montly_installment'], window.USER.is_FinancialManager);
-	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager);
-	createObjectTable(data, 'فروش تفکیکی', ['individual_sales', 'international_individual_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager);
+	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_received', 'montly_installment'], window.USER.is_FinancialManager);
+	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager, true);
+	createObjectTable(data, 'فروش تفکیکی (بدون ارزش افزوده)', ['individual_sales', 'individual_sales_quantities', 'individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown',], window.USER.is_FinancialManager, true);
 	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager || window.USER.is_ProductionManager || window.USER.is_R131ProductionManager); // dont add || window.USER.is_ProductionManagerReadonly
 	createNumericTable(data, 'حقوق کارکنان', ['total_insured_staffs', 'total_uninsured_staffs', 'total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager);
 }

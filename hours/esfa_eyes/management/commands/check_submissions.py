@@ -30,7 +30,7 @@ TITLEMAPPING = {
 	"balance_rials_official": 'موجودی حساب‌های رسمی',
 	"balance_rials": 'موجودی حساب‌های غیر رسمی',
 	"balance_dollars": 'موجودی دلاری',
-	"montly_checks_recieved": 'چک‌های دریافتی',
+	"montly_checks_received": 'چک‌های دریافتی',
 	"montly_checks_issued": 'چک‌های صادر شده',
 	"montly_installment": 'اقساط وام های دریافتی',
 	"montly_total_sales": 'فروش کل داخل',
