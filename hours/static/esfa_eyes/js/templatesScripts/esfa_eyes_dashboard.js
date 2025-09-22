@@ -2,20 +2,20 @@ let originalApiData = {};
 let Debug = true;
 
 const titleMapping = {
-	balance_rials_official: 'موجودی حساب‌های رسمی (تومان)',
-	balance_rials: 'موجودی حساب‌های غیر رسمی (تومان)',
+	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
+	balance_rials: 'موجودی حساب‌های غیر رسمی (ریال)',
 	balance_dollars: 'موجودی دلاری',
-	montly_checks_received: 'چک‌های دریافتی (تومان)',
-	montly_checks_issued: 'چک‌های صادر شده (تومان)',
-	montly_installment: 'اقساط وام های دریافتی (تومان)',
-	montly_total_sales: 'فروش کل داخل (تومان)',
+	montly_checks_received: 'چک‌های دریافتی (ریال)',
+	montly_checks_issued: 'چک‌های صادر شده (ریال)',
+	montly_installment: 'اقساط وام های دریافتی (ریال)',
+	montly_total_sales: 'فروش کل داخل (ریال)',
 	montly_international_total_sales: 'فروش کل خارج (دلار)',
-	individual_sales: 'فروش تفکیکی داخل (تومان)',
+	individual_sales: 'فروش تفکیکی داخل (ریال)',
 	individual_sales_quantities: 'فروش تفکیکی داخل (تعداد)',
-	individual_sales_total_received: 'مجموع دریافتی تا این لحظه (تومان)',
-	individual_sales_check_received: 'مقدار چک دریافت شده (تومان)',
-	individual_sales_unknown: 'مقدار نامعلوم (تومان)',
-	international_individual_sales: 'فروش تفکیکی خارج (تومان)',
+	individual_sales_total_received: 'مجموع دریافتی تا این لحظه (ریال)',
+	individual_sales_check_received: 'مقدار چک دریافت شده (ریال)',
+	individual_sales_unknown: 'مقدار نامعلوم (ریال)',
+	international_individual_sales: 'فروش تفکیکی خارج (ریال)',
 	international_individual_sales_quantities: '(تعداد) فروش تفکیکی خارج',
 	ready_products: 'موجودی تولیدشده آماده تحویل',
 	unproduced_workshop_inventory: 'موجودی کارگاه تولید نشده',
@@ -23,8 +23,8 @@ const titleMapping = {
 	china_production_orders: 'سفارشات چین درحال تولید',
 	total_insured_staffs: 'تعداد کارکنان بیمه‌ای',
 	total_uninsured_staffs: 'تعداد کارکنان غیر بیمه',
-	total_salary_paid: 'مجموع کل حقوق (تومان)',
-	total_insurance_paid: 'مجموع بیمه پرداختی (تومان)'
+	total_salary_paid: 'مجموع کل حقوق (ریال)',
+	total_insurance_paid: 'مجموع بیمه پرداختی (ریال)'
 };
 
 const keyToModelFieldMap = {
@@ -71,7 +71,7 @@ async function getCurrencies() {
 				"price": 100150,
 				"change_value": -300,
 				"change_percent": -0.3,
-				"unit": "تومان"
+				"unit": "ریال"
 			},
 			"CNY": {
 				"date": "1404/06/06",
@@ -83,7 +83,7 @@ async function getCurrencies() {
 				"price": 14170,
 				"change_value": 130,
 				"change_percent": 0.93,
-				"unit": "تومان"
+				"unit": "ریال"
 			}
 		};
 	}
@@ -351,7 +351,8 @@ async function initTables(data = null) {
 	};
 	createObjectTable(data, 'فروش تفکیکی (بدون ارزش افزوده)', ['individual_sales', 'individual_sales_quantities', 'individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown',], window.USER.is_FinancialManager, true, receivedPercentageConfig);
 	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager || window.USER.is_ProductionManager || window.USER.is_R131ProductionManager); // dont add || window.USER.is_ProductionManagerReadonly
-	createNumericTable(data, 'حقوق کارکنان', ['total_insured_staffs', 'total_uninsured_staffs', 'total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager);
+	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
+	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
 }
 
 function fillYears(year) {

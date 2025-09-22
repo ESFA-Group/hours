@@ -19,8 +19,8 @@ def default_financial_info():
 		'individual_sales_unknown': EsfaEyesProductInfo().__dict__,
 		'total_insured_staffs': EsfaEyesInfo(0, 31).__dict__,
 		'total_uninsured_staffs': EsfaEyesInfo(0, 31).__dict__,
-		'total_salary_paid': EsfaEyesInfo(0, 31).__dict__,
-		'total_insurance_paid': EsfaEyesInfo(0, 31).__dict__,
+		'total_salary_paid': EsfaEyesMonltyInfo().__dict__,
+		'total_insurance_paid': EsfaEyesMonltyInfo().__dict__,
 	}
 
 def default_international_finance_info():
