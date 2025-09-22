@@ -1,0 +1,13 @@
+[Unit]
+Description=ESFA Submission Checker Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=mrn
+Group=mrn
+WorkingDirectory=/home/mrn/hours/
+ExecStart=/bin/bash -c "/home/mrn/hours/Hiddify/vpn.sh && /home/mrn/hours/venv/bin/python manage.py check_submissions --dry-run"
+
+[Install]
+WantedBy=multi-user.target

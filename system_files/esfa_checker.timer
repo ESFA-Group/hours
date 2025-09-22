@@ -1,0 +1,10 @@
+[Unit]
+Description=Run ESFA Submission Checker every 6 hours
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=
+Unit=esfa_checker.service
+
+[Install]
+WantedBy=timers.target
