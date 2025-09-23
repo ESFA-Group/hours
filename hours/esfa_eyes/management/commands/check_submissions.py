@@ -22,8 +22,8 @@ BOT_TOKEN= "7985758239:AAECktRZy7htev_itYxdriN5YPJXyLgs4EI"
 BOT_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/"
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 PROXIES = {
-    'http': 'http://127.0.0.1:12334',
-    'https': 'http://127.0.0.1:12334',
+    'http': 'http://127.0.0.1:2334',
+    'https': 'http://127.0.0.1:2334',
 }
 
 TITLEMAPPING = {
@@ -63,7 +63,6 @@ class Command(BaseCommand):
         self.stdout.write(f"Checking for overdue reports... Dry run: {dry_run}")
         if dry_run:
             self.dry_run()
-            print(f"run in dry run {jdt.datetime.now().hour}:{jdt.datetime.now().minute}:{jdt.datetime.now().second}")
             return
 
         self.alert()
@@ -125,18 +124,20 @@ class Command(BaseCommand):
         self.send_warning_alerts_admin(subfields_dictionary)
     
     def send_warning_alerts_users(self, subfields_dict):
-        """Send Telegram alert to user with retry logic"""
-        for field_name in subfields_dict:   # international_finance_info, ...
-            if subfields_dict[field_name]:  # ['balance_dollars', 'china_production_orders'], ...
-                persian_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]]
-                formatted_subfields = '\n'.join(f"    \\-{s}" for s in persian_subfields)
-                print(formatted_subfields)
-                
+        for field_name in subfields_dict:   # financial_info, international_finance_info, ...
+            if subfields_dict[field_name]["require_to_update"]:
+                persian_require_to_update_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]['require_to_update']]
+                formatted_persian_require_to_update_subfields = '\n'.join(f"    \\-{s}" for s in persian_require_to_update_subfields)
+                persian_warning_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]['warning']]
+                formatted_persian_warning_subfields = '\n'.join(f"    \\-{s}" for s in persian_warning_subfields)
                 message = f""" *درود*
 مدتی است که گزارش *Esfa Eyes* خود را ارسال نکرده اید\\.
 لطفا در اسرع وقت گزارشات زیر را اپدیت نمایید\\:
-{formatted_subfields} 
-[ESFA Eyes](https://kavosh\\.online/hours/esfa_eyes_dashbord)
+‏🔴
+{formatted_persian_require_to_update_subfields} 
+‏🟠
+{formatted_persian_warning_subfields} 
+Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
 """
                 for chat_id in ESFAEYES_FIELD_TO_TELEGRAM_ID[field_name]:
                     success = self.send_telegram_message_with_retry(chat_id, message)
