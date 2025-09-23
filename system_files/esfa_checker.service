@@ -6,8 +6,7 @@ After=network.target
 Type=oneshot
 User=mrn
 Group=mrn
-WorkingDirectory=/home/mrn/hours/
-ExecStart=/bin/bash -c "/home/mrn/hours/Hiddify/vpn.sh && /home/mrn/hours/venv/bin/python manage.py check_submissions --dry-run"
+ExecStart=/bin/bash /home/mrn/hours/Hiddify/vpn.sh
 
 [Install]
 WantedBy=multi-user.target
