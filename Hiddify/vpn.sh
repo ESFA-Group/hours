@@ -11,7 +11,7 @@ VPN_PID=$!
 
 sleep 5
 
-cd /home/mrn/hours/
+cd /home/mrn/hours/hours
 /home/mrn/hours/venv/bin/python manage.py check_submissions --dry-run
 
 exit 0
