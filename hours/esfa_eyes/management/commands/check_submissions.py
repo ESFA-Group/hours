@@ -107,6 +107,10 @@ class Command(BaseCommand):
         
         subfields_dictionary = {field_name: {"require_to_update": [], "warning": []} for field_name in ESFAEYES_FIELD_NAMES}
         
+        total_require_update = 0
+        total_warning = 0
+        user_status = {}
+        
         for report_field in ESFAEYES_FIELD_NAMES:
             for sub_field in Eyes_report[report_field]:
                 interval_in_hours =  Eyes_report[report_field][sub_field]['UPDATE_INTERVAL_DAYS']*24
@@ -117,11 +121,22 @@ class Command(BaseCommand):
 
                 if diff_in_hours > interval_in_hours:
                     subfields_dictionary[report_field]["require_to_update"].append(sub_field)
+                    total_require_update += 1
                 elif diff_in_hours * 2 > interval_in_hours:
                     subfields_dictionary[report_field]["warning"].append(sub_field)
+                    total_warning += 1
+        
+        for field_name, user_ids in ESFAEYES_FIELD_TO_TELEGRAM_ID.items():
+            for user_id in user_ids:
+                user_status[user_id] = {
+                    'field': field_name,
+                    'require_update_count': len(subfields_dictionary[field_name]["require_to_update"]),
+                    'warning_count': len(subfields_dictionary[field_name]["warning"]),
+                    'total_responsible': len(Eyes_report[field_name])
+                }
                     
-        # self.send_warning_alerts_users(subfields_dictionary)
-        self.send_warning_alerts_admin(subfields_dictionary)
+        self.send_warning_alerts_users(subfields_dictionary)
+        self.send_warning_alerts_admin(Eyes_report, subfields_dictionary, total_require_update, total_warning, user_status)
     
     def send_warning_alerts_users(self, subfields_dict):
         for field_name in subfields_dict:   # financial_info, international_finance_info, ...
@@ -147,33 +162,61 @@ Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
                             self.style.ERROR(f"Failed to send message to {chat_id} after all retry attempts")
                         )
 
-    def send_warning_alerts_admin(self, subfields_dict):
-        for field_name in subfields_dict:   # financial_info, international_finance_info, ...
-            if subfields_dict[field_name]["require_to_update"]:
-                print("\n-----")
-                print(field_name)
-                print(f"req: { subfields_dict[field_name]['require_to_update'] }") 
-                print(f"warning: { subfields_dict[field_name]['warning'] }")
-                persian_require_to_update_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]['require_to_update']]
-                formatted_persian_require_to_update_subfields = '\n'.join(f"    \\-{s}" for s in persian_require_to_update_subfields)
-                persian_warning_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]['warning']]
-                formatted_persian_warning_subfields = '\n'.join(f"    \\-{s}" for s in persian_warning_subfields)
-                message = f""" *درود*
-مدتی است که گزارش *Esfa Eyes* خود را ارسال نکرده اید\\.
-لطفا در اسرع وقت گزارشات زیر را اپدیت نمایید\\:
-🔴
-{formatted_persian_require_to_update_subfields} 
-🟠
-{formatted_persian_warning_subfields} 
-Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
-"""
-                success = self.send_telegram_message_with_retry(ADMIN_ID[0], message)
-                if not success:
-                    logger.error(f"\nADMIN---Failed to send message to {ADMIN_ID[0]} after all retry attempts")
-                    self.stdout.write(
-                        self.style.ERROR(f"ADMIN---Failed to send message to {ADMIN_ID[0]} after all retry attempts")
-                    )
-                
+    def send_warning_alerts_admin(self, Eyes_report, subfields_dict, total_require_update, total_warning, user_status):
+        # Create comprehensive admin overview message
+        overview_message = f"""*ESFA Eyes Status Report*
+
+    *📈 Overall Statistics:*
+    • 🔴 : {total_require_update}
+    • 🟠 : {total_warning}
+    • ✅ : {sum(len(Eyes_report[field]) for field in ESFAEYES_FIELD_NAMES) - total_require_update - total_warning}
+
+\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=
+    *👥 User Status Breakdown:*
+    """
+        
+        # Add user-specific status
+        for user_id, status in user_status.items():
+            user_name = self._get_user_name(user_id)  # You'll need to implement this method
+            overview_message += f"""
+    • *{user_name}* \\({status['field']}\\):
+    \\- 🔴 : {status['require_update_count']}
+    \\- 🟠 : {status['warning_count']}
+    \\- 📋 Total responsible: {status['total_responsible']}
+    \\- 📊 Completion rate: {round((status['total_responsible'] - status['require_update_count'] - status['warning_count']) / status['total_responsible'] * 100)}%
+    """
+        
+        # Add field-by-field breakdown
+        overview_message += "\n\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\=\\="
+        overview_message += "\n*📋 Field\\-by\\-Field Breakdown:*"
+        for field_name in ESFAEYES_FIELD_NAMES:
+            total_subfields = len(Eyes_report[field_name])
+            req_update = len(subfields_dict[field_name]["require_to_update"])
+            warnings = len(subfields_dict[field_name]["warning"])
+            
+            overview_message += f"""
+    • *{field_name.replace('_', ' ').title()}:*
+    \\- 🔴 {req_update} \\| 🟠 {warnings} \\| ✅ {total_subfields - req_update - warnings}
+    \\- Status: {'🔴 Critical' if req_update > 0 else '🟠 Warning' if warnings > 0 else '✅ Good'}
+    """
+        
+        overview_message += f"""
+
+    *⏰ Last Check:* {jdt.datetime.now().strftime('%Y_%m_%d %H:%M:%S')}
+    """
+        for admin_id in ADMIN_ID:
+            success = self.send_telegram_message_with_retry(admin_id, overview_message)
+            if not success:
+                logger.error(f"ADMIN---Failed to send overview to admin {admin_id} after all retry attempts")
+                self.stdout.write(
+                    self.style.ERROR(f"ADMIN---Failed to send overview to admin {admin_id} after all retry attempts")
+                )
+
+        for boss_id in BOSS_ID:
+            success = self.send_telegram_message_with_retry(boss_id, overview_message)
+            if not success:
+                logger.error(f"BOSS---Failed to send overview to boss {boss_id}")
+            
     def send_telegram_message_with_retry(self, chat_id, message, max_retries=10):
         for attempt in range(max_retries + 1):
             try:
@@ -297,3 +340,12 @@ Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
         except RequestException as e:
             logger.error(f"Failed to send Telegram message to {chat_id}: {e}")
             raise
+        
+    def _get_user_name(self, user_id):
+        user_name_map = {
+            78510872: "Amiri",
+            63708619: "Zahedi", 
+            352162682: "Dadashi",
+            237628637: "Colaji"
+        }
+        return user_name_map.get(user_id, f"User_{user_id}")
