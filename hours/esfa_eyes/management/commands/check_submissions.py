@@ -11,10 +11,10 @@ from requests.exceptions import ProxyError, Timeout, ConnectionError, RequestExc
 logger = logging.getLogger(__name__)
 ESFAEYES_FIELD_NAMES = ['financial_info', 'international_finance_info', 'international_sales_info', 'products_info']
 ESFAEYES_FIELD_TO_TELEGRAM_ID = {
-    'financial_info': [78510872],               # amiri
-    'international_finance_info': [63708619],   # zahedi
-    'international_sales_info': [352162682],    # dadashi
-    'products_info': [237628637],               # colaji
+    'financial_info': [78510872],                           # amiri
+    'international_finance_info': [63708619],               # zahedi
+    'international_sales_info': [352162682],                # dadashi
+    'products_info': [237628637, 147770648, 375630609],     # colaji, vahid, mohsen 
 }
 BOSS_ID = [103813581]
 ADMIN_ID = [293224143, 1320393742, 6372380391]
