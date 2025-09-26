@@ -350,7 +350,7 @@ async function initTables(data = null) {
 		denominatorKeys: ['individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown']
 	};
 	createObjectTable(data, 'فروش تفکیکی (بدون ارزش افزوده)', ['individual_sales', 'individual_sales_quantities', 'individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown',], window.USER.is_FinancialManager, true, receivedPercentageConfig);
-	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager || window.USER.is_ProductionManager || window.USER.is_R131ProductionManager); // dont add || window.USER.is_ProductionManagerReadonly
+	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager || window.USER.is_ProductionManager || window.USER.is_KiaProductionManager); // dont add || window.USER.is_KavoshProductionManager
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
 }

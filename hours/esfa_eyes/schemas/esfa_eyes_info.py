@@ -34,16 +34,18 @@ class EsfaEyesMonltyInfo(EsfaEyesInfo):
 
 class EsfaEyesProductInfo(EsfaEyesInfo):
     def __init__(self, info={
-                "Kavosh": 0,
-                "Tan Module": 0,
-                "Other Modules": 0,
-                "MCM": 0,
-                "Captan12": 0,
+				"T22": 0,
+				"TDM": 0,
+				"TEM": 0,
+				"CM1": 0,
+				"CB1": 0,
+				"CAPTAN12": 0,
+				"MCM": 0,
                 "Esfa Meter": 0,
-                "Kia Meter": 0,
                 "Pishtaz": 0,
                 "121": 0,
                 "131": 0,
+                "Kia Meter": 0,
                 "Other": 0,
             }, update_interval_days=31):
         super().__init__(info, update_interval_days)

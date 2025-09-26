@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -18,7 +18,11 @@ const titleMapping = {
 	international_individual_sales: 'فروش تفکیکی خارج (ریال)',
 	international_individual_sales_quantities: '(تعداد) فروش تفکیکی خارج',
 	ready_products: 'موجودی تولیدشده آماده تحویل',
+	ready_kavosh_products: 'موجودی کاوش تولیدشده آماده تحویل',
+	ready_kia_products: 'موجودی کیا تولیدشده آماده تحویل',
 	unproduced_workshop_inventory: 'موجودی کارگاه تولید نشده',
+	unproduced_kavosh_workshop_inventory: 'موجودی کاوش کارگاه تولید نشده',
+	unproduced_kia_workshop_inventory: 'موجودی کیا کارگاه تولید نشده',
 	turkiye_inventory: 'موجودی ترکیه',
 	china_production_orders: 'سفارشات چین درحال تولید',
 	total_insured_staffs: 'تعداد کارکنان بیمه‌ای',
@@ -54,7 +58,15 @@ const keyToModelFieldMap = {
 
 	// products_info
 	'unproduced_workshop_inventory': 'products_info',
-	'ready_products': 'products_info'
+	'ready_products': 'products_info',
+
+	// kavosh products_info
+	'unproduced_kavosh_workshop_inventory': 'kavosh_products_info',
+	'ready_kavosh_products': 'kavosh_products_info',
+
+	// kia products_info
+	'ready_kia_products': 'kia_products_info',
+	'unproduced_kia_workshop_inventory': 'kia_products_info',
 };
 
 // data backend connection ========================
@@ -350,7 +362,10 @@ async function initTables(data = null) {
 		denominatorKeys: ['individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown']
 	};
 	createObjectTable(data, 'فروش تفکیکی (بدون ارزش افزوده)', ['individual_sales', 'individual_sales_quantities', 'individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown',], window.USER.is_FinancialManager, true, receivedPercentageConfig);
-	createObjectTable(data, 'موجودی دستگاه‌ها', ['ready_products', 'unproduced_workshop_inventory', 'turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager || window.USER.is_ProductionManager || window.USER.is_R131ProductionManager); // dont add || window.USER.is_ProductionManagerReadonly
+	createObjectTable(data, 'موجودی دستگاه‌ها', ['turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager);
+	createObjectTable(data, 'موجودی دستگاه‌های اسفا', ['ready_products', 'unproduced_workshop_inventory'], window.USER.is_ProductionManager);
+	createObjectTable(data, 'موجودی دستگاه‌های کاوش', ['ready_kavosh_products', 'unproduced_kavosh_workshop_inventory',], window.USER.is_KavoshProductionManager); // dont add || window.USER.is_KavoshProductionManager
+	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory'], window.USER.is_KiaProductionManager);
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
 }

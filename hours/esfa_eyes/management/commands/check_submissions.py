@@ -9,14 +9,16 @@ import requests
 from requests.exceptions import ProxyError, Timeout, ConnectionError, RequestException
 
 logger = logging.getLogger(__name__)
-ESFAEYES_FIELD_NAMES = ['financial_info', 'international_finance_info', 'international_sales_info', 'products_info']
+ESFAEYES_FIELD_NAMES = ['financial_info', 'international_finance_info', 'international_sales_info', 'products_info', 'kavosh_products_info', 'kia_products_info']
 ESFAEYES_FIELD_TO_TELEGRAM_ID = {
     'financial_info': [78510872],                           # amiri
     'international_finance_info': [63708619],               # zahedi
     'international_sales_info': [352162682],                # dadashi
-    'products_info': [237628637, 147770648, 375630609],     # colaji, vahid, mohsen 
+    'products_info': [237628637],                           # colaji 
+    'kavosh_products_info': [147770648],                    # vahid 
+    'kia_products_info': [375630609],                       # mohsen 
 }
-BOSS_ID = [103813581]
+BOSS_ID = [103813581]                                       # morsali
 ADMIN_ID = [293224143, 1320393742, 6372380391]
 BOT_TOKEN= "7985758239:AAECktRZy7htev_itYxdriN5YPJXyLgs4EI"
 BOT_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/"
@@ -27,24 +29,33 @@ PROXIES = {
 }
 
 TITLEMAPPING = {
-	"balance_rials_official": 'موجودی حساب‌های رسمی',
-	"balance_rials": 'موجودی حساب‌های غیر رسمی',
+	"balance_rials_official": 'موجودی حساب‌های رسمی (ریال)',
+	"balance_rials": 'موجودی حساب‌های غیر رسمی (ریال)',
 	"balance_dollars": 'موجودی دلاری',
-	"montly_checks_received": 'چک‌های دریافتی',
-	"montly_checks_issued": 'چک‌های صادر شده',
-	"montly_installment": 'اقساط وام های دریافتی',
-	"montly_total_sales": 'فروش کل داخل',
-	"montly_international_total_sales": 'فروش کل خارج',
-	"individual_sales": 'فروش تفکیکی داخل',
-	"international_individual_sales": 'فروش تفکیکی خارج',
+	"montly_checks_received": 'چک‌های دریافتی (ریال)',
+	"montly_checks_issued": 'چک‌های صادر شده (ریال)',
+	"montly_installment": 'اقساط وام های دریافتی (ریال)',
+	"montly_total_sales": 'فروش کل داخل (ریال)',
+	"montly_international_total_sales": 'فروش کل خارج (دلار)',
+	"individual_sales": 'فروش تفکیکی داخل (ریال)',
+	"individual_sales_quantities": 'فروش تفکیکی داخل (تعداد)',
+	"individual_sales_total_received": 'مجموع دریافتی تا این لحظه (ریال)',
+	"individual_sales_check_received": 'مقدار چک دریافت شده (ریال)',
+	"individual_sales_unknown": 'مقدار نامعلوم (ریال)',
+	"international_individual_sales": 'فروش تفکیکی خارج (ریال)',
+	"international_individual_sales_quantities": '(تعداد) فروش تفکیکی خارج',
 	"ready_products": 'موجودی تولیدشده آماده تحویل',
+	"ready_kavosh_products": 'موجودی کاوش تولیدشده آماده تحویل',
+	"ready_kia_products": 'موجودی کیا تولیدشده آماده تحویل',
 	"unproduced_workshop_inventory": 'موجودی کارگاه تولید نشده',
+	"unproduced_kavosh_workshop_inventory": 'موجودی کاوش کارگاه تولید نشده',
+	"unproduced_kia_workshop_inventory": 'موجودی کیا کارگاه تولید نشده',
 	"turkiye_inventory": 'موجودی ترکیه',
 	"china_production_orders": 'سفارشات چین درحال تولید',
 	"total_insured_staffs": 'تعداد کارکنان بیمه‌ای',
 	"total_uninsured_staffs": 'تعداد کارکنان غیر بیمه',
-	"total_salary_paid": 'مجموع کل حقوق',
-	"total_insurance_paid": 'مجموع بیمه پرداختی'
+	"total_salary_paid": 'مجموع کل حقوق (ریال)',
+	"total_insurance_paid": 'مجموع بیمه پرداختی (ریال)'
 }
 
 #=====================================================================================
@@ -68,7 +79,7 @@ class Command(BaseCommand):
         self.alert()
     
     def dry_run(self):
-        if not self.is_inside_valid_hours():
+        if not self._is_inside_valid_hours():
             print("bot is sleeping...")
             return
         persian_subfields =["محموع حقوق پرداختی", "وام های گرفته شده", "موجودی حساب‌های غیر رسمی"]
@@ -88,14 +99,16 @@ class Command(BaseCommand):
 
         self.send_telegram_message_with_retry(ADMIN_ID[0], message)
     
-    def is_inside_valid_hours(self):
-        current_time = jdt.datetime.now().hour
-        if current_time < 6:
+    def _is_inside_valid_hours(self):
+        current_time = jdt.datetime.now()
+        if current_time.weekday() == 4:  # Friday is weekday 4
+            return False
+        if current_time.hour < 6:
             return False
         return True
-        
+
     def alert(self):
-        if not self.is_inside_valid_hours():
+        if not self._is_inside_valid_hours():
             print("bot is sleeping...")
             return
         Eyes_report = EsfaEyes.objects.latest('year')
@@ -346,6 +359,8 @@ Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
             78510872: "Amiri",
             63708619: "Zahedi", 
             352162682: "Dadashi",
-            237628637: "Colaji"
+            237628637: "Colaji",
+            147770648: "Hajihasani",
+            375630609: "kazempourian"
         }
         return user_name_map.get(user_id, f"User_{user_id}")

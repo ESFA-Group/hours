@@ -46,8 +46,52 @@ def default_international_sales_info():
 
 def default_products_info():
 	return {
-		"unproduced_workshop_inventory": EsfaEyesProductInfo(update_interval_days=7).__dict__,
-		"ready_products": EsfaEyesProductInfo(update_interval_days=7).__dict__,
+		"unproduced_workshop_inventory": EsfaEyesProductInfo({
+				"Esfa Meter": 0,
+				"Pishtaz": 0,
+				"Other": 0,
+			},update_interval_days=7).__dict__,
+		"ready_products": EsfaEyesProductInfo({
+				"Esfa Meter": 0,
+				"Pishtaz": 0,
+				"Other": 0,
+			},update_interval_days=7).__dict__,
+	}
+
+def default_kia_products_info():
+	return {
+		"unproduced_kia_workshop_inventory": EsfaEyesProductInfo({
+				"121": 0,
+				"131": 0,
+				"Kia Meter": 0,
+			},update_interval_days=7).__dict__,
+		"ready_kia_products": EsfaEyesProductInfo({
+				"121": 0,
+				"131": 0,
+				"Kia Meter": 0,
+			},update_interval_days=7).__dict__,
+	}
+
+def default_kavosh_products_info():
+	return {
+		"unproduced_kavosh_workshop_inventory": EsfaEyesProductInfo({
+				"T22": 0,
+				"TDM": 0,
+				"TEM": 0,
+				"CM1": 0,
+				"CB1": 0,
+				"CAPTAN12": 0,
+				"MCM": 0,
+			},update_interval_days=7).__dict__,
+		"ready_kavosh_products": EsfaEyesProductInfo({
+				"T22": 0,
+				"TDM": 0,
+				"TEM": 0,
+				"CM1": 0,
+				"CB1": 0,
+				"CAPTAN12": 0,
+				"MCM": 0,
+			},update_interval_days=7).__dict__,
 	}
 
 
@@ -57,6 +101,8 @@ class EsfaEyes(models.Model):
 	international_finance_info = models.JSONField(default=default_international_finance_info)
 	international_sales_info = models.JSONField(default=default_international_sales_info)
 	products_info = models.JSONField(default=default_products_info)
+	kavosh_products_info = models.JSONField(default=default_kavosh_products_info)
+	kia_products_info = models.JSONField(default=default_kia_products_info)
 
 	def __str__(self):
 		return f"ESFA Eyes - {self.year}"
@@ -74,6 +120,8 @@ class EsfaEyes(models.Model):
 			info.update(self.international_finance_info)
 			info.update(self.international_sales_info)
 			info.update(self.products_info)
+			info.update(self.kavosh_products_info)
+			info.update(self.kia_products_info)
 			return info
 		if user.is_FinancialManager:
 			info.update(self.financial_info)
@@ -81,28 +129,11 @@ class EsfaEyes(models.Model):
 			info.update(self.international_finance_info)
 		if user.is_InternationalSalesManager:
 			info.update(self.international_sales_info)
-
-		obj = self._get_production_info(user)
-		info.update(obj)
-		return info 
-
-	def _get_production_info(self, user: User):
-		if not user:
-			return {}
-		
-		if user.is_ProductionManagerReadonly or (user.is_ProductionManager and user.is_R131ProductionManager):
-			return copy.deepcopy(self.products_info)
-
-		valid_production_info = copy.deepcopy(self.products_info)
-		rp = valid_production_info["ready_products"]["_info"]
-		selected_keys = ["121", "Kia Meter", "131"]
-		
 		if user.is_ProductionManager:
-			valid_rp_info = {k: v for k, v in rp.items() if k not in selected_keys}
-			valid_production_info["ready_products"]["_info"] = valid_rp_info
-   
-		if user.is_R131ProductionManager:
-			valid_rp_info = {key: rp[key] for key in selected_keys if key in rp}
-			valid_production_info["ready_products"]["_info"] = valid_rp_info
+			info.update(self.products_info)
+		if user.is_KavoshProductionManager:
+			info.update(self.kavosh_products_info)
+		if user.is_KiaProductionManager:
+			info.update(self.kia_products_info)
 
-		return valid_production_info
+		return info
