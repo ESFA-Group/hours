@@ -47,11 +47,14 @@ class EsfaEyesApiView(APIView):
 			old = current_field_data[innerfield]
 			new = new_field_data[innerfield]
 			
-			updated_info = old['_info'].copy()
-			
-			for key, value in new['_info'].items():
-				if key in updated_info:
-					updated_info[key] = value
+			if isinstance(old['_info'], dict):
+				updated_info = old['_info'].copy()
+				
+				for key, value in new['_info'].items():
+					if key in updated_info:
+						updated_info[key] = value
+			else:
+				updated_info = new['_info']
 			
 			new_structed_data = EsfaEyesInfo(updated_info, old['UPDATE_INTERVAL_DAYS']).__dict__
 			current_field_data[innerfield] = new_structed_data
