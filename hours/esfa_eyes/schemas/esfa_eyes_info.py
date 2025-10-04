@@ -46,6 +46,8 @@ class EsfaEyesProductInfo(EsfaEyesInfo):
                 "121": 0,
                 "131": 0,
                 "Kia Meter": 0,
+                "Nira48-600": 0,
+                "Nira110-600": 0,
                 "Other": 0,
             }, update_interval_days=31):
         super().__init__(info, update_interval_days)

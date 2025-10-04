@@ -64,12 +64,51 @@ def default_kia_products_info():
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
+                "Nira48-600": 0,
+                "Nira110-600": 0,
 			},update_interval_days=7).__dict__,
 		"ready_kia_products": EsfaEyesProductInfo({
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
+                "Nira48-600": 0,
+                "Nira110-600": 0,
 			},update_interval_days=7).__dict__,
+		"deliverd_1404": EsfaEyesProductInfo({
+				"121": 0,
+				"131": 0,
+				"Kia Meter": 0,
+                "Nira48-600": 0,
+                "Nira110-600": 0,
+			},update_interval_days=7).__dict__,
+		"deliverd_1403": EsfaEyesProductInfo({
+				"121": 0,
+				"131": 0,
+				"Kia Meter": 0,
+                "Nira48-600": 0,
+                "Nira110-600": 0,
+			},update_interval_days=180).__dict__,
+		"deliverd_1402": EsfaEyesProductInfo({
+				"121": 0,
+				"131": 0,
+				"Kia Meter": 0,
+                "Nira48-600": 0,
+                "Nira110-600": 0,
+			},update_interval_days=180).__dict__,
+		"deliverd_1401": EsfaEyesProductInfo({
+				"121": 0,
+				"131": 0,
+				"Kia Meter": 0,
+                "Nira48-600": 0,
+                "Nira110-600": 0,
+			},update_interval_days=180).__dict__,
+		"deliverd_1400": EsfaEyesProductInfo({
+				"121": 0,
+				"131": 0,
+				"Kia Meter": 0,
+                "Nira48-600": 0,
+                "Nira110-600": 0,
+			},update_interval_days=180).__dict__,
 	}
 
 def default_kavosh_products_info():

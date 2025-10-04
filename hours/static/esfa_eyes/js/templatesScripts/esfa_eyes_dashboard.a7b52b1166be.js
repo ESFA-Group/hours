@@ -23,6 +23,11 @@ const titleMapping = {
 	unproduced_workshop_inventory: 'موجودی کارگاه تولید نشده',
 	unproduced_kavosh_workshop_inventory: 'موجودی کاوش کارگاه تولید نشده',
 	unproduced_kia_workshop_inventory: 'موجودی کیا کارگاه تولید نشده',
+	deliverd_1404: 'تحویل داده شده از ابتدای سال',
+	deliverd_1403: 'کل تحویلی در سال 1403',
+	deliverd_1402: 'کل تحویلی در سال 1402',
+	deliverd_1401: 'کل تحویلی در سال 1401',
+	deliverd_1400: 'کل تحویلی در سال 1400',
 	turkiye_inventory: 'موجودی ترکیه',
 	china_production_orders: 'سفارشات چین درحال تولید',
 	total_insured_staffs: 'تعداد کارکنان بیمه‌ای',
@@ -70,6 +75,11 @@ const keyToModelFieldMap = {
 	// kia products_info
 	'ready_kia_products': 'kia_products_info',
 	'unproduced_kia_workshop_inventory': 'kia_products_info',
+	'deliverd_1404': 'kia_products_info',
+	'deliverd_1403': 'kia_products_info',
+	'deliverd_1402': 'kia_products_info',
+	'deliverd_1401': 'kia_products_info',
+	'deliverd_1400': 'kia_products_info',
 };
 
 // data backend connection ========================
@@ -368,7 +378,7 @@ async function initTables(data = null) {
 	createObjectTable(data, 'موجودی دستگاه‌ها', ['turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager);
 	createObjectTable(data, 'موجودی دستگاه‌های اسفا', ['ready_products', 'unproduced_workshop_inventory'], window.USER.is_ProductionManager);
 	createObjectTable(data, 'موجودی دستگاه‌های کاوش', ['ready_kavosh_products', 'unproduced_kavosh_workshop_inventory',], window.USER.is_KavoshProductionManager); // dont add || window.USER.is_KavoshProductionManager
-	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory'], window.USER.is_KiaProductionManager);
+	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400'], window.USER.is_KiaProductionManager);
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
 }
