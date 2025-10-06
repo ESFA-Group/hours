@@ -78,6 +78,8 @@ class Command(BaseCommand):
 
         self.alert()
     
+    #########################################################################
+    ################################ DRY RUN ################################
     def dry_run(self):
         if not self._is_inside_valid_hours():
             print("bot is sleeping...")
@@ -99,6 +101,9 @@ class Command(BaseCommand):
 
         self.send_telegram_message_with_retry(ADMIN_ID[0], message)
     
+
+    #########################################################################
+    ################################ Private Method ################################
     def _is_inside_valid_hours(self):
         current_time = jdt.datetime.now()
         if current_time.weekday() == 4:  # Friday is weekday 4
@@ -107,6 +112,46 @@ class Command(BaseCommand):
             return False
         return True
 
+    def _escape_markdown_v2(self, text):
+        escape_chars = r'_*[]()~`>#+-=|{}.!'
+        return ''.join(f'\\{char}' if char in escape_chars else char for char in text)
+
+    def _send_telegram_api_message(self, chat_id, message, timeout=30):
+        """Send a single Telegram API message"""
+        payload = {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "MarkdownV2"
+        }
+        try:
+            response = requests.post(
+                BOT_URL + "sendMessage",
+                data=payload,
+                timeout=timeout,
+                proxies=PROXIES
+            )
+            response.raise_for_status()
+            return response
+        except (ProxyError, Timeout, ConnectionError) as e:
+            logger.error(f"Network-related error sending to {chat_id}: {e}")
+            raise
+        except RequestException as e:
+            logger.error(f"Failed to send Telegram message to {chat_id}: {e}")
+            raise
+        
+    def _get_user_name(self, user_id):
+        user_name_map = {
+            78510872: "Amiri",
+            63708619: "Zahedi", 
+            352162682: "Dadashi",
+            237628637: "Colaji",
+            147770648: "Hajihasani",
+            375630609: "kazempourian"
+        }
+        return user_name_map.get(user_id, f"User_{user_id}")
+    
+    #########################################################################
+    ################################ Public Method ################################
     def alert(self):
         if not self._is_inside_valid_hours():
             print("bot is sleeping...")
@@ -155,9 +200,10 @@ class Command(BaseCommand):
         for field_name in subfields_dict:   # financial_info, international_finance_info, ...
             if subfields_dict[field_name]["require_to_update"]:
                 persian_require_to_update_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]['require_to_update']]
-                formatted_persian_require_to_update_subfields = '\n'.join(f"    \\-{s}" for s in persian_require_to_update_subfields)
+                formatted_persian_require_to_update_subfields = '\n'.join(f"    \\-{self._escape_markdown_v2(s)}" for s in persian_require_to_update_subfields)
                 persian_warning_subfields = [TITLEMAPPING[sub] for sub in subfields_dict[field_name]['warning']]
-                formatted_persian_warning_subfields = '\n'.join(f"    \\-{s}" for s in persian_warning_subfields)
+                formatted_persian_warning_subfields = '\n'.join(f"    \\-{self._escape_markdown_v2(s)}" for s in persian_warning_subfields)
+                
                 message = f""" *درود*
 مدتی است که گزارش *Esfa Eyes* خود را ارسال نکرده اید\\.
 لطفا در اسرع وقت گزارشات زیر را اپدیت نمایید\\:
@@ -165,7 +211,7 @@ class Command(BaseCommand):
 {formatted_persian_require_to_update_subfields} 
 ‏🟠
 {formatted_persian_warning_subfields} 
-Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
+[Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
 """
                 for chat_id in ESFAEYES_FIELD_TO_TELEGRAM_ID[field_name]:
                     success = self.send_telegram_message_with_retry(chat_id, message)
@@ -330,37 +376,3 @@ Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
                 return False
                 
         return False
-
-    def _send_telegram_api_message(self, chat_id, message, timeout=30):
-        """Send a single Telegram API message"""
-        payload = {
-            "chat_id": chat_id,
-            "text": message,
-            "parse_mode": "MarkdownV2"
-        }
-        try:
-            response = requests.post(
-                BOT_URL + "sendMessage",
-                data=payload,
-                timeout=timeout,
-                proxies=PROXIES
-            )
-            response.raise_for_status()
-            return response
-        except (ProxyError, Timeout, ConnectionError) as e:
-            logger.error(f"Network-related error sending to {chat_id}: {e}")
-            raise
-        except RequestException as e:
-            logger.error(f"Failed to send Telegram message to {chat_id}: {e}")
-            raise
-        
-    def _get_user_name(self, user_id):
-        user_name_map = {
-            78510872: "Amiri",
-            63708619: "Zahedi", 
-            352162682: "Dadashi",
-            237628637: "Colaji",
-            147770648: "Hajihasani",
-            375630609: "kazempourian"
-        }
-        return user_name_map.get(user_id, f"User_{user_id}")
