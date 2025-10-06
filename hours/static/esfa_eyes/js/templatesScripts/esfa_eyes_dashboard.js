@@ -164,7 +164,16 @@ function createNumericTable(data, title, itemKeys, editable = false) {
 		const [datePart, timePart] = item.last_modify_time.split(' ');
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
-		tableBody += `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td><td contenteditable="${editable}" data-key="${key}">${item._info.toLocaleString()}</td><td>${formattedDate}</td></tr>`;
+
+		tableBody += `
+        <tr class="${bgColor}">
+            <td>
+                ${titleMapping[key] || key}
+                ${createInfoIcon(item)}
+            </td>
+            <td contenteditable="${editable}" data-key="${key}">${item._info.toLocaleString()}</td>
+            <td>${formattedDate}</td>
+        </tr>`;
 	});
 	const cardBorderColor = cardBgColor.replace('bg-', 'border-').replace('-subtle', '');
 	const cardFooter = editable ? `
@@ -235,7 +244,12 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 			dataCells += `<td class="data-cell" contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
 
-		let row = `<tr class="${bgColor}" data-row-key="${key}"><td>${titleMapping[key] || key}</td>`;
+		let row = `
+        <tr class="${bgColor}" data-row-key="${key}">
+            <td>
+                ${titleMapping[key] || key}
+                ${createInfoIcon(item)}
+            </td>`;
 		if (add_sum) {
 			row += `<td class="row-sum-cell table-info" data-key="${key}" style="font-weight: bold;">${rowSum.toLocaleString()}</td>`;
 		}
@@ -343,6 +357,28 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 	}
 }
 
+function getRemainingDays(lastModifyTime, updateIntervalDays) {
+	const [datePart, timePart] = lastModifyTime.split(' ');
+
+	const jdate = new JDate(datePart.split('-').map(Number));
+	const now = new JDate();
+
+	const diffMs = now._d - jdate._d;
+	const daysPassed = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+	return Math.max(0, updateIntervalDays - daysPassed);
+}
+
+function createInfoIcon(item) {
+    const remainingDays = getRemainingDays(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
+    const whoCanSee = item.who_can_see ? item.who_can_see.join(', ') : 'نامشخص';
+    const tooltipContent = `${whoCanSee} :قابل مشاهده توسط<br>بازه به روزرسانی: ${item.UPDATE_INTERVAL_DAYS} روز<br>روزهای باقیمانده: ${remainingDays} روز`;
+    
+    return `<svg class="info-icon-svg" data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipContent}" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+    </svg>`;
+}
+
 function getBackgroundColor(lastModifyTime, updateIntervalDays) {
 	const now = new Date();
 	const lastUpdate = parseJalaliDateTime(lastModifyTime);
@@ -365,7 +401,7 @@ async function initTables(data = null) {
 	document.getElementById('dashboard-container').innerHTML = '';
 
 	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official'], window.USER.is_FinancialManager);
-	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars'], window.USER.is_InternationalFinanceManager);
+	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars'], window.USER.is_InternationalFinanceManager, true);
 	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_received', 'montly_installment'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager, true);
 
@@ -381,6 +417,13 @@ async function initTables(data = null) {
 	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400'], window.USER.is_KiaProductionManager);
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
+
+	setTimeout(() => {
+		const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+		const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+			return new bootstrap.Tooltip(tooltipTriggerEl);
+		});
+	}, 100);
 }
 
 function fillYears(year) {
@@ -400,7 +443,7 @@ async function handleSubmit(button) {
 	editableCells.forEach(cell => {
 		const key = cell.dataset.key;
 		const subkey = cell.dataset.subkey;
-		const value = parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+		const value = parseInt(cell.innerText.replace(/,/g, ''), 10) || cell.innerText;
 
 		// Find the correct model field for this piece of data using the map
 		const modelField = keyToModelFieldMap[key];

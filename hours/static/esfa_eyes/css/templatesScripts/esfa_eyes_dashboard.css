@@ -42,3 +42,17 @@ body {
 .table td:first-child {
 	min-width: 80px;
 }
+
+.info-icon-svg {
+    display: inline-block !important;
+    color: #000000;
+    opacity: 0.7;
+    cursor: pointer;
+    margin-left: 5px;
+    transition: opacity 0.2s;
+    vertical-align: middle;
+}
+
+.info-icon-svg:hover {
+    opacity: 1;
+}
