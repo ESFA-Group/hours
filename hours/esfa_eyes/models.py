@@ -4,44 +4,59 @@ from .schemas.esfa_eyes_info import EsfaEyesInfo, EsfaEyesMonltyInfo, EsfaEyesPr
 from sheets.models import User
 import copy
 
+users_with_financial_info_access = ['Amiri']
+users_with_international_finance_info = ['Zahedi']
+users_with_international_sales_info = ['Dadashi']
+users_with_products_info_access = ['Colaji']
+users_with_kavosh_products_info_access = ['Hajihasani']
+users_with_kia_products_info_access = ['Kazempourian']
+access_mappings = {
+	'financial_info': ['Amiri'],
+	'international_finance_info': ['Zahedi'],
+	'international_sales_info': ['Dadashi'],
+	'products_info': ['Colaji'],
+	'kavosh_products_info': ['Hajihasani'],
+	'kia_products_info': ['Kazempourian']
+}
+
 def default_financial_info():
 	return {
-		'balance_rials_official': EsfaEyesInfo(0).__dict__,
-		'balance_rials': EsfaEyesInfo(0).__dict__,
-		'montly_checks_received': EsfaEyesMonltyInfo().__dict__,
-		'montly_checks_issued': EsfaEyesMonltyInfo().__dict__,
-		'montly_installment': EsfaEyesMonltyInfo().__dict__,
-		'montly_total_sales': EsfaEyesMonltyInfo(update_interval_days=14).__dict__,
-		'individual_sales': EsfaEyesProductInfo().__dict__,
-		'individual_sales_quantities': EsfaEyesProductInfo().__dict__,
-		'individual_sales_total_received': EsfaEyesProductInfo().__dict__,
-		'individual_sales_check_received': EsfaEyesProductInfo().__dict__,
-		'individual_sales_unknown': EsfaEyesProductInfo().__dict__,
-		'total_insured_staffs': EsfaEyesInfo(0, 31).__dict__,
-		'total_uninsured_staffs': EsfaEyesInfo(0, 31).__dict__,
-		'total_salary_paid': EsfaEyesMonltyInfo().__dict__,
-		'total_insurance_paid': EsfaEyesMonltyInfo().__dict__,
+		'balance_rials_official': EsfaEyesInfo(0, who_can_see=users_with_financial_info_access).__dict__,
+		'balance_rials': EsfaEyesInfo(0, who_can_see=users_with_financial_info_access).__dict__,
+		'montly_checks_received': EsfaEyesMonltyInfo(who_can_see=users_with_financial_info_access).__dict__,
+		'montly_checks_issued': EsfaEyesMonltyInfo(who_can_see=users_with_financial_info_access).__dict__,
+		'montly_installment': EsfaEyesMonltyInfo(who_can_see=users_with_financial_info_access).__dict__,
+		'montly_total_sales': EsfaEyesMonltyInfo(update_interval_days=14, who_can_see=users_with_financial_info_access).__dict__,
+		'individual_sales': EsfaEyesProductInfo(who_can_see=users_with_financial_info_access).__dict__,
+		'individual_sales_quantities': EsfaEyesProductInfo(who_can_see=users_with_financial_info_access).__dict__,
+		'individual_sales_total_received': EsfaEyesProductInfo(who_can_see=users_with_financial_info_access).__dict__,
+		'individual_sales_check_received': EsfaEyesProductInfo(who_can_see=users_with_financial_info_access).__dict__,
+		'individual_sales_unknown': EsfaEyesProductInfo(who_can_see=users_with_financial_info_access).__dict__,
+		'total_insured_staffs': EsfaEyesInfo(0, 31, who_can_see=users_with_financial_info_access).__dict__,
+		'total_uninsured_staffs': EsfaEyesInfo(0, 31, who_can_see=users_with_financial_info_access).__dict__,
+		'total_salary_paid': EsfaEyesMonltyInfo(who_can_see=users_with_financial_info_access).__dict__,
+		'total_insurance_paid': EsfaEyesMonltyInfo(who_can_see=users_with_financial_info_access).__dict__,
 	}
 
 def default_international_finance_info():
 	return {
 		"balance_dollars": EsfaEyesProductInfo({
-                "مقدار 1": 0,
-                "مقدار 2": 0,
-                "مقدار 3": 0,
-                "مقدار 4": 0,
-                "مقدار 5": 0,
-                "مقدار کل": 0,
-            }, 2).__dict__,
-		"china_production_orders": EsfaEyesProductInfo().__dict__,
+				"مقدار 1": 0,
+				"مقدار 2": 0,
+				"مقدار 3": 0,
+				"مقدار 4": 0,
+				"مقدار 5": 0,
+				"مقدار کل": 0,
+			}, 2, who_can_see=users_with_international_finance_info).__dict__,
+		"china_production_orders": EsfaEyesProductInfo(who_can_see=users_with_international_finance_info).__dict__,
 	}
 
 def default_international_sales_info():
 	return {
-		"montly_international_total_sales": EsfaEyesMonltyInfo(update_interval_days=14).__dict__,
-		# "international_individual_sales": EsfaEyesProductInfo().__dict__,
-		# "international_individual_sales_quantities": EsfaEyesProductInfo().__dict__,
-		"turkiye_inventory": EsfaEyesProductInfo().__dict__,
+		"montly_international_total_sales": EsfaEyesMonltyInfo(update_interval_days=14, who_can_see=users_with_international_sales_info).__dict__,
+		# "international_individual_sales": EsfaEyesProductInfo(who_can_see=users_with_international_sales_info).__dict__,
+		# "international_individual_sales_quantities": EsfaEyesProductInfo(who_can_see=users_with_international_sales_info).__dict__,
+		"turkiye_inventory": EsfaEyesProductInfo(who_can_see=users_with_international_sales_info).__dict__,
 	}
 
 def default_products_info():
@@ -50,12 +65,12 @@ def default_products_info():
 				"Esfa Meter": 0,
 				"Pishtaz": 0,
 				"Other": 0,
-			},update_interval_days=7).__dict__,
+			},update_interval_days=7, who_can_see=users_with_products_info_access).__dict__,
 		"ready_products": EsfaEyesProductInfo({
 				"Esfa Meter": 0,
 				"Pishtaz": 0,
 				"Other": 0,
-			},update_interval_days=7).__dict__,
+			},update_interval_days=7, who_can_see=users_with_products_info_access).__dict__,
 	}
 
 def default_kia_products_info():
@@ -64,51 +79,51 @@ def default_kia_products_info():
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
-                "Nira48-600": 0,
-                "Nira110-600": 0,
-			},update_interval_days=7).__dict__,
+				"Nira48-600": 0,
+				"Nira110-600": 0,
+			},update_interval_days=7, who_can_see=users_with_kia_products_info_access).__dict__,
 		"ready_kia_products": EsfaEyesProductInfo({
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
-                "Nira48-600": 0,
-                "Nira110-600": 0,
-			},update_interval_days=7).__dict__,
+				"Nira48-600": 0,
+				"Nira110-600": 0,
+			},update_interval_days=7, who_can_see=users_with_kia_products_info_access).__dict__,
 		"deliverd_1404": EsfaEyesProductInfo({
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
-                "Nira48-600": 0,
-                "Nira110-600": 0,
-			},update_interval_days=7).__dict__,
+				"Nira48-600": 0,
+				"Nira110-600": 0,
+			},update_interval_days=7, who_can_see=users_with_kia_products_info_access).__dict__,
 		"deliverd_1403": EsfaEyesProductInfo({
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
-                "Nira48-600": 0,
-                "Nira110-600": 0,
-			},update_interval_days=180).__dict__,
+				"Nira48-600": 0,
+				"Nira110-600": 0,
+			},update_interval_days=180, who_can_see=users_with_kia_products_info_access).__dict__,
 		"deliverd_1402": EsfaEyesProductInfo({
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
-                "Nira48-600": 0,
-                "Nira110-600": 0,
-			},update_interval_days=180).__dict__,
+				"Nira48-600": 0,
+				"Nira110-600": 0,
+			},update_interval_days=180, who_can_see=users_with_kia_products_info_access).__dict__,
 		"deliverd_1401": EsfaEyesProductInfo({
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
-                "Nira48-600": 0,
-                "Nira110-600": 0,
-			},update_interval_days=180).__dict__,
+				"Nira48-600": 0,
+				"Nira110-600": 0,
+			},update_interval_days=180, who_can_see=users_with_kia_products_info_access).__dict__,
 		"deliverd_1400": EsfaEyesProductInfo({
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
-                "Nira48-600": 0,
-                "Nira110-600": 0,
-			},update_interval_days=180).__dict__,
+				"Nira48-600": 0,
+				"Nira110-600": 0,
+			},update_interval_days=180, who_can_see=users_with_kia_products_info_access).__dict__,
 	}
 
 def default_kavosh_products_info():
@@ -121,7 +136,7 @@ def default_kavosh_products_info():
 				"CB1": 0,
 				"CAPTAN12": 0,
 				"MCM": 0,
-			},update_interval_days=7).__dict__,
+			},update_interval_days=7, who_can_see=users_with_kavosh_products_info_access).__dict__,
 		"ready_kavosh_products": EsfaEyesProductInfo({
 				"T22": 0,
 				"TDM": 0,
@@ -130,7 +145,7 @@ def default_kavosh_products_info():
 				"CB1": 0,
 				"CAPTAN12": 0,
 				"MCM": 0,
-			},update_interval_days=7).__dict__,
+			},update_interval_days=7, who_can_see=users_with_kavosh_products_info_access).__dict__,
 	}
 
 
@@ -176,3 +191,14 @@ class EsfaEyes(models.Model):
 			info.update(self.kia_products_info)
 
 		return info
+
+	def update_user_access(self):
+		for field_name, users_list in access_mappings.items():
+			field_data = getattr(self, field_name)
+			if isinstance(field_data, dict):
+				for key in field_data:
+					if isinstance(field_data[key], dict):
+						field_data[key]['who_can_see'] = users_list.copy()
+
+				
+				setattr(self, field_name, field_data)
