@@ -39,14 +39,14 @@ def default_financial_info():
 	}
 
 def default_international_finance_info():
-	return {
+	return {     
 		"balance_dollars": EsfaEyesProductInfo({
-				"مقدار 1": 0,
-				"مقدار 2": 0,
-				"مقدار 3": 0,
-				"مقدار 4": 0,
-				"مقدار 5": 0,
-				"مقدار کل": 0,
+			"مقدار 1 (S1)": 0,
+			"مقدار 2 (S2)": 0,
+			"مقدار 3 (T)": 0, 
+			"مقدار 4 (Z)": 0,
+			"مقدار 5 (M)": 0,
+			"توضیحات": 0,
 			}, 2, who_can_see=users_with_international_finance_info).__dict__,
 		"china_production_orders": EsfaEyesProductInfo(who_can_see=users_with_international_finance_info).__dict__,
 	}

@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = true;
+let Debug = false;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -401,7 +401,7 @@ async function initTables(data = null) {
 	document.getElementById('dashboard-container').innerHTML = '';
 
 	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official'], window.USER.is_FinancialManager);
-	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars'], window.USER.is_InternationalFinanceManager);
+	createObjectTable(data, 'موجودی‌ دلاری', ['balance_dollars'], window.USER.is_InternationalFinanceManager, true);
 	createObjectTable(data, 'چک‌ها', ['montly_checks_issued', 'montly_checks_received', 'montly_installment'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'فروش کل', ['montly_total_sales', 'montly_international_total_sales'], window.USER.is_FinancialManager || window.USER.is_InternationalSalesManager, true);
 
@@ -443,7 +443,7 @@ async function handleSubmit(button) {
 	editableCells.forEach(cell => {
 		const key = cell.dataset.key;
 		const subkey = cell.dataset.subkey;
-		const value = parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+		const value = parseInt(cell.innerText.replace(/,/g, ''), 10) || cell.innerText;
 
 		// Find the correct model field for this piece of data using the map
 		const modelField = keyToModelFieldMap[key];
