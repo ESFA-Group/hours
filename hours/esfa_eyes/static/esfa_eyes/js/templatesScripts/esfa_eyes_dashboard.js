@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -164,7 +164,19 @@ function createNumericTable(data, title, itemKeys, editable = false) {
 		const [datePart, timePart] = item.last_modify_time.split(' ');
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
-		tableBody += `<tr class="${bgColor}"><td>${titleMapping[key] || key}</td><td contenteditable="${editable}" data-key="${key}">${item._info.toLocaleString()}</td><td>${formattedDate}</td></tr>`;
+
+		const remainingDays = getRemainingDays(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
+		const tooltipContent = `قابل مشاهده توسط: ${item.who_can_see.join(', ')}<br>بازه به روزرسانی: ${item.UPDATE_INTERVAL_DAYS} روز<br>روزهای باقیمانده: ${remainingDays}`;
+
+		tableBody += `
+        <tr class="${bgColor}">
+            <td>
+                ${titleMapping[key] || key}
+                <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipContent}"></i>
+            </td>
+            <td contenteditable="${editable}" data-key="${key}">${item._info.toLocaleString()}</td>
+            <td>${formattedDate}</td>
+        </tr>`;
 	});
 	const cardBorderColor = cardBgColor.replace('bg-', 'border-').replace('-subtle', '');
 	const cardFooter = editable ? `
@@ -225,6 +237,9 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 
+		const remainingDays = getRemainingDays(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
+		const tooltipContent = `قابل مشاهده توسط: ${item.who_can_see.join(', ')}<br>بازه به روزرسانی: ${item.UPDATE_INTERVAL_DAYS} روز<br>روزهای باقیمانده: ${remainingDays}`;
+
 		let rowSum = 0;
 		let dataCells = '';
 		subItemHeaders.forEach(header => {
@@ -235,7 +250,12 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 			dataCells += `<td class="data-cell" contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
 
-		let row = `<tr class="${bgColor}" data-row-key="${key}"><td>${titleMapping[key] || key}</td>`;
+		let row = `
+        <tr class="${bgColor}" data-row-key="${key}">
+            <td>
+                ${titleMapping[key] || key}
+                <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipContent}"></i>
+            </td>`;
 		if (add_sum) {
 			row += `<td class="row-sum-cell table-info" data-key="${key}" style="font-weight: bold;">${rowSum.toLocaleString()}</td>`;
 		}
@@ -343,6 +363,35 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 	}
 }
 
+function getRemainingDays(lastModifyTime, updateIntervalDays) {
+    const [datePart, timePart] = lastModifyTime.split(' ');
+	
+    const jdate = new JDate(datePart.split('-').map(Number));
+    const now = new JDate();
+    
+    const diffMs = now._d - jdate._d;
+    const daysPassed = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+	
+    return Math.max(0, updateIntervalDays - daysPassed);
+}
+
+function createInfoIcon(item, key) {
+	const remainingDays = getRemainingDays(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
+	const whoCanSee = item.who_can_see ? item.who_can_see.join(', ') : 'نامشخص';
+
+	return `<i class="bi bi-info-circle-fill text-primary ms-2" 
+               style="cursor: help;" 
+               data-bs-toggle="tooltip" 
+               data-bs-html="true"
+               data-bs-placement="top"
+               title="<div style='text-align: right;'>
+                        <strong>قابل مشاهده توسط:</strong> ${whoCanSee}<br>
+                        <strong>بازه بروزرسانی:</strong> ${item.UPDATE_INTERVAL_DAYS} روز<br>
+                        <strong>روز باقیمانده:</strong> ${remainingDays} روز
+                      </div>">
+            </i>`;
+}
+
 function getBackgroundColor(lastModifyTime, updateIntervalDays) {
 	const now = new Date();
 	const lastUpdate = parseJalaliDateTime(lastModifyTime);
@@ -381,6 +430,13 @@ async function initTables(data = null) {
 	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400'], window.USER.is_KiaProductionManager);
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
+
+	setTimeout(() => {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }, 100);
 }
 
 function fillYears(year) {
