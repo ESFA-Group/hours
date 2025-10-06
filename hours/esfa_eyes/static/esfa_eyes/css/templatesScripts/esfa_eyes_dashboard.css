@@ -43,25 +43,16 @@ body {
 	min-width: 80px;
 }
 
-/* Ensure Bootstrap icons are visible */
-.bi-info-circle {
+.info-icon-svg {
     display: inline-block !important;
-    width: 16px !important;
-    height: 16px !important;
-    font-size: 16px !important;
-    cursor: pointer;
+    color: #000000;
     opacity: 0.7;
+    cursor: pointer;
+    margin-left: 5px;
     transition: opacity 0.2s;
-    color: #000000 !important; /* Add this line to make it black */
+    vertical-align: middle;
 }
 
-.bi-info-circle:hover {
+.info-icon-svg:hover {
     opacity: 1;
-}
-
-/* If the font still doesn't load, use a fallback */
-.bi-info-circle::before {
-    content: "ⓘ"; /* Fallback character */
-    font-style: normal;
-    font-weight: bold;
 }
