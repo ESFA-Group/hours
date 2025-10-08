@@ -372,7 +372,7 @@ function getRemainingDays(lastModifyTime, updateIntervalDays) {
 }
 
 function isNumeric(value) {
-    return !isNaN(parseFloat(value)) && isFinite(value) && typeof value !== 'boolean';
+	return !isNaN(parseFloat(value)) && isFinite(value) && typeof value !== 'boolean';
 }
 
 function createInfoIcon(item) {
@@ -430,6 +430,20 @@ async function initTables(data = null) {
 			return new bootstrap.Tooltip(tooltipTriggerEl);
 		});
 	}, 100);
+}
+
+async function initGlobalSalesTable() {
+	try {
+		let sheetUrl = "https://docs.google.com/spreadsheets/d/164IpVmO9f7u8Mux4b6Yfjcee6nQJJtYZT8yGMYcZ4ow/edit?usp=sharing"
+		const response = await fetch(sheetUrl);
+		const data = await response.arrayBuffer();
+		// const workbook = XLSX.read(data, { type: 'array' });
+		// const worksheet = workbook.Sheets[workbook.SheetNames[sheetId]];
+	}
+	catch (error) {
+		console.error('Error loading Google Sheet:', error);
+		return null;
+	}
 }
 
 function fillYears(year) {
@@ -521,6 +535,7 @@ $("document").ready(async function () {
 	$("#year").val(currentYear);
 
 	initTables();
+	initGlobalSalesTable()
 
 	//events
 	$("#year, #month").change(function () {
