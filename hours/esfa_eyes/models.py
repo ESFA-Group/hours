@@ -184,17 +184,17 @@ class EsfaEyes(models.Model):
 			info.update(self.kavosh_products_info)
 			info.update(self.kia_products_info)
 			return info
-		if user.is_FinancialManager:
+		if user.is_FinancialManager or user.is_FinancialManager_readonly:
 			info.update(self.financial_info)
-		if user.is_InternationalFinanceManager:
+		if user.is_InternationalFinanceManager or user.is_InternationalFinanceManager_readonly:
 			info.update(self.international_finance_info)
-		if user.is_InternationalSalesManager:
+		if user.is_InternationalSalesManager or user.is_InternationalSalesManager_readonly:
 			info.update(self.international_sales_info)
-		if user.is_ProductionManager:
+		if user.is_ProductionManager or user.is_ProductionManager_readonly:
 			info.update(self.products_info)
-		if user.is_KavoshProductionManager:
+		if user.is_KavoshProductionManager or user.is_KavoshProductionManager_readonly:
 			info.update(self.kavosh_products_info)
-		if user.is_KiaProductionManager:
+		if user.is_KiaProductionManager or user.is_KiaProductionManager_readonly:
 			info.update(self.kia_products_info)
 
 		return info

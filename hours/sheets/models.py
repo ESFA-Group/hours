@@ -33,11 +33,17 @@ class User(AbstractUser):
     is_PaymentManager = models.BooleanField("is_PaymentManager", default=False)
     # access to esfa eyes
     is_FinancialManager = models.BooleanField("is_FinancialManager", default=False)
+    is_FinancialManager_readonly = models.BooleanField("is_FinancialManager_readonly", default=False)
     is_InternationalFinanceManager = models.BooleanField("is_InternationalFinanceManager", default=False)
+    is_InternationalFinanceManager_readonly = models.BooleanField("is_InternationalFinanceManager_readonly", default=False)
     is_InternationalSalesManager = models.BooleanField("is_InternationalSalesManager", default=False)
+    is_InternationalSalesManager_readonly = models.BooleanField("is_InternationalSalesManager_readonly", default=False)
     is_ProductionManager = models.BooleanField("is_ProductionManager", default=False)
+    is_ProductionManager_readonly = models.BooleanField("is_ProductionManager_readonly", default=False)
     is_KiaProductionManager = models.BooleanField("is_KiaProductionManager", default=False)
+    is_KiaProductionManager_readonly = models.BooleanField("is_KiaProductionManager_readonly", default=False)
     is_KavoshProductionManager = models.BooleanField("is_KavoshProductionManager", default=False)
+    is_KavoshProductionManager_readonly = models.BooleanField("is_KavoshProductionManager_readonly", default=False)
 
     # personal info
     is_active = models.BooleanField("is_active", default=True)
