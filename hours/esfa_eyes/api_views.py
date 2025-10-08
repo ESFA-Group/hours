@@ -56,7 +56,7 @@ class EsfaEyesApiView(APIView):
 			else:
 				updated_info = new['_info']
 			
-			new_structed_data = EsfaEyesInfo(updated_info, old['UPDATE_INTERVAL_DAYS']).__dict__
+			new_structed_data = EsfaEyesInfo(updated_info, old['UPDATE_INTERVAL_DAYS'], old['who_can_see']).__dict__
 			current_field_data[innerfield] = new_structed_data
 		setattr(esfa_eyes_obj, field_name, current_field_data)
 		esfa_eyes_obj.save()
