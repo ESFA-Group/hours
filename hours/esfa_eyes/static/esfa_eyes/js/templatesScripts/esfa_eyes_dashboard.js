@@ -241,7 +241,7 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 		subItemHeaders.forEach(header => {
 			const value = item._info[header] || 0;
 			if (add_sum) {
-				rowSum += value;
+				rowSum += isNumeric(value) ? Number(value) : 0;
 			}
 			dataCells += `<td class="data-cell" contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
@@ -371,12 +371,16 @@ function getRemainingDays(lastModifyTime, updateIntervalDays) {
 	return Math.max(0, updateIntervalDays - daysPassed);
 }
 
+function isNumeric(value) {
+    return !isNaN(parseFloat(value)) && isFinite(value) && typeof value !== 'boolean';
+}
+
 function createInfoIcon(item) {
-    const remainingDays = getRemainingDays(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
-    const whoCanSee = item.who_can_see ? item.who_can_see.join(', ') : 'نامشخص';
-    const tooltipContent = `${whoCanSee} :قابل مشاهده توسط<br>بازه به روزرسانی: ${item.UPDATE_INTERVAL_DAYS} روز<br>روزهای باقیمانده: ${remainingDays} روز`;
-    
-    return `<svg class="info-icon-svg" data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipContent}" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+	const remainingDays = getRemainingDays(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
+	const whoCanSee = item.who_can_see ? item.who_can_see.join(', ') : 'نامشخص';
+	const tooltipContent = `${whoCanSee} :قابل مشاهده توسط<br>بازه به روزرسانی: ${item.UPDATE_INTERVAL_DAYS} روز<br>روزهای باقیمانده: ${remainingDays} روز`;
+
+	return `<svg class="info-icon-svg" data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipContent}" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
         <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
     </svg>`;
 }
@@ -445,7 +449,13 @@ async function handleSubmit(button) {
 	editableCells.forEach(cell => {
 		const key = cell.dataset.key;
 		const subkey = cell.dataset.subkey;
-		const value = parseInt(cell.innerText.replace(/,/g, ''), 10) || cell.innerText;
+		let value;
+		if (subkey == "توضیحات") {
+			value = cell.innerText
+		}
+		else {
+			value = parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+		}
 
 		// Find the correct model field for this piece of data using the map
 		const modelField = keyToModelFieldMap[key];
