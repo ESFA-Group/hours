@@ -7,14 +7,14 @@ import copy
 users_with_financial_info_access = ['Amiri']
 users_with_international_finance_info = ['Zahedi']
 users_with_international_sales_info = ['Dadashi']
-users_with_products_info_access = ['Colaji']
+users_with_products_info_access = ['Koolaji']
 users_with_kavosh_products_info_access = ['Hajihasani']
 users_with_kia_products_info_access = ['Kazempourian']
 access_mappings = {
 	'financial_info': ['Amiri'],
 	'international_finance_info': ['Zahedi'],
 	'international_sales_info': ['Dadashi'],
-	'products_info': ['Colaji'],
+	'products_info': ['Koolaji'],
 	'kavosh_products_info': ['Hajihasani'],
 	'kia_products_info': ['Kazempourian']
 }
@@ -124,6 +124,13 @@ def default_kia_products_info():
 				"Nira48-600": 0,
 				"Nira110-600": 0,
 			},update_interval_days=180, who_can_see=users_with_kia_products_info_access).__dict__,
+		"deliverd_1399": EsfaEyesProductInfo({
+						"121": 0,
+						"131": 0,
+						"Kia Meter": 0,
+						"Nira48-600": 0,
+						"Nira110-600": 0,
+					},update_interval_days=180, who_can_see=users_with_kia_products_info_access).__dict__,
 	}
 
 def default_kavosh_products_info():
