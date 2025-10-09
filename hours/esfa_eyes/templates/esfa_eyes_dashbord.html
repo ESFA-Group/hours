@@ -32,6 +32,30 @@
     </div>
 
     <div id="tables-container" class="flex-grow-1 " dir="rtl">
+        {% if  request.user.is_superuser or request.user.is_global_sales_editor or request.user.is_global_sales_viewer %}
+        <div class="accordion" id="sheetAccordion">
+            <div class="accordion-item mb-4 border border-2 border-dark-subtle">
+                <h2 class="accordion-header" id="h1">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#c1">
+                        Global Sales
+                    </button>
+                </h2>
+
+                <div id="c1" class="accordion-collapse collapse">
+                    <div class="accordion-body p-0">
+                        <div class="sheet-iframe-wrapper d-flex align-items-center justify-content-center">
+                            <div id="sheet-loader" class="text-muted py-3" dir="ltr">Loading sheet...</div>
+                            <iframe id="sheet-frame" class="d-none" loading="lazy"
+                                referrerpolicy="no-referrer"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+
         <div id="dashboard-container" class="row">
         </div>
     </div>

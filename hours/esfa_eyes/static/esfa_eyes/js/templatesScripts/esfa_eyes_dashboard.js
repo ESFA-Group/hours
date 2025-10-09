@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -122,7 +122,22 @@ async function getCurrencies() {
 }
 
 async function getEyesData(year) {
-	return apiService.get(`/eyes/${year}`, {}, {}, "Failed to get eyes data");
+	let res = await apiService.get(`/eyes/${year}`, {}, {}, "Failed to get eyes data");
+	if (!res.ok) {
+		await apiService.handleError(res, "Failed to get eyes data")
+		return null;
+	}
+	return res.data;
+}
+
+async function getGlobalSales() {
+	let res = await apiService.get(`/global_sales`, {}, {}, "Failed to get Global Sales");
+
+	if (!res.ok) {
+		await apiService.handleError(res, "Failed to get Global Sales")
+		return null;
+	}
+	return res.data;
 }
 
 async function postEyesData(year, payload) {
@@ -372,7 +387,7 @@ function getRemainingDays(lastModifyTime, updateIntervalDays) {
 }
 
 function isNumeric(value) {
-    return !isNaN(parseFloat(value)) && isFinite(value) && typeof value !== 'boolean';
+	return !isNaN(parseFloat(value)) && isFinite(value) && typeof value !== 'boolean';
 }
 
 function createInfoIcon(item) {
@@ -430,6 +445,27 @@ async function initTables(data = null) {
 			return new bootstrap.Tooltip(tooltipTriggerEl);
 		});
 	}, 100);
+}
+
+async function initGlobalSalesTable() {
+	if (!window.USER.is_superuser && !window.USER.is_global_sales_editor && !window.USER.is_global_sales_viewer) {
+		return;
+	}
+
+	try {
+		let sheetUrl = await getGlobalSales()
+		if (sheetUrl == null) {
+			return;
+		}
+		const loader = document.getElementById('sheet-loader');
+		const iframe = document.getElementById('sheet-frame');
+		iframe.src = sheetUrl;
+		iframe.classList.remove('d-none');
+		loader.classList.add('d-none');
+	}
+	catch (error) {
+		console.error('Error loading Google Sheet:', error);
+	}
 }
 
 function fillYears(year) {
@@ -511,8 +547,6 @@ async function handleSubmit(button) {
 }
 // =================== document ready ============================
 $("document").ready(async function () {
-	console.log("is_superuser: " + window.USER.is_superuser);
-
 	const today = new JDate();
 	const currentYear = today.getFullYear();
 	updateCurrencies();
@@ -521,6 +555,7 @@ $("document").ready(async function () {
 	$("#year").val(currentYear);
 
 	initTables();
+	initGlobalSalesTable()
 
 	//events
 	$("#year, #month").change(function () {
