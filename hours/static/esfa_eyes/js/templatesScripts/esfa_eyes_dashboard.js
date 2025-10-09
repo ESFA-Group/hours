@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -28,6 +28,7 @@ const titleMapping = {
 	deliverd_1402: 'کل تحویلی در سال 1402',
 	deliverd_1401: 'کل تحویلی در سال 1401',
 	deliverd_1400: 'کل تحویلی در سال 1400',
+	deliverd_1399: 'کل تحویلی در سال 99',
 	turkiye_inventory: 'موجودی ترکیه',
 	china_production_orders: 'سفارشات چین درحال تولید',
 	total_insured_staffs: 'تعداد کارکنان بیمه‌ای',
@@ -80,6 +81,7 @@ const keyToModelFieldMap = {
 	'deliverd_1402': 'kia_products_info',
 	'deliverd_1401': 'kia_products_info',
 	'deliverd_1400': 'kia_products_info',
+	'deliverd_1399': 'kia_products_info',
 };
 
 // data backend connection ========================
@@ -120,7 +122,22 @@ async function getCurrencies() {
 }
 
 async function getEyesData(year) {
-	return apiService.get(`/eyes/${year}`, {}, {}, "Failed to get eyes data");
+	let res = await apiService.get(`/eyes/${year}`, {}, {}, "Failed to get eyes data");
+	if (!res.ok) {
+		await apiService.handleError(res, "Failed to get eyes data")
+		return null;
+	}
+	return res.data;
+}
+
+async function getGlobalSales() {
+	let res = await apiService.get(`/global_sales`, {}, {}, "Failed to get Global Sales");
+
+	if (!res.ok) {
+		await apiService.handleError(res, "Failed to get Global Sales")
+		return null;
+	}
+	return res.data;
 }
 
 async function postEyesData(year, payload) {
@@ -239,7 +256,7 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 		subItemHeaders.forEach(header => {
 			const value = item._info[header] || 0;
 			if (add_sum) {
-				rowSum += value;
+				rowSum += isNumeric(value) ? Number(value) : 0;
 			}
 			dataCells += `<td class="data-cell" contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
@@ -369,12 +386,16 @@ function getRemainingDays(lastModifyTime, updateIntervalDays) {
 	return Math.max(0, updateIntervalDays - daysPassed);
 }
 
+function isNumeric(value) {
+	return !isNaN(parseFloat(value)) && isFinite(value) && typeof value !== 'boolean';
+}
+
 function createInfoIcon(item) {
-    const remainingDays = getRemainingDays(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
-    const whoCanSee = item.who_can_see ? item.who_can_see.join(', ') : 'نامشخص';
-    const tooltipContent = `${whoCanSee} :قابل مشاهده توسط<br>بازه به روزرسانی: ${item.UPDATE_INTERVAL_DAYS} روز<br>روزهای باقیمانده: ${remainingDays} روز`;
-    
-    return `<svg class="info-icon-svg" data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipContent}" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+	const remainingDays = getRemainingDays(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
+	const whoCanSee = item.who_can_see ? item.who_can_see.join(', ') : 'نامشخص';
+	const tooltipContent = `${whoCanSee} :قابل مشاهده توسط<br>بازه به روزرسانی: ${item.UPDATE_INTERVAL_DAYS} روز<br>روزهای باقیمانده: ${remainingDays} روز`;
+
+	return `<svg class="info-icon-svg" data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipContent}" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
         <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
     </svg>`;
 }
@@ -414,7 +435,7 @@ async function initTables(data = null) {
 	createObjectTable(data, 'موجودی دستگاه‌ها', ['turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager);
 	createObjectTable(data, 'موجودی دستگاه‌های اسفا', ['ready_products', 'unproduced_workshop_inventory'], window.USER.is_ProductionManager);
 	createObjectTable(data, 'موجودی دستگاه‌های کاوش', ['ready_kavosh_products', 'unproduced_kavosh_workshop_inventory',], window.USER.is_KavoshProductionManager); // dont add || window.USER.is_KavoshProductionManager
-	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400'], window.USER.is_KiaProductionManager);
+	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'], window.USER.is_KiaProductionManager);
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
 
@@ -424,6 +445,28 @@ async function initTables(data = null) {
 			return new bootstrap.Tooltip(tooltipTriggerEl);
 		});
 	}, 100);
+}
+
+async function initGlobalSalesTable() {
+	if (!window.USER.is_superuser && !window.USER.is_global_sales_editor && !window.USER.is_global_sales_viewer) {
+		return;
+	}
+
+	try {
+		let sheetUrl = await getGlobalSales()
+		if (sheetUrl == null) {
+			return;
+		}
+		const loader = document.getElementById('sheet-loader');
+		const iframe = document.getElementById('sheet-frame');
+		iframe.src = sheetUrl;
+		iframe.classList.remove('d-none');
+		loader.classList.add('d-none');
+
+	}
+	catch (error) {
+		console.error('Error loading Google Sheet:', error);
+	}
 }
 
 function fillYears(year) {
@@ -443,7 +486,13 @@ async function handleSubmit(button) {
 	editableCells.forEach(cell => {
 		const key = cell.dataset.key;
 		const subkey = cell.dataset.subkey;
-		const value = parseInt(cell.innerText.replace(/,/g, ''), 10) || cell.innerText;
+		let value;
+		if (subkey == "توضیحات") {
+			value = cell.innerText
+		}
+		else {
+			value = parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+		}
 
 		// Find the correct model field for this piece of data using the map
 		const modelField = keyToModelFieldMap[key];
@@ -499,8 +548,6 @@ async function handleSubmit(button) {
 }
 // =================== document ready ============================
 $("document").ready(async function () {
-	console.log("is_superuser: " + window.USER.is_superuser);
-
 	const today = new JDate();
 	const currentYear = today.getFullYear();
 	updateCurrencies();
@@ -509,6 +556,7 @@ $("document").ready(async function () {
 	$("#year").val(currentYear);
 
 	initTables();
+	initGlobalSalesTable()
 
 	//events
 	$("#year, #month").change(function () {

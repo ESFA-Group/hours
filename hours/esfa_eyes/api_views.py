@@ -61,3 +61,16 @@ class EsfaEyesApiView(APIView):
 		setattr(esfa_eyes_obj, field_name, current_field_data)
 		esfa_eyes_obj.save()
 		return esfa_eyes_obj
+
+
+class GlobalSalesApiView(APIView):
+	permission_classes = [customPermissions.hasGlobalSalesAccess]
+	
+	def get(self, request):
+		user = self.request.user
+		
+		url = "https://docs.google.com/spreadsheets/d/164IpVmO9f7u8Mux4b6Yfjcee6nQJJtYZT8yGMYcZ4ow/edit?usp=sharing"
+		if user.is_global_sales_editor:
+			url = "https://docs.google.com/spreadsheets/d/164IpVmO9f7u8Mux4b6Yfjcee6nQJJtYZT8yGMYcZ4ow/edit?usp=sharing"
+
+		return Response(url, status=status.HTTP_200_OK)

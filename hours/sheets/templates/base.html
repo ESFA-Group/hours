@@ -146,7 +146,7 @@
                                 </li>
                             {% endif %}
 
-                            {% if request.user.is_superuser or request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_ProductionManager or request.user.is_KavoshProductionManager or request.user.is_KiaProductionManager or request.user.is_FinancialManager_readonly or request.user.is_InternationalFinanceManager_readonly or request.user.is_InternationalSalesManager_readonly or request.user.is_ProductionManager_readonly or request.user.is_KiaProductionManager_readonly or request.user.is_KavoshProductionManager_readonly %}
+                            {% if request.user.is_superuser or request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_ProductionManager or request.user.is_KavoshProductionManager or request.user.is_KiaProductionManager or request.user.is_FinancialManager_readonly or request.user.is_InternationalFinanceManager_readonly or request.user.is_InternationalSalesManager_readonly or request.user.is_ProductionManager_readonly or request.user.is_KiaProductionManager_readonly or request.user.is_KavoshProductionManager_readonly  or request.user.is_global_sales_editor or request.user.is_global_sales_viewer %}
                                 <li class="nav-item">
                                     {% url 'esfa_eyes:Esfa Eyes Dashbord' as temp_url %}
                                     <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
@@ -179,6 +179,9 @@
             is_MainReportManager: "{{ request.user.is_MainReportManager|lower }}" === "true",
             is_FoodManager: "{{ request.user.is_FoodManager|lower }}" === "true",
             is_PaymentManager: "{{ request.user.is_PaymentManager|lower }}" === "true",
+            // access to esfa eyes gobal sales sheet
+            is_global_sales_editor: "{{ request.user.is_global_sales_editor|lower }}" === "true",
+            is_global_sales_viewer: "{{ request.user.is_global_sales_viewer|lower }}" === "true",
             //esfa eyes
             is_FinancialManager: "{{ request.user.is_FinancialManager|lower }}" === "true",
             is_InternationalFinanceManager: "{{ request.user.is_InternationalFinanceManager|lower }}" === "true",
