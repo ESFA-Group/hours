@@ -75,26 +75,7 @@ class APIService {
 
             // Check if the response is OK (status in the range 200-299)
             if (!response.ok) {
-                // Try to parse error response from the server, otherwise throw a generic error.
-                let errorData;
-                try {
-                    errorData = await response.json();
-                } catch (e) {
-                    errorData = {title: errorTitle, message: `Request failed with status ${response.status}` };
-                }
-                // Throw an error to be caught by the calling function's .catch() block.
-                jSuites.notification({
-                    error: 1,
-                    name: 'Error',
-                    title: errorData.title || errorTitle,
-                    message: errorData.message || JSON.stringify(errorData),
-                });
-                return { success: false, error: errorData, status: response.status };
-            }
-
-            // If the response has no content (e.g., a 204 No Content response for a DELETE request)
-            if (response.status === 204) {
-                return null;
+                return response;
             }
 
             // Handle different response types
@@ -111,6 +92,7 @@ class APIService {
 
             return {
                 success: true,
+                ok: true,
                 data: data,
                 status: response.status,
                 headers: response.headers
@@ -124,7 +106,7 @@ class APIService {
                 title: errorTitle,
                 message: error,
             });
-            // Re-throw the error so the calling component can handle it if needed.
+            // Re-throw the error so the calling component can handle it if needed.            
             throw error;
         }
     }
@@ -140,14 +122,7 @@ class APIService {
         const query = new URLSearchParams(params).toString();
         const fullPath = query ? `${path}?${query}` : path;
         return this._request(fullPath, { method: 'GET', ...options }, errorTitle)
-            .then(result => {
-                if (result.success) {
-                    return result.data;
-                }
-                else {
-                    throw new Error()
-                }
-            });;
+            .then(result => { return result });
     }
 
     /**
@@ -203,6 +178,28 @@ class APIService {
      */
     delete(path, options = {}, errorTitle = 'Error Deleting Data') {
         return this._request(path, { method: 'DELETE', ...options }, errorTitle);
+    }
+
+    async handleError(response, errorTitle = 'Error') {
+        if (response.ok)
+            return;
+
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            errorData = { title: errorTitle, message: `Request failed with status ${response.status}` };
+        }
+
+        console.log(response);
+
+
+        jSuites.notification({
+            error: 1,
+            name: 'Error',
+            title: errorData.title || errorTitle,
+            message: response.status + "-" + response.statusText || 'An unknown error occurred'
+        });
     }
 }
 
