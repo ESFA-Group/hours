@@ -623,4 +623,16 @@ $("document").ready(async function () {
 	$('#dashboard-container').on('click', '.btn-submit', function () {
 		handleSubmit(this);
 	});
+
+	$('.sheet-toggle-btn').on('click', function () {
+		let wrapper = $('.sheet-iframe-wrapper');
+
+		if (wrapper.hasClass('collapsed-view')) {
+			wrapper.removeClass('collapsed-view').addClass('expanded-view');
+			$(this).removeClass('collapsed');
+		} else {
+			wrapper.removeClass('expanded-view').addClass('collapsed-view');
+			$(this).addClass('collapsed');
+		}
+	});
 });

@@ -32,23 +32,25 @@
     </div>
 
     <div id="tables-container" class="flex-grow-1 " dir="rtl">
-        {% if  request.user.is_superuser or request.user.is_global_sales_editor or request.user.is_global_sales_viewer %}
+        {% if request.user.is_superuser or request.user.is_global_sales_editor or request.user.is_global_sales_viewer %}
         <div class="accordion" id="sheetAccordion">
             <div class="accordion-item mb-4 border border-2 border-dark-subtle">
                 <h2 class="accordion-header" id="h1">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#c1">
+                    <button class="accordion-button collapsed sheet-toggle-btn" type="button">
                         Global Sales
                     </button>
                 </h2>
 
-                <div id="c1" class="accordion-collapse collapse">
-                    <div class="accordion-body p-0">
-                        <div class="sheet-iframe-wrapper d-flex align-items-center justify-content-center">
-                            <div id="sheet-loader" class="text-muted py-3" dir="ltr">Loading sheet...</div>
-                            <iframe id="sheet-frame" class="d-none" loading="lazy"
-                                referrerpolicy="no-referrer"></iframe>
-                        </div>
+                <div class="accordion-body p-0">
+                    <div class="sheet-iframe-wrapper d-flex align-items-center justify-content-center collapsed-view">
+                        <div id="sheet-loader" class="text-muted py-3" dir="ltr">Loading sheet...</div>
+                        <iframe id="sheet-frame" class="d-none" loading="lazy" referrerpolicy="no-referrer"></iframe>
+                        
+                        <!-- <iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQhdiTYf10CBG7ZNuz8jTcdGClHvlH2ijuU2-vh82G3vP-q9TViM9lTSVAC-U5mKx5I-YKNfqDv_Lgj/pubhtml?widget=true&amp;headers=false"
+                                loading="lazy"
+                                referrerpolicy="no-referrer">
+                        </iframe> -->
+                        
                     </div>
                 </div>
             </div>
