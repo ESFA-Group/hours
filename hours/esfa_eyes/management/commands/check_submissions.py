@@ -14,8 +14,8 @@ ESFAEYES_FIELD_TO_TELEGRAM_ID = {
     'financial_info': [78510872],                           # amiri
     'international_finance_info': [63708619],               # zahedi
     'international_sales_info': [352162682],                # dadashi
-    'products_info': [237628637],                           # colaji 
-    'kavosh_products_info': [147770648],                    # vahid 
+    'products_info': [237628637],                           # koolaji 
+    'kavosh_products_info': [237628637],                    # koolaji 
     'kia_products_info': [375630609],                       # mohsen 
 }
 BOSS_ID = [103813581]                                       # morsali
