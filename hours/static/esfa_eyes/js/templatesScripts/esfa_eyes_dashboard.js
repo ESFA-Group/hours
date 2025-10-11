@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = true;
+let Debug = false;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -223,7 +223,7 @@ function createNumericTable(data, title, itemKeys, editable = false) {
 	document.getElementById('dashboard-container').appendChild(card);
 }
 
-function createObjectTable(data, title, itemKeys, editable = false, add_sum = false, percentageConfig = null) {
+function createObjectTable(data, title, itemKeys, editable = false, add_sum = false, percentageConfig = null, columnSumConfig = null) {
 	const availableItems = itemKeys.filter(key => data[key] && typeof data[key]._info === 'object');
 	if (availableItems.length === 0) return;
 
@@ -242,6 +242,12 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 	let tableBody = '';
 	let cardBgColor = 'bg-success-subtle';
 
+	const rowsForColumnSum = columnSumConfig ? availableItems.filter(key => columnSumConfig.includeKeys.includes(key)) : [];
+	const columnSums = {};
+	subItemHeaders.forEach(header => {
+		columnSums[header] = 0;
+	});
+
 	availableItems.forEach(key => {
 		const item = data[key];
 		const bgColor = getBackgroundColor(item.last_modify_time, item.UPDATE_INTERVAL_DAYS);
@@ -257,6 +263,9 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 			const value = item._info[header] || 0;
 			if (add_sum) {
 				rowSum += isNumeric(value) ? Number(value) : 0;
+			}
+			if (rowsForColumnSum.includes(key) && isNumeric(value)) {
+				columnSums[header] += Number(value);
 			}
 			dataCells += `<td class="data-cell" contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
@@ -274,6 +283,30 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 		row += `<td>${formattedDate}</td></tr>`;
 		tableBody += row;
 	});
+
+	if (columnSumConfig && rowsForColumnSum.length > 0) {
+		let columnSumRow = `<tr class="column-sum-row table-warning" style="font-weight: bold;"><td>${columnSumConfig.name}</td>`;
+
+		if (add_sum) {
+			// Calculate total of row sums for included rows
+			let totalRowSum = 0;
+			rowsForColumnSum.forEach(key => {
+				const rowSumCell = document.createElement('td');
+				// This would need to be calculated from the actual row sums
+				// For simplicity, we'll calculate it from column sums
+			});
+			// Calculate total from column sums
+			const totalColumnSum = Object.values(columnSums).reduce((sum, val) => sum + val, 0);
+			columnSumRow += `<td class="column-total-sum table-warning">${totalColumnSum.toLocaleString()}</td>`;
+		}
+
+		subItemHeaders.forEach(header => {
+			columnSumRow += `<td class="column-sum-cell" data-subkey="${header}">${columnSums[header].toLocaleString()}</td>`;
+		});
+
+		columnSumRow += '<td>-</td></tr>';
+		tableBody += columnSumRow;
+	}
 
 	if (percentageConfig) {
 		const numData = data[percentageConfig.numeratorKey];
@@ -345,6 +378,27 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 					});
 					const sumCell = table.querySelector(`.row-sum-cell[data-key="${key}"]`);
 					if (sumCell) sumCell.innerText = newRowSum.toLocaleString();
+				}
+
+				if (columnSumConfig && rowsForColumnSum.includes(key)) {
+					let newColumnSum = 0;
+					table.querySelectorAll(`.data-cell[data-subkey="${subkey}"]`).forEach(cell => {
+						if (rowsForColumnSum.includes(cell.dataset.key)) {
+							newColumnSum += parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+						}
+					});
+					const columnSumCell = table.querySelector(`.column-sum-cell[data-subkey="${subkey}"]`);
+					if (columnSumCell) columnSumCell.innerText = newColumnSum.toLocaleString();
+
+					// Update total column sum
+					if (add_sum) {
+						let newTotalColumnSum = 0;
+						table.querySelectorAll('.column-sum-cell').forEach(cell => {
+							newTotalColumnSum += parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+						});
+						const totalSumCell = table.querySelector('.column-total-sum');
+						if (totalSumCell) totalSumCell.innerText = newTotalColumnSum.toLocaleString();
+					}
 				}
 
 				if (percentageConfig) {
@@ -435,7 +489,11 @@ async function initTables(data = null) {
 	createObjectTable(data, 'موجودی دستگاه‌ها', ['turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager);
 	createObjectTable(data, 'موجودی دستگاه‌های اسفا', ['ready_products', 'unproduced_workshop_inventory'], window.USER.is_ProductionManager);
 	createObjectTable(data, 'موجودی دستگاه‌های کاوش', ['ready_kavosh_products', 'unproduced_kavosh_workshop_inventory',], window.USER.is_KavoshProductionManager); // dont add || window.USER.is_KavoshProductionManager
-	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'], window.USER.is_KiaProductionManager);
+	const kiaColumnSumConfig = {
+		name: 'مجموع تحویلی‌ها',
+		includeKeys: ['deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'],
+	};
+	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'], window.USER.is_KiaProductionManager, false, false, kiaColumnSumConfig); // dont add || window.USER.is_KiaProductionManager
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
 
@@ -462,7 +520,6 @@ async function initGlobalSalesTable() {
 		iframe.src = sheetUrl;
 		iframe.classList.remove('d-none');
 		loader.classList.add('d-none');
-
 	}
 	catch (error) {
 		console.error('Error loading Google Sheet:', error);
@@ -565,5 +622,17 @@ $("document").ready(async function () {
 
 	$('#dashboard-container').on('click', '.btn-submit', function () {
 		handleSubmit(this);
+	});
+
+	$('.sheet-toggle-btn').on('click', function () {
+		let wrapper = $('.sheet-iframe-wrapper');
+
+		if (wrapper.hasClass('collapsed-view')) {
+			wrapper.removeClass('collapsed-view').addClass('expanded-view');
+			$(this).removeClass('collapsed');
+		} else {
+			wrapper.removeClass('expanded-view').addClass('collapsed-view');
+			$(this).addClass('collapsed');
+		}
 	});
 });

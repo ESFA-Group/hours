@@ -60,10 +60,17 @@ body {
 
 .sheet-iframe-wrapper {
 	width: 100%;
-	height: min(var(--sheet-max-px), calc(100vh - var(--navbar-height)));
-	min-height: var(--sheet-min-px);
+	transition: height 0.3s ease;
 	border-radius: 6px;
 	overflow: hidden;
+}
+
+.sheet-iframe-wrapper.collapsed-view {
+	height: 350px;
+}
+
+.sheet-iframe-wrapper.expanded-view {
+	height: min(var(--sheet-max-px), calc(100vh - var(--navbar-height)));
 }
 
 .sheet-iframe-wrapper iframe {

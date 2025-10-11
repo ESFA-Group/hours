@@ -8,14 +8,14 @@ users_with_financial_info_access = ['Amiri']
 users_with_international_finance_info = ['Zahedi']
 users_with_international_sales_info = ['Dadashi']
 users_with_products_info_access = ['Koolaji']
-users_with_kavosh_products_info_access = ['Hajihasani']
+users_with_kavosh_products_info_access = ['Koolaji']
 users_with_kia_products_info_access = ['Kazempourian']
 access_mappings = {
 	'financial_info': ['Amiri'],
 	'international_finance_info': ['Zahedi'],
 	'international_sales_info': ['Dadashi'],
 	'products_info': ['Koolaji'],
-	'kavosh_products_info': ['Hajihasani'],
+	'kavosh_products_info': ['Koolaji'],
 	'kia_products_info': ['Kazempourian']
 }
 
