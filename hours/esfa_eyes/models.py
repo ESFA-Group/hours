@@ -33,6 +33,7 @@ def default_financial_info():
 		'individual_sales_check_received': EsfaEyesProductInfo(who_can_see=users_with_financial_info_access).__dict__,
 		'individual_sales_unknown': EsfaEyesProductInfo(who_can_see=users_with_financial_info_access).__dict__,
 		'total_insured_staffs': EsfaEyesInfo(0, 31, who_can_see=users_with_financial_info_access).__dict__,
+		'total_insured_non_staffs': EsfaEyesInfo(0, 31, who_can_see=users_with_financial_info_access).__dict__,
 		'total_uninsured_staffs': EsfaEyesInfo(0, 31, who_can_see=users_with_financial_info_access).__dict__,
 		'total_salary_paid': EsfaEyesMonltyInfo(who_can_see=users_with_financial_info_access).__dict__,
 		'total_insurance_paid': EsfaEyesMonltyInfo(who_can_see=users_with_financial_info_access).__dict__,

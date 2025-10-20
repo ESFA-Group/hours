@@ -32,6 +32,7 @@ const titleMapping = {
 	turkiye_inventory: 'موجودی ترکیه',
 	china_production_orders: 'سفارشات چین درحال تولید',
 	total_insured_staffs: 'تعداد کارکنان بیمه‌ای',
+	total_insured_non_staffs: 'تعداد بیمه‌ای بدون حضور',
 	total_uninsured_staffs: 'تعداد کارکنان غیر بیمه',
 	total_salary_paid: 'مجموع کل حقوق (ریال)',
 	total_insurance_paid: 'مجموع بیمه پرداختی (ریال)'
@@ -51,6 +52,7 @@ const keyToModelFieldMap = {
 	'individual_sales_check_received': 'financial_info',
 	'individual_sales_unknown': 'financial_info',
 	'total_insured_staffs': 'financial_info',
+	'total_insured_non_staffs': 'financial_info',
 	'total_uninsured_staffs': 'financial_info',
 	'total_salary_paid': 'financial_info',
 	'total_insurance_paid': 'financial_info',
@@ -499,7 +501,7 @@ async function initTables(data = null) {
 		includeKeys: ['deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'],
 	};
 	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'], window.USER.is_KiaProductionManager, false, false, kiaColumnSumConfig); // dont add || window.USER.is_KiaProductionManager
-	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
+	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_insured_non_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
 
 	setTimeout(() => {
