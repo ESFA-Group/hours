@@ -116,8 +116,13 @@ async function getCurrencies() {
 	}
 
 	return apiService.get('https://BrsApi.ir/Api/Market/Gold_Currency.php?key=BfTErgVQ4YHlDZ33IcmWap9FhgiWU17H', {}, {}, "failed to get currencies")
-		.then(data => {
-			return { "USD": data.currency[1], "CNY": data.currency[9] };
+		.then(res => {
+			if (res.ok) {	
+				return { "USD": res.data.currency[1], "CNY": res.data.currency[9] };
+			}
+			else{
+				apiService.handleError(res, "Failed to get currencies")
+			}
 		});
 }
 
