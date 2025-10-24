@@ -53,7 +53,7 @@ async function getRequest(url) {
 	}
 }
 
-async function postRequest(url, data) {
+async function postRequest(url, data, errTitle = "Updating Sheet") {
 	try {
 		const response = await fetch(url, {
 			method: 'POST',
@@ -63,12 +63,22 @@ async function postRequest(url, data) {
 			},
 			body: JSON.stringify(data)
 		});
-		return await response.json()
+		if (response.ok) {
+			return await response.json()
+		}
+		else {
+			jSuites.notification({
+				error: 1,
+				name: 'Error',
+				title: errTitle + " | " + response.status,
+				message: response.statusText + " at " + url.replace("/hours/api/", ""),
+			});
+		}
 	} catch (err) {
 		jSuites.notification({
 			error: 1,
 			name: 'Error',
-			title: "Updating Sheet",
+			title: errTitle,
 			message: err,
 		});
 	}

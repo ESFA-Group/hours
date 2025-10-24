@@ -58,12 +58,14 @@ async function postRequest(url, data, errTitle = "Updating Sheet") {
 			return await response.json()
 		}
 		else {
-			let errData = await response.json();
-			throw errData['message'];
+			jSuites.notification({
+				error: 1,
+				name: 'Error',
+				title: errTitle + " | " + response.status,
+				message: response.statusText + " at " + url.replace("/hours/api/", ""),
+			});
 		}
 	} catch (err) {
-		console.log(err.toString());
-
 		jSuites.notification({
 			error: 1,
 			name: 'Error',
