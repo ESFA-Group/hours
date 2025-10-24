@@ -15,6 +15,7 @@ import jdatetime as jdt
 import pandas as pd
 import io
 import re
+from io import BytesIO
 
 from sheets.models import Project, Sheet, User, Food_data, Report, DailyReportSetting
 from esfa_eyes.models import EsfaEyes
@@ -988,9 +989,59 @@ class ExportDailyReportManagement(APIView):
     permission_classes = [customPermissions.IsDailyReportManager]
 
     def post(self, request, year: str, month: str):
-        data = request.data
-        user = data["userName"]
-        print("year:", year, "month:", month, "user:", user)
+        reports = Report.objects.filter(year=year, month=month).order_by("user", "day")
+        reports_by_user = {}
+        for report in reports:
+            username = report.user.username if report.user else "Unknown User"
+            if username not in reports_by_user:
+                reports_by_user[username] = []
+            
+            reports_by_user[username].append({
+                'year': report.year,
+                'month': report.month,
+                'day': report.day,
+                'content': report.content,
+                "Manager's Comment": report.main_comment,
+                "Supervisor's Comment": report.sub_comment,
+            })
+        
+        output = BytesIO()
+
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            for username, user_reports in reports_by_user.items():
+                # Create DataFrame for user's reports
+                df = pd.DataFrame(user_reports)
+                
+                # Reorder columns for better readability
+                column_order = ['year', 'month', 'day', 'content', "Manager's Comment", "Supervisor's Comment"]
+                existing_columns = [col for col in column_order if col in df.columns]
+                df = df[existing_columns]   
+                
+                sheet_name = username[:31]
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                
+                worksheet = writer.sheets[sheet_name]
+                for column in worksheet.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)  # Cap at 50 characters
+                    worksheet.column_dimensions[column_letter].width = adjusted_width
+    
+        # Prepare HTTP response
+        output.seek(0)
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename=reports_{year}_{month}.xlsx'
+        
+        return response
         
         
 
