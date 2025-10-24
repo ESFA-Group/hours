@@ -984,6 +984,16 @@ class DailyReportManagement(APIView):
             {"message": "Report updated successfully"}, status=status.HTTP_200_OK
         )
 
+class ExportDailyReportManagement(APIView):
+    permission_classes = [customPermissions.IsDailyReportManager]
+
+    def post(self, request, year: str, month: str):
+        data = request.data
+        user = data["userName"]
+        print("year:", year, "month:", month, "user:", user)
+        
+        
+
 
 class DailyReportSettingManager(APIView):
     permission_classes = [customPermissions.IsDailyReportManager]

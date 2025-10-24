@@ -44,7 +44,7 @@ async function getRequest(url) {
 	}
 }
 
-async function postRequest(url, data) {
+async function postRequest(url, data, errTitle = "Updating Sheet") {
 	try {
 		const response = await fetch(url, {
 			method: 'POST',
@@ -54,12 +54,20 @@ async function postRequest(url, data) {
 			},
 			body: JSON.stringify(data)
 		});
-		return await response.json()
+		if (response.ok) {
+			return await response.json()
+		}
+		else {
+			let errData = await response.json();
+			throw errData['message'];
+		}
 	} catch (err) {
+		console.log(err.toString());
+
 		jSuites.notification({
 			error: 1,
 			name: 'Error',
-			title: "Updating Sheet",
+			title: errTitle,
 			message: err,
 		});
 	}
@@ -325,18 +333,12 @@ function load_user_reports(userName, reports) {
 			$(`#supervisor_hide_user_checkbox_${day}`).prop('checked', r.supervisor_comment_hide_for_user);
 		}
 	});
+}
 
-	// // Clear existing report content
-	// $('#manager_comment').text('');
-	// $('#supervisor_comment').text('');
-
-	// // Display the reports (example with the first two reports if available)
-	// if (reports.length > 0) {
-	// 	$('#manager_comment').text(reports[0]?.content || 'کامنتی داده نشده');
-	// }
-	// if (reports.length > 1) {
-	// 	$('#supervisor_comment').text(reports[1]?.content || 'کامنتی داده نشده');
-	// }
+async function export_reports() {
+	const exportUrl = `/hours/api/export_daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
+	let response = await postRequest(exportUrl, {}, "Exporting Reports")
+	console.log(response);
 }
 
 $("document").ready(async function () {
@@ -360,4 +362,8 @@ $("document").ready(async function () {
 		var selectedRadioId = $('input[name="btnradio"]:checked').attr('valueNumber');
 		await saveReportingLimitModeDBT(parseInt(selectedRadioId))
 	});
-});
+
+	$('#exportReportBtn').on("click", async function () {
+		await export_reports()
+	});
+});		

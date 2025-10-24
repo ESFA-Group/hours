@@ -106,6 +106,11 @@ urlpatterns = [
         name="api_daily_report_management",
     ),
     path(
+        "api/export_daily_report_management/<str:year>/<str:month>",
+        api_views.ExportDailyReportManagement.as_view(),
+        name="export_api_daily_report_management",
+    ),
+    path(
         "api/daily_report_setting_management",
         api_views.DailyReportSettingManager.as_view(),
         name="daily_report_setting_management",
