@@ -182,7 +182,9 @@ async function saveReportingLimitModeDBT(valueNumber) {
 function pre_load_user_reports() {
 	const $reportsContainer = $('#reports_container');
 	$reportsContainer.empty()
-	for (let day = TODAY.getDate(); day >= 1; day--) {
+
+	let limited_day = ACTIVE_YEAR == CURRENT_YEAR && ACTIVE_MONTH == CURRENT_MONTH ? TODAY.getDate() : JDate.daysInMonth(ACTIVE_YEAR, ACTIVE_MONTH);
+	for (limited_day; day >= 1; day--) {
 		let reportHtml = `
 			<div id="report_${day}" class="border p-2 mb-1 missed-report" style="border-radius: 8px;">
 				<div class="card shadow mb-4">
