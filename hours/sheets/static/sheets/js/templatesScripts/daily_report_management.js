@@ -124,6 +124,7 @@ async function get_active_day_report() {
 	pre_load_user_reports();
 
 	const $userList = $('#userList');
+	$userList.empty();
 	$.each(reports_by_users, function (userName, reports) {
 		const listItem = $('<li></li>')
 			.addClass('list-group-item user-item')

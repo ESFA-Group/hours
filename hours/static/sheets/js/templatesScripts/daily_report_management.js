@@ -44,7 +44,7 @@ async function getRequest(url) {
 	}
 }
 
-async function postRequest(url, data, errTitle = "Updating Sheet") {
+async function postRequest(url, data, errTitle = "Updating Sheet", jsonify = true) {
 	try {
 		const response = await fetch(url, {
 			method: 'POST',
@@ -55,7 +55,12 @@ async function postRequest(url, data, errTitle = "Updating Sheet") {
 			body: JSON.stringify(data)
 		});
 		if (response.ok) {
-			return await response.json()
+			if (jsonify) {
+				return await response.json()
+			}
+			else{
+				return response
+			}
 		}
 		else {
 			jSuites.notification({
@@ -119,6 +124,7 @@ async function get_active_day_report() {
 	pre_load_user_reports();
 
 	const $userList = $('#userList');
+	$userList.empty();
 	$.each(reports_by_users, function (userName, reports) {
 		const listItem = $('<li></li>')
 			.addClass('list-group-item user-item')
@@ -340,7 +346,35 @@ function load_user_reports(userName, reports) {
 async function export_reports() {
 	const exportUrl = `/hours/api/export_daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
 	let response = await postRequest(exportUrl, {}, "Exporting Reports")
-	console.log(response);
+	if (!response) {
+		return
+	}
+
+	const blob = await response.blob();
+
+	// Create download link
+	const url = window.URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+
+	// Get filename from Content-Disposition header or use default
+	const contentDisposition = response.headers.get('Content-Disposition');
+	let filename = `reports_${ACTIVE_YEAR}_${ACTIVE_MONTH}.xlsx`;
+
+	if (contentDisposition) {
+		const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+		if (filenameMatch) {
+			filename = filenameMatch[1];
+		}
+	}
+
+	a.download = filename;
+	document.body.appendChild(a);
+	a.click();
+
+	// Clean up
+	window.URL.revokeObjectURL(url);
+	document.body.removeChild(a);
 }
 
 $("document").ready(async function () {
