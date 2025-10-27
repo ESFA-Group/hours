@@ -1008,30 +1008,44 @@ class ExportDailyReportManagement(APIView):
         output = BytesIO()
 
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            used_sheet_names = set()
             for username, user_reports in reports_by_user.items():
-                # Create DataFrame for user's reports
                 df = pd.DataFrame(user_reports)
                 
-                # Reorder columns for better readability
                 column_order = ['year', 'month', 'day', 'content', "Manager's Comment", "Supervisor's Comment"]
                 existing_columns = [col for col in column_order if col in df.columns]
                 df = df[existing_columns]   
                 
                 sheet_name = username[:31]
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                # Handle duplicate sheet names (case-insensitive)
+                counter = 1
+                while sheet_name.lower() in used_sheet_names:
+                    # Reserve space for counter (format: "name_1")
+                    sheet_name = f"{username[:28]}_{counter}"
+                    counter += 1
+            
+                used_sheet_names.add(sheet_name.lower())
                 
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
                 worksheet = writer.sheets[sheet_name]
-                for column in worksheet.columns:
-                    max_length = 0
-                    column_letter = column[0].column_letter
-                    for cell in column:
-                        try:
-                            if len(str(cell.value)) > max_length:
-                                max_length = len(str(cell.value))
-                        except:
-                            pass
-                    adjusted_width = min(max_length + 2, 50)  # Cap at 50 characters
-                    worksheet.column_dimensions[column_letter].width = adjusted_width
+                try:
+                    for column in worksheet.columns:
+                        max_length = 0
+                        column_letter = column[0].column_letter
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = min(max_length + 2, 50)  # Cap at 50 characters
+                        worksheet.column_dimensions[column_letter].width = adjusted_width
+                except Exception as e:
+                    print(f"MAJOR ERROR: {e}")
+                    print(f"    ERROR in cell: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    raise 
     
         # Prepare HTTP response
         output.seek(0)
