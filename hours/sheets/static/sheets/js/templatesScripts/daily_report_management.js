@@ -347,7 +347,7 @@ function load_user_reports(userName, reports) {
 
 async function export_reports() {
 	const exportUrl = `/hours/api/export_daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
-	let response = await postRequest(exportUrl, {}, "Exporting Reports")
+	let response = await postRequest(exportUrl, {}, "Exporting Reports", false)
 	if (!response) {
 		return
 	}

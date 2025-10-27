@@ -183,8 +183,8 @@ function pre_load_user_reports() {
 	const $reportsContainer = $('#reports_container');
 	$reportsContainer.empty()
 
-	let limited_day = ACTIVE_YEAR == CURRENT_YEAR && ACTIVE_MONTH == CURRENT_MONTH ? TODAY.getDate() : JDate.daysInMonth(ACTIVE_YEAR, ACTIVE_MONTH);
-	for (limited_day; day >= 1; day--) {
+	let day = ACTIVE_YEAR == CURRENT_YEAR && ACTIVE_MONTH == CURRENT_MONTH ? TODAY.getDate() : JDate.daysInMonth(ACTIVE_YEAR, ACTIVE_MONTH);
+	for (day; day >= 1; day--) {
 		let reportHtml = `
 			<div id="report_${day}" class="border p-2 mb-1 missed-report" style="border-radius: 8px;">
 				<div class="card shadow mb-4">
@@ -347,7 +347,7 @@ function load_user_reports(userName, reports) {
 
 async function export_reports() {
 	const exportUrl = `/hours/api/export_daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
-	let response = await postRequest(exportUrl, {}, "Exporting Reports")
+	let response = await postRequest(exportUrl, {}, "Exporting Reports", false)
 	if (!response) {
 		return
 	}
