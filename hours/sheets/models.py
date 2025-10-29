@@ -157,6 +157,20 @@ def current_mont_days(month: int, isleap: bool) -> int:
         days_num += 1
     return days_num
 
+def get_persian_weekday(jalali_date):
+    """Convert jalali date to Persian weekday name"""
+
+    weekdays = {
+        0: "شنبه",
+        1: "یکشنبه", 
+        2: "دوشنبه",
+        3: "سه شنبه",
+        4: "چهارشنبه",
+        5: "پنجشنبه",
+        6: "جمعه"
+    }
+    return weekdays[jalali_date.weekday()]
+
 
 class Sheet(models.Model):
     payment_status_choices = [

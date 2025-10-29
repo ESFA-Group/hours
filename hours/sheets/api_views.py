@@ -17,9 +17,12 @@ import io
 import re
 from io import BytesIO
 
-from sheets.models import Project, Sheet, User, Food_data, Report, DailyReportSetting
+from sheets.models import Project, Sheet, User, Food_data, Report, DailyReportSetting, current_mont_days, get_persian_weekday
 from esfa_eyes.models import EsfaEyes
 from sheets.serializers import ProjectSerializer, SheetSerializer
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.worksheet.table import Table, TableStyleInfo
 
 
 def camel_to_snake(s: str) -> str:
@@ -989,65 +992,85 @@ class ExportDailyReportManagement(APIView):
     permission_classes = [customPermissions.IsDailyReportManager]
 
     def post(self, request, year: str, month: str):
+        year_int = int(year)
+        month_int = int(month)
+        # Get all days in the month (even without reports)
+
+        is_leap = jdt.date(year_int, month_int, 1).isleap()
+        month_days = current_mont_days(month_int, is_leap)
+        
         reports = Report.objects.filter(year=year, month=month).order_by("user", "day")
         reports_by_user = {}
+        
+        # Create report dictionary with all days
         for report in reports:
             username = report.user.username if report.user else "Unknown User"
             if username not in reports_by_user:
+                # Initialize with empty entries for all days
                 reports_by_user[username] = []
+                for day in range(1, month_days + 1):
+                    try:
+                        jalali_date = jdt.date(year_int, month_int, day)
+                        reports_by_user[username].append({
+                            'date': jalali_date,
+                            'date_display': jalali_date.strftime("%d %B %Y"),
+                            'weekday': get_persian_weekday(jalali_date),
+                            'is_thursday': jalali_date.weekday() == 5,
+                            'is_friday': jalali_date.weekday() == 6,
+                            'content': '',
+                            "Manager's Comment": '',
+                            "Supervisor's Comment": '',
+                            'day': day
+                        })
+                    except:
+                        continue
             
-            reports_by_user[username].append({
-                'year': report.year,
-                'month': report.month,
-                'day': report.day,
-                'content': report.content,
-                "Manager's Comment": report.main_comment,
-                "Supervisor's Comment": report.sub_comment,
-            })
+            # Update with actual report data
+            for entry in reports_by_user[username]:
+                if entry['day'] == report.day:
+                    entry.update({
+                        'content': report.content,
+                        "Manager's Comment": report.main_comment,
+                        "Supervisor's Comment": report.sub_comment,
+                    })
+                    break
         
         output = BytesIO()
 
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             used_sheet_names = set()
+            
             for username, user_reports in reports_by_user.items():
-                df = pd.DataFrame(user_reports)
+                # Convert to DataFrame for easier handling
+                df_data = []
+                for report in user_reports:
+                    df_data.append({
+                        'تاریخ': report['date_display'],
+                        'روز هفته': report['weekday'],
+                        'گزارش': report['content'],
+                        'نظر مدیر': report["Manager's Comment"],
+                        'نظر سرپرست': report["Supervisor's Comment"],
+                        'is_thursday': report['is_thursday'],  # Temp column for formatting
+                        'is_friday': report['is_friday']  # Temp column for formatting
+                    })
                 
-                column_order = ['year', 'month', 'day', 'content', "Manager's Comment", "Supervisor's Comment"]
-                existing_columns = [col for col in column_order if col in df.columns]
-                df = df[existing_columns]   
+                df = pd.DataFrame(df_data)
                 
                 sheet_name = username[:31]
-                # Handle duplicate sheet names (case-insensitive)
                 counter = 1
                 while sheet_name.lower() in used_sheet_names:
-                    # Reserve space for counter (format: "name_1")
                     sheet_name = f"{username[:28]}_{counter}"
                     counter += 1
-            
+                
                 used_sheet_names.add(sheet_name.lower())
                 
+                # Write DataFrame to Excel
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
                 worksheet = writer.sheets[sheet_name]
-                try:
-                    for column in worksheet.columns:
-                        max_length = 0
-                        column_letter = column[0].column_letter
-                        for cell in column:
-                            try:
-                                if len(str(cell.value)) > max_length:
-                                    max_length = len(str(cell.value))
-                            except:
-                                pass
-                        adjusted_width = min(max_length + 2, 50)  # Cap at 50 characters
-                        worksheet.column_dimensions[column_letter].width = adjusted_width
-                except Exception as e:
-                    print(f"MAJOR ERROR: {e}")
-                    print(f"    ERROR in cell: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    raise 
-    
-        # Prepare HTTP response
+                
+                # Apply styling
+                self._apply_excel_styling(worksheet, df)
+        
         output.seek(0)
         response = HttpResponse(
             output.getvalue(),
@@ -1056,8 +1079,94 @@ class ExportDailyReportManagement(APIView):
         response['Content-Disposition'] = f'attachment; filename=reports_{year}_{month}.xlsx'
         
         return response
+
+    def _apply_excel_styling(self, worksheet, df):
+        # Define styles
+        persian_font = Font(name='Calibri', size=11)
+        header_font = Font(name='Calibri', size=14, bold=True)
         
+        # Different alignments for different columns
+        header_alignment = Alignment(vertical='center', horizontal='center', wrap_text=True)
+        rtl_alignment = Alignment(vertical='center', wrap_text=True, horizontal='right', readingOrder=2)
+        center_alignment = Alignment(vertical='center', wrap_text=True, horizontal='center')
         
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        friday_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+        thursday_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
+        
+        # Apply basic styling to all cells
+        for row in worksheet.iter_rows():
+            for cell in row:
+                cell.font = persian_font
+                cell.border = thin_border
+        
+        # Apply header styling with center alignment
+        for cell in worksheet[1]:
+            cell.font = header_font
+            cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+            cell.alignment = header_alignment
+        
+        # Apply specific alignments to data rows
+        max_row = len(df) + 1
+        for row_idx in range(2, max_row + 1):
+            # Columns A & B (تاریخ and روز هفته) - LTR alignment
+            worksheet.cell(row=row_idx, column=1).alignment = center_alignment  # تاریخ
+            worksheet.cell(row=row_idx, column=2).alignment = center_alignment  # روز هفته
+            
+            # Columns C, D, E (محتوا, نظر مدیر, نظر سرپرست) - RTL alignment and reading order
+            for col_idx in [3, 4, 5]:
+                cell = worksheet.cell(row=row_idx, column=col_idx)
+                cell.alignment = rtl_alignment
+        
+        # Apply Friday coloring only to first two cells (date and weekday)
+        for row_idx in range(2, max_row + 1):
+            is_thursday = worksheet.cell(row=row_idx, column=6).value  # Hidden is_thursday column
+            is_friday = worksheet.cell(row=row_idx, column=7).value  # Hidden is_friday column
+            if is_friday:
+                worksheet.cell(row=row_idx, column=1).fill = friday_fill  # تاریخ
+                worksheet.cell(row=row_idx, column=2).fill = friday_fill  # روز هفته
+            if is_thursday:
+                worksheet.cell(row=row_idx, column=1).fill = thursday_fill  # تاریخ
+                worksheet.cell(row=row_idx, column=2).fill = thursday_fill  # روز هفته
+        
+        # Delete columns F and G
+        worksheet.delete_cols(6, 2)  
+
+        
+        # Adjust column widths with wrap text
+        column_widths = {
+            'A': 15,  # تاریخ
+            'B': 15,  # روز هفته
+            'C': 60,  # محتوا
+            'D': 40,  # نظر مدیر
+            'E': 30   # نظر سرپرست
+        }
+        
+        for col_letter, width in column_widths.items():
+            worksheet.column_dimensions[col_letter].width = width
+        
+        # Create Excel table
+        table_ref = f"A1:E{max_row}"
+        table = Table(displayName=f"Table_{worksheet.title}", ref=table_ref)
+        
+        # Use blue table style (Medium 6 is blue style)
+        style = TableStyleInfo(
+            name="TableStyleMedium6",
+            showFirstColumn=False,
+            showLastColumn=False,
+            showRowStripes=True,
+            showColumnStripes=False
+        )
+        table.tableStyleInfo = style
+        worksheet.add_table(table)
+        
+        # Freeze header row
+        worksheet.freeze_panes = "A2"
 
 
 class DailyReportSettingManager(APIView):
