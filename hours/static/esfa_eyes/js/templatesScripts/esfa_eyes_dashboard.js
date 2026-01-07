@@ -20,6 +20,9 @@ const titleMapping = {
 	ready_products: 'موجودی تولیدشده آماده تحویل',
 	ready_kavosh_products: 'موجودی کاوش تولیدشده آماده تحویل',
 	ready_kia_products: 'موجودی کیا تولیدشده آماده تحویل',
+	unproducable_shortage_product: 'موجودی غ.ق تولید به دلیل کسری',
+	unproducable_shortage_kia_product: 'موجودی کیا غ.ق تولید به دلیل کسری',
+	unproducable_shortage_kavosh_product: 'موجودی کاوش غ.ق تولید به دلیل کسری',
 	unproduced_workshop_inventory: 'موجودی کارگاه تولید نشده',
 	unproduced_kavosh_workshop_inventory: 'موجودی کاوش کارگاه تولید نشده',
 	unproduced_kia_workshop_inventory: 'موجودی کیا کارگاه تولید نشده',
@@ -70,14 +73,17 @@ const keyToModelFieldMap = {
 	// products_info
 	'unproduced_workshop_inventory': 'products_info',
 	'ready_products': 'products_info',
-
+	"unproducable_shortage_product": 'products_info',
+	
 	// kavosh products_info
 	'unproduced_kavosh_workshop_inventory': 'kavosh_products_info',
 	'ready_kavosh_products': 'kavosh_products_info',
-
+	"unproducable_shortage_kavosh_product": 'kavosh_products_info',
+	
 	// kia products_info
 	'ready_kia_products': 'kia_products_info',
 	'unproduced_kia_workshop_inventory': 'kia_products_info',
+	"unproducable_shortage_kia_product": 'kia_products_info',
 	'deliverd_1404': 'kia_products_info',
 	'deliverd_1403': 'kia_products_info',
 	'deliverd_1402': 'kia_products_info',
@@ -480,6 +486,7 @@ async function initTables(data = null) {
 	if (data == null)
 		data = await getEyesData($("#year").val());
 
+	console.table(data)
 	document.getElementById('dashboard-container').innerHTML = '';
 
 	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official'], window.USER.is_FinancialManager);
@@ -494,13 +501,13 @@ async function initTables(data = null) {
 	};
 	createObjectTable(data, 'فروش تفکیکی (بدون ارزش افزوده)', ['individual_sales', 'individual_sales_quantities', 'individual_sales_total_received', 'individual_sales_check_received', 'individual_sales_unknown',], window.USER.is_FinancialManager, true, receivedPercentageConfig);
 	createObjectTable(data, 'موجودی دستگاه‌ها', ['turkiye_inventory', 'china_production_orders'], window.USER.is_InternationalFinanceManager || window.USER.is_InternationalSalesManager);
-	createObjectTable(data, 'موجودی دستگاه‌های اسفا', ['ready_products', 'unproduced_workshop_inventory'], window.USER.is_ProductionManager);
-	createObjectTable(data, 'موجودی دستگاه‌های کاوش', ['ready_kavosh_products', 'unproduced_kavosh_workshop_inventory',], window.USER.is_KavoshProductionManager); // dont add || window.USER.is_KavoshProductionManager
+	createObjectTable(data, 'موجودی دستگاه‌های اسفا', ['ready_products', 'unproduced_workshop_inventory', 'unproducable_shortage_product'], window.USER.is_ProductionManager);
+	createObjectTable(data, 'موجودی دستگاه‌های کاوش', ['ready_kavosh_products', 'unproduced_kavosh_workshop_inventory', 'unproducable_shortage_kavosh_product'], window.USER.is_KavoshProductionManager); // dont add || window.USER.is_KavoshProductionManager
 	const kiaColumnSumConfig = {
 		name: 'مجموع تحویلی‌ها',
 		includeKeys: ['deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'],
 	};
-	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'], window.USER.is_KiaProductionManager, false, false, kiaColumnSumConfig); // dont add || window.USER.is_KiaProductionManager
+	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'unproducable_shortage_kia_product', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'], window.USER.is_KiaProductionManager, false, false, kiaColumnSumConfig); // dont add || window.USER.is_KiaProductionManager
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_insured_non_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
 

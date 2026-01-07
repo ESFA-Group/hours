@@ -72,6 +72,11 @@ def default_products_info():
 				"Pishtaz": 0,
 				"Other": 0,
 			},update_interval_days=7, who_can_see=users_with_products_info_access).__dict__,
+		"unproducable_shortage_product": EsfaEyesProductInfo({
+				"Esfa Meter": 0,
+				"Pishtaz": 0,
+				"Other": 0,
+			},update_interval_days=7, who_can_see=users_with_products_info_access).__dict__,
 	}
 
 def default_kia_products_info():
@@ -84,6 +89,13 @@ def default_kia_products_info():
 				"Nira110-600": 0,
 			},update_interval_days=7, who_can_see=users_with_kia_products_info_access).__dict__,
 		"ready_kia_products": EsfaEyesProductInfo({
+				"121": 0,
+				"131": 0,
+				"Kia Meter": 0,
+				"Nira48-600": 0,
+				"Nira110-600": 0,
+			},update_interval_days=7, who_can_see=users_with_kia_products_info_access).__dict__,
+		"unproducable_shortage_kia_product": EsfaEyesProductInfo({
 				"121": 0,
 				"131": 0,
 				"Kia Meter": 0,
@@ -146,6 +158,15 @@ def default_kavosh_products_info():
 				"MCM": 0,
 			},update_interval_days=7, who_can_see=users_with_kavosh_products_info_access).__dict__,
 		"ready_kavosh_products": EsfaEyesProductInfo({
+				"T22": 0,
+				"TDM": 0,
+				"TEM": 0,
+				"CM1": 0,
+				"CB1": 0,
+				"CAPTAN12": 0,
+				"MCM": 0,
+			},update_interval_days=7, who_can_see=users_with_kavosh_products_info_access).__dict__,
+		"unproducable_shortage_kavosh_product": EsfaEyesProductInfo({
 				"T22": 0,
 				"TDM": 0,
 				"TEM": 0,
