@@ -586,6 +586,11 @@
         const tableData = convertTableData(rawData);
         // automatically fill 100% if there is only one project in table
         const projects = getTableProjects(tableData);
+        const standardValue = TryStandartizeValue(value);
+        if (x == 2 && value !== standardValue) {
+            window.spreadTable.updateCell(2, y, standardValue);
+            return;
+        }
         if(projects.length === 1 && worksheet){
             x = Number(x);
             y = Number(y);
@@ -618,6 +623,18 @@
         if(worksheet){
             saveSheet(tableData);
         }
+    }
+
+    function TryStandartizeValue(value) {
+        if (typeof value !== 'string')
+            return value
+
+        const parts = value.split(':');
+        if (parts.length === 1) {
+            return value.padStart(2, '0') + ":00"
+        }
+
+        return parts[0].padStart(2, '0') + ":" + parts[1].padStart(2, '0')
     }
 
     function onselectionHandler(worksheet, px, py, ux, uy, origin){
