@@ -31,35 +31,99 @@
         </div>
     </div>
 
-    <div id="tables-container" class="flex-grow-1 " dir="rtl">
-        {% if request.user.is_superuser or request.user.is_global_sales_editor or request.user.is_global_sales_viewer %}
-        <div class="accordion" id="sheetAccordion">
-            <div class="accordion-item mb-4 border border-2 border-dark-subtle">
-                <h2 class="accordion-header" id="h1">
-                    <button class="accordion-button collapsed sheet-toggle-btn" type="button">
-                        Global Sales
-                    </button>
-                </h2>
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs nav-fill mb-4 custom-tabs" id="dashboardTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general-tab-pane"
+                type="button" role="tab" aria-controls="general-tab-pane" aria-selected="true">
+                <i class="fa fa-chart-pie me-2"></i>General
+            </button>
+        </li>
+        {% if request.user.is_detailed_sales_viewer %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="private-sales-tab" data-bs-toggle="tab"
+                data-bs-target="#private-sales-tab-pane" type="button" role="tab" aria-controls="private-sales-tab-pane"
+                aria-selected="false">
+                <i class="fa fa-user-secret me-2"></i>Private Sales
+            </button>
+        </li>
+        {% endif %}
+    </ul>
 
-                <div class="accordion-body p-0">
-                    <div class="sheet-iframe-wrapper d-flex align-items-center justify-content-center collapsed-view">
-                        <div id="sheet-loader" class="text-muted py-3" dir="ltr">Loading sheet...</div>
-                        <iframe id="sheet-frame" class="d-none" loading="lazy" referrerpolicy="no-referrer"></iframe>
-                        
-                        <!-- <iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQhdiTYf10CBG7ZNuz8jTcdGClHvlH2ijuU2-vh82G3vP-q9TViM9lTSVAC-U5mKx5I-YKNfqDv_Lgj/pubhtml?widget=true&amp;headers=false"
-                                loading="lazy"
-                                referrerpolicy="no-referrer">
-                        </iframe> -->
-                        
+    <!-- Tab Content -->
+    <div class="tab-content flex-grow-1" id="dashboardTabContent">
+        <!-- General Tab -->
+        <div class="tab-pane fade show active h-100" id="general-tab-pane" role="tabpanel" aria-labelledby="general-tab"
+            tabindex="0">
+            <div id="tables-container" class="h-100 d-flex flex-column" dir="rtl">
+                {% if request.user.is_superuser or request.user.is_global_sales_editor or request.user.is_global_sales_viewer %}
+                <div class="accordion" id="sheetAccordion">
+                    <div class="accordion-item mb-4 border border-2 border-dark-subtle">
+                        <h2 class="accordion-header" id="h1">
+                            <button class="accordion-button collapsed sheet-toggle-btn" type="button">
+                                Global Sales
+                            </button>
+                        </h2>
+
+                        <div class="accordion-body p-0">
+                            <div
+                                class="sheet-iframe-wrapper d-flex align-items-center justify-content-center collapsed-view">
+                                <div id="sheet-loader" class="text-muted py-3" dir="ltr">Loading sheet...</div>
+                                <iframe id="sheet-frame" class="d-none" loading="lazy"
+                                    referrerpolicy="no-referrer"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+
+                <div id="dashboard-container" class="row">
+                </div>
+            </div>
+        </div>
+
+        <!-- Private Sales Tab -->
+        {% if request.user.is_detailed_sales_viewer %}
+        <div class="tab-pane fade h-100" id="private-sales-tab-pane" role="tabpanel" aria-labelledby="private-sales-tab"
+            tabindex="0">
+            <div class="d-flex flex-column gap-4" dir="rtl">
+                <!-- Private Sheet Section -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <span><i class="fa fa-table me-2"></i>Detailed Sale Sheet</span>
+                        <button class="btn btn-sm btn-outline-light" onclick="refreshPrivateSheet()">
+                            <i class="fa fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="sheet-iframe-wrapper expanded-view d-flex align-items-center justify-content-center bg-light"
+                            style="min-height: 500px;">
+                            <div class="text-muted">
+                                <i class="fa fa-external-link-alt fa-2x mb-2"></i><br>
+                                Google Sheet content will be loaded here
+                            </div>
+                            <!-- Implement actual iframe loading logic later -->
+                            <iframe id="private-sheet-frame" class="d-none w-100 h-100" loading="lazy"></iframe>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Private Chart Section -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-dark text-white">
+                        <span><i class="fa fa-chart-line me-2"></i>Sales Analytics</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="private-sales-chart" style="width:100%; height:400px;"
+                            class="d-flex align-items-center justify-content-center bg-light rounded">
+                            <span class="text-muted">Chart Analytics Placeholder</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         {% endif %}
-
-
-        <div id="dashboard-container" class="row">
-        </div>
     </div>
 </div>
 

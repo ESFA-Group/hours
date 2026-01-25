@@ -74,3 +74,15 @@ class GlobalSalesApiView(APIView):
 			url = "https://docs.google.com/spreadsheets/d/164IpVmO9f7u8Mux4b6Yfjcee6nQJJtYZT8yGMYcZ4ow/edit?usp=sharing"
 
 		return Response(url, status=status.HTTP_200_OK)
+
+
+class DetailedSalesApiView(APIView):
+	permission_classes = [customPermissions.hasDetailedSalesAccess]
+	
+	def get(self, request):
+		user = self.request.user
+		
+		# TODO: replace with actual logic or database field when available
+		url = "https://docs.google.com/spreadsheets/d/164IpVmO9f7u8Mux4b6Yfjcee6nQJJtYZT8yGMYcZ4ow/edit?usp=sharing"
+		
+		return Response(url, status=status.HTTP_200_OK)

@@ -74,12 +74,12 @@ const keyToModelFieldMap = {
 	'unproduced_workshop_inventory': 'products_info',
 	'ready_products': 'products_info',
 	"unproducable_shortage_product": 'products_info',
-	
+
 	// kavosh products_info
 	'unproduced_kavosh_workshop_inventory': 'kavosh_products_info',
 	'ready_kavosh_products': 'kavosh_products_info',
 	"unproducable_shortage_kavosh_product": 'kavosh_products_info',
-	
+
 	// kia products_info
 	'ready_kia_products': 'kia_products_info',
 	'unproduced_kia_workshop_inventory': 'kia_products_info',
@@ -125,10 +125,10 @@ async function getCurrencies() {
 
 	return apiService.get('https://BrsApi.ir/Api/Market/Gold_Currency.php?key=BfTErgVQ4YHlDZ33IcmWap9FhgiWU17H', {}, {}, "failed to get currencies")
 		.then(res => {
-			if (res.ok) {	
+			if (res.ok) {
 				return { "USD": res.data.currency[1], "CNY": res.data.currency[9] };
 			}
-			else{
+			else {
 				apiService.handleError(res, "Failed to get currencies")
 			}
 		});
@@ -617,6 +617,44 @@ async function handleSubmit(button) {
 		button.innerText = 'ثبت تغییرات';
 	}
 }
+async function getDetailedSales() {
+	let res = await apiService.get(`/detailed_sales`, {}, {}, "Failed to get Detailed Sales");
+
+	if (!res.ok) {
+		await apiService.handleError(res, "Failed to get Detailed Sales")
+		return null;
+	}
+	return res.data;
+}
+
+async function initDetailedSales() {
+	// Check if the element exists (user has permission)
+	const iframe = document.getElementById('private-sheet-frame');
+	if (!iframe) return;
+
+	try {
+		let sheetUrl = await getDetailedSales();
+		if (sheetUrl == null) {
+			return;
+		}
+
+		iframe.src = sheetUrl;
+		iframe.classList.remove('d-none');
+		// Handle loader if exists (I didn't add a loader ID in HTML for this one, but could add later if needed)
+	}
+	catch (error) {
+		console.error('Error loading Detailed Sales Sheet:', error);
+	}
+}
+
+async function refreshPrivateSheet() {
+	const iframe = document.getElementById('private-sheet-frame');
+	if (iframe) {
+		// Re-fetch the URL in case it changed, or just reload src
+		await initDetailedSales();
+	}
+}
+
 // =================== document ready ============================
 $("document").ready(async function () {
 	const today = new JDate();
@@ -627,7 +665,8 @@ $("document").ready(async function () {
 	$("#year").val(currentYear);
 
 	initTables();
-	initGlobalSalesTable()
+	initGlobalSalesTable();
+	initDetailedSales();
 
 	//events
 	$("#year, #month").change(function () {
