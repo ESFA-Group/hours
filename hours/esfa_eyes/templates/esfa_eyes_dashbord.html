@@ -40,7 +40,7 @@
                 <i class="fa fa-chart-pie me-2"></i>General
             </button>
         </li>
-        {% if request.user.is_detailed_sales_viewer %}
+        {% if request.user.is_detailed_sales_editor or request.user.is_detailed_sales_viewer %}
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="private-sales-tab" data-bs-toggle="tab"
                 data-bs-target="#private-sales-tab-pane" type="button" role="tab" aria-controls="private-sales-tab-pane"
@@ -68,43 +68,13 @@
         </div>
 
         <!-- Private Sales Tab -->
-        {% if request.user.is_detailed_sales_viewer %}
+        {% if request.user.is_detailed_sales_editor or request.user.is_detailed_sales_viewer %}
         <div class="tab-pane fade h-100" id="private-sales-tab-pane" role="tabpanel" aria-labelledby="private-sales-tab"
             tabindex="0">
             <div class="d-flex flex-column gap-4" dir="rtl">
-                <!-- Private Sheet Section -->
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                        <span><i class="fa fa-table me-2"></i>Detailed Sale Sheet</span>
-                        <button class="btn btn-sm btn-outline-light" onclick="refreshPrivateSheet()">
-                            <i class="fa fa-sync-alt"></i>
-                        </button>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="sheet-iframe-wrapper expanded-view d-flex align-items-center justify-content-center bg-light"
-                            style="min-height: 500px;">
-                            <div class="text-muted">
-                                <i class="fa fa-external-link-alt fa-2x mb-2"></i><br>
-                                Google Sheet content will be loaded here
-                            </div>
-                            <!-- Implement actual iframe loading logic later -->
-                            <iframe id="private-sheet-frame" class="d-none w-100 h-100" loading="lazy"></iframe>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Private Chart Section -->
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-dark text-white">
-                        <span><i class="fa fa-chart-line me-2"></i>Sales Analytics</span>
-                    </div>
-                    <div class="card-body">
-                        <div id="private-sales-chart" style="width:100%; height:400px;"
-                            class="d-flex align-items-center justify-content-center bg-light rounded">
-                            <span class="text-muted">Chart Analytics Placeholder</span>
-                        </div>
-                    </div>
-                </div>
+                {% if request.user.is_detailed_sales_editor or request.user.is_detailed_sales_viewer %}
+                    {% include "esfa_eyes/components/sheet_loader.html" with title="Private Sales" component_id="private-sales" api_endpoint="/detailed_sales" %}
+                {% endif %}
             </div>
         </div>
         {% endif %}
