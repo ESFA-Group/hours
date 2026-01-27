@@ -1,33 +1,25 @@
-{% comment %}
-Reusable Google Sheet Loader Component
-
-Usage:
-{% include "esfa_eyes/components/sheet_loader.html" with
-title="Sheet Title"
-component_id="unique-id"
-api_endpoint="/api/endpoint"
-%}
-
-Parameters:
-- title: Display title in the accordion header
-- component_id: Unique identifier for this component instance
-- api_endpoint: API endpoint that returns the sheet URL
-{% endcomment %}
-
-<div class="sheet-loader-component" data-component-id="{{ component_id }}" data-api-endpoint="{{ api_endpoint }}">
-	<div class="accordion" id="sheetAccordion-{{ component_id }}">
-		<div class="accordion-item mb-4 border border-2 border-dark-subtle">
-			<h2 class="accordion-header">
-				<button class="accordion-button collapsed sheet-toggle-btn" type="button">
-					{{ title }}
-				</button>
-			</h2>
-			<div class="accordion-body p-0">
-				<div class="sheet-iframe-wrapper d-flex align-items-center justify-content-center collapsed-view">
-					<div class="sheet-loader text-muted py-3" dir="ltr">Loading sheet...</div>
-					<iframe class="sheet-frame d-none" loading="lazy" referrerpolicy="no-referrer"></iframe>
-				</div>
+<div class="sheet-loader-component" data-component-id="{{ component_id }}" data-api-endpoint="{{ api_endpoint }}"
+	data-state="collapsed">
+	<div class="sheet-header">
+		<span class="sheet-title">{{ title }}</span>
+		<div class="sheet-controls">
+			<button class="sheet-btn sheet-toggle-btn" type="button" title="Expand">
+				<i class="fa fa-chevron-down"></i>
+			</button>
+			<button class="sheet-btn sheet-fullscreen-btn" type="button" title="Fullscreen">
+				<i class="fa fa-expand"></i>
+			</button>
+			<button class="sheet-btn sheet-close-btn d-none" type="button" title="Exit fullscreen">
+				<i class="fa fa-times"></i>
+			</button>
+		</div>
+	</div>
+	<div class="sheet-content">
+		<div class="sheet-iframe-wrapper">
+			<div class="sheet-loader" dir="ltr">
+				<i class="fa fa-spinner fa-spin me-2"></i>Loading sheet...
 			</div>
+			<iframe class="sheet-frame d-none" loading="lazy" referrerpolicy="no-referrer"></iframe>
 		</div>
 	</div>
 </div>

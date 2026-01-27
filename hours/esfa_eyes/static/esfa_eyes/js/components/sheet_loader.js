@@ -1,19 +1,10 @@
-/**
- * SheetLoader - Reusable Google Sheet loading component
- * 
- * Usage:
- *   const loader = new SheetLoader(containerElement, {
- *       apiEndpoint: '/global_sales',  // Optional: override data-api-endpoint
- *       onLoad: (url) => {},           // Optional: callback after sheet loads
- *       onError: (error) => {}         // Optional: error callback
- *   });
- *   loader.init();
- */
 class SheetLoader {
-	/**
-	 * @param {HTMLElement} container - The .sheet-loader-component element
-	 * @param {Object} options - Configuration options
-	 */
+	static STATES = {
+		COLLAPSED: 'collapsed',
+		EXPANDED: 'expanded',
+		FULLSCREEN: 'fullscreen'
+	};
+
 	constructor(container, options = {}) {
 		this.container = container;
 		this.componentId = container.dataset.componentId;
@@ -23,34 +14,123 @@ class SheetLoader {
 
 		// Cache DOM elements
 		this.toggleBtn = container.querySelector('.sheet-toggle-btn');
+		this.toggleIcon = this.toggleBtn?.querySelector('i');
+		this.fullscreenBtn = container.querySelector('.sheet-fullscreen-btn');
+		this.closeBtn = container.querySelector('.sheet-close-btn');
+		this.content = container.querySelector('.sheet-content');
 		this.wrapper = container.querySelector('.sheet-iframe-wrapper');
 		this.loader = container.querySelector('.sheet-loader');
 		this.iframe = container.querySelector('.sheet-frame');
 
 		this.isLoaded = false;
 		this.sheetUrl = null;
+		this.currentState = SheetLoader.STATES.COLLAPSED;
+
+		this._escKeyHandler = this._handleEscKey.bind(this);
 	}
 
-	/**
-	 * Initialize the component - fetch sheet URL and bind events
-	 */
 	async init() {
 		this.bindEvents();
+		this.updateUI();
 		await this.fetchAndLoadSheet();
 	}
 
-	/**
-	 * Bind toggle button click events
-	 */
 	bindEvents() {
 		if (this.toggleBtn) {
 			this.toggleBtn.addEventListener('click', () => this.toggle());
 		}
+		if (this.fullscreenBtn) {
+			this.fullscreenBtn.addEventListener('click', () => this.fullscreen());
+		}
+		if (this.closeBtn) {
+			this.closeBtn.addEventListener('click', () => this.exitFullscreen());
+		}
 	}
 
 	/**
-	 * Fetch the sheet URL from the API and load it
+	 * Update UI based on current state
 	 */
+	updateUI() {
+		const state = this.currentState;
+		const isFullscreen = state === SheetLoader.STATES.FULLSCREEN;
+		const isCollapsed = state === SheetLoader.STATES.COLLAPSED;
+
+		// Toggle button icon: down arrow when collapsed, up arrow when expanded
+		if (this.toggleIcon) {
+			if (isCollapsed) {
+				this.toggleIcon.className = 'fa fa-chevron-down';
+				this.toggleBtn.title = 'Expand';
+			} else {
+				this.toggleIcon.className = 'fa fa-chevron-up';
+				this.toggleBtn.title = 'Collapse';
+			}
+		}
+
+		// Show/hide toggle and fullscreen buttons based on fullscreen state
+		if (this.toggleBtn) {
+			this.toggleBtn.classList.toggle('d-none', isFullscreen);
+		}
+		if (this.fullscreenBtn) {
+			this.fullscreenBtn.classList.toggle('d-none', isFullscreen);
+		}
+		if (this.closeBtn) {
+			this.closeBtn.classList.toggle('d-none', !isFullscreen);
+		}
+	}
+
+	setState(newState) {
+		const oldState = this.currentState;
+
+		if (oldState === SheetLoader.STATES.FULLSCREEN && newState !== SheetLoader.STATES.FULLSCREEN) {
+			this._exitFullscreenMode();
+		}
+
+		if (newState === SheetLoader.STATES.FULLSCREEN && oldState !== SheetLoader.STATES.FULLSCREEN) {
+			this._enterFullscreenMode();
+		}
+
+		this.currentState = newState;
+		this.container.dataset.state = newState;
+		this.updateUI();
+	}
+
+	/**
+	 * Toggle between collapsed and expanded
+	 */
+	toggle() {
+		if (this.currentState === SheetLoader.STATES.COLLAPSED) {
+			this.setState(SheetLoader.STATES.EXPANDED);
+		} else if (this.currentState === SheetLoader.STATES.EXPANDED) {
+			this.setState(SheetLoader.STATES.COLLAPSED);
+		}
+	}
+
+	fullscreen() {
+		this.setState(SheetLoader.STATES.FULLSCREEN);
+	}
+
+	exitFullscreen() {
+		this.setState(SheetLoader.STATES.EXPANDED);
+	}
+
+	_enterFullscreenMode() {
+		this.container.classList.add('sheet-fullscreen-mode');
+		document.body.classList.add('sheet-fullscreen-active');
+		document.addEventListener('keydown', this._escKeyHandler);
+	}
+
+	_exitFullscreenMode() {
+		this.container.classList.remove('sheet-fullscreen-mode');
+		document.body.classList.remove('sheet-fullscreen-active');
+		document.removeEventListener('keydown', this._escKeyHandler);
+	}
+
+	_handleEscKey(event) {
+		if (event.key === 'Escape' && this.currentState === SheetLoader.STATES.FULLSCREEN) {
+			this.exitFullscreen();
+		}
+	}
+
 	async fetchAndLoadSheet() {
 		try {
 			const url = await this.fetchSheetUrl();
@@ -66,10 +146,6 @@ class SheetLoader {
 		}
 	}
 
-	/**
-	 * Fetch sheet URL from the configured API endpoint
-	 * @returns {Promise<string|null>}
-	 */
 	async fetchSheetUrl() {
 		if (!this.apiEndpoint) {
 			console.warn(`[SheetLoader ${this.componentId}] No API endpoint configured`);
@@ -77,19 +153,13 @@ class SheetLoader {
 		}
 
 		const res = await apiService.get(this.apiEndpoint, {}, {}, 'Failed to get sheet URL');
-
 		if (!res.ok) {
 			await apiService.handleError(res, 'Failed to get sheet URL');
 			return null;
 		}
-
 		return res.data;
 	}
 
-	/**
-	 * Load the iframe with the given URL
-	 * @param {string} url - The Google Sheet embed URL
-	 */
 	loadIframe(url) {
 		if (!url || !this.iframe) return;
 
@@ -108,13 +178,9 @@ class SheetLoader {
 		}
 	}
 
-	/**
-	 * Show error message in place of the loader
-	 * @param {string} message 
-	 */
 	showError(message) {
 		if (this.loader) {
-			this.loader.textContent = message;
+			this.loader.innerHTML = `<i class="fa fa-exclamation-triangle me-2"></i>${message}`;
 			this.loader.classList.remove('d-none');
 		}
 		if (this.iframe) {
@@ -122,50 +188,10 @@ class SheetLoader {
 		}
 	}
 
-	/**
-	 * Toggle between expanded and collapsed states
-	 */
-	toggle() {
-		if (this.wrapper.classList.contains('collapsed-view')) {
-			this.expand();
-		} else {
-			this.collapse();
-		}
-	}
-
-	/**
-	 * Expand the sheet view
-	 */
-	expand() {
-		if (this.wrapper) {
-			this.wrapper.classList.remove('collapsed-view');
-			this.wrapper.classList.add('expanded-view');
-		}
-		if (this.toggleBtn) {
-			this.toggleBtn.classList.remove('collapsed');
-		}
-	}
-
-	/**
-	 * Collapse the sheet view
-	 */
-	collapse() {
-		if (this.wrapper) {
-			this.wrapper.classList.remove('expanded-view');
-			this.wrapper.classList.add('collapsed-view');
-		}
-		if (this.toggleBtn) {
-			this.toggleBtn.classList.add('collapsed');
-		}
-	}
-
-	/**
-	 * Refresh the sheet by re-fetching the URL
-	 */
 	async refresh() {
 		this.isLoaded = false;
 		if (this.loader) {
-			this.loader.textContent = 'Loading sheet...';
+			this.loader.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Loading sheet...';
 			this.loader.classList.remove('d-none');
 		}
 		if (this.iframe) {
@@ -176,10 +202,6 @@ class SheetLoader {
 	}
 }
 
-/**
- * Auto-initialize all sheet loader components on the page
- * Call this after DOM is ready
- */
 function initAllSheetLoaders() {
 	const containers = document.querySelectorAll('.sheet-loader-component');
 	const loaders = [];
@@ -193,7 +215,6 @@ function initAllSheetLoaders() {
 	return loaders;
 }
 
-// Export for module usage (if using modules) or attach to window for global access
 if (typeof window !== 'undefined') {
 	window.SheetLoader = SheetLoader;
 	window.initAllSheetLoaders = initAllSheetLoaders;
