@@ -57,24 +57,7 @@
             tabindex="0">
             <div id="tables-container" class="h-100 d-flex flex-column" dir="rtl">
                 {% if request.user.is_superuser or request.user.is_global_sales_editor or request.user.is_global_sales_viewer %}
-                <div class="accordion" id="sheetAccordion">
-                    <div class="accordion-item mb-4 border border-2 border-dark-subtle">
-                        <h2 class="accordion-header" id="h1">
-                            <button class="accordion-button collapsed sheet-toggle-btn" type="button">
-                                Global Sales
-                            </button>
-                        </h2>
-
-                        <div class="accordion-body p-0">
-                            <div
-                                class="sheet-iframe-wrapper d-flex align-items-center justify-content-center collapsed-view">
-                                <div id="sheet-loader" class="text-muted py-3" dir="ltr">Loading sheet...</div>
-                                <iframe id="sheet-frame" class="d-none" loading="lazy"
-                                    referrerpolicy="no-referrer"></iframe>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    {% include "esfa_eyes/components/sheet_loader.html" with title="Global Sales" component_id="global-sales" api_endpoint="/global_sales" %}
                 {% endif %}
 
 
@@ -132,5 +115,6 @@
 <script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
 <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
 <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
+<script src="{% static 'esfa_eyes/js/components/sheet_loader.js' %}"></script>
 <script src="{% static 'esfa_eyes/js/templatesScripts/esfa_eyes_dashboard.js' %}"></script>
 {% endblock body %}

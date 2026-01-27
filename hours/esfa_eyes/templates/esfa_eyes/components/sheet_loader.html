@@ -1,0 +1,33 @@
+{% comment %}
+Reusable Google Sheet Loader Component
+
+Usage:
+{% include "esfa_eyes/components/sheet_loader.html" with
+title="Sheet Title"
+component_id="unique-id"
+api_endpoint="/api/endpoint"
+%}
+
+Parameters:
+- title: Display title in the accordion header
+- component_id: Unique identifier for this component instance
+- api_endpoint: API endpoint that returns the sheet URL
+{% endcomment %}
+
+<div class="sheet-loader-component" data-component-id="{{ component_id }}" data-api-endpoint="{{ api_endpoint }}">
+	<div class="accordion" id="sheetAccordion-{{ component_id }}">
+		<div class="accordion-item mb-4 border border-2 border-dark-subtle">
+			<h2 class="accordion-header">
+				<button class="accordion-button collapsed sheet-toggle-btn" type="button">
+					{{ title }}
+				</button>
+			</h2>
+			<div class="accordion-body p-0">
+				<div class="sheet-iframe-wrapper d-flex align-items-center justify-content-center collapsed-view">
+					<div class="sheet-loader text-muted py-3" dir="ltr">Loading sheet...</div>
+					<iframe class="sheet-frame d-none" loading="lazy" referrerpolicy="no-referrer"></iframe>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

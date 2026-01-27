@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -519,26 +519,6 @@ async function initTables(data = null) {
 	}, 100);
 }
 
-async function initGlobalSalesTable() {
-	if (!window.USER.is_superuser && !window.USER.is_global_sales_editor && !window.USER.is_global_sales_viewer) {
-		return;
-	}
-
-	try {
-		let sheetUrl = await getGlobalSales()
-		if (sheetUrl == null) {
-			return;
-		}
-		const loader = document.getElementById('sheet-loader');
-		const iframe = document.getElementById('sheet-frame');
-		iframe.src = sheetUrl;
-		iframe.classList.remove('d-none');
-		loader.classList.add('d-none');
-	}
-	catch (error) {
-		console.error('Error loading Google Sheet:', error);
-	}
-}
 
 function fillYears(year) {
 	for (let i = window.START_YEAR; i <= year; i++) {
@@ -665,7 +645,7 @@ $("document").ready(async function () {
 	$("#year").val(currentYear);
 
 	initTables();
-	initGlobalSalesTable();
+	initAllSheetLoaders(); // Initialize all sheet loader components
 	initDetailedSales();
 
 	//events
@@ -677,15 +657,4 @@ $("document").ready(async function () {
 		handleSubmit(this);
 	});
 
-	$('.sheet-toggle-btn').on('click', function () {
-		let wrapper = $('.sheet-iframe-wrapper');
-
-		if (wrapper.hasClass('collapsed-view')) {
-			wrapper.removeClass('collapsed-view').addClass('expanded-view');
-			$(this).removeClass('collapsed');
-		} else {
-			wrapper.removeClass('expanded-view').addClass('collapsed-view');
-			$(this).addClass('collapsed');
-		}
-	});
 });
