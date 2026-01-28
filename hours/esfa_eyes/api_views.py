@@ -70,8 +70,6 @@ class GlobalSalesApiView(APIView):
 		user = self.request.user
 		
 		url = "https://docs.google.com/spreadsheets/d/164IpVmO9f7u8Mux4b6Yfjcee6nQJJtYZT8yGMYcZ4ow/edit?usp=sharing"
-		if user.is_global_sales_editor:
-			url = "https://docs.google.com/spreadsheets/d/164IpVmO9f7u8Mux4b6Yfjcee6nQJJtYZT8yGMYcZ4ow/edit?usp=sharing"
 
 		return Response(url, status=status.HTTP_200_OK)
 
@@ -83,7 +81,5 @@ class DetailedSalesApiView(APIView):
 		user = self.request.user
 		
 		url = "https://docs.google.com/spreadsheets/d/1DyZ-KrnPkuuJbdqg3pPjQIM49SllOiERQY3vgIOEnVw/edit?usp=sharing"
-		if user.is_detailed_sales_editor:
-			url = "https://docs.google.com/spreadsheets/d/1DyZ-KrnPkuuJbdqg3pPjQIM49SllOiERQY3vgIOEnVw/edit?usp=sharing"
 
 		return Response(url, status=status.HTTP_200_OK)

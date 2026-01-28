@@ -11,7 +11,7 @@ def esfa_eyes_access_required(
     view_func=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url="admin:login"
 ):
     actual_decorator = user_passes_test(
-        lambda u: u.is_active and (u.is_superuser or u.is_FinancialManager or u.is_InternationalFinanceManager or u.is_InternationalSalesManager or u.is_ProductionManager or u.is_KiaProductionManager or u.is_KavoshProductionManager or u.is_FinancialManager_readonly or u.is_InternationalFinanceManager_readonly or u.is_InternationalSalesManager_readonly or u.is_ProductionManager_readonly or u.is_KiaProductionManager_readonly or u.is_KavoshProductionManager_readonly  or u.is_global_sales_editor or u.is_global_sales_viewer),
+        lambda u: u.is_active and (u.is_superuser or u.is_FinancialManager or u.is_InternationalFinanceManager or u.is_InternationalSalesManager or u.is_ProductionManager or u.is_KiaProductionManager or u.is_KavoshProductionManager or u.is_FinancialManager_readonly or u.is_InternationalFinanceManager_readonly or u.is_InternationalSalesManager_readonly or u.is_ProductionManager_readonly or u.is_KiaProductionManager_readonly or u.is_KavoshProductionManager_readonly or u.is_global_sales_viewer or u.is_detailed_sales_viewer),
         login_url=login_url,
         redirect_field_name=redirect_field_name,
     )

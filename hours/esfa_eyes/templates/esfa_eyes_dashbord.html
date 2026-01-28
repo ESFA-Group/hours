@@ -40,7 +40,7 @@
                 <i class="fa fa-chart-pie me-2"></i>General
             </button>
         </li>
-        {% if request.user.is_detailed_sales_editor or request.user.is_detailed_sales_viewer %}
+        {% if request.user.is_detailed_sales_viewer %}
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="private-sales-tab" data-bs-toggle="tab"
                 data-bs-target="#private-sales-tab-pane" type="button" role="tab" aria-controls="private-sales-tab-pane"
@@ -57,7 +57,7 @@
         <div class="tab-pane fade show active h-100" id="general-tab-pane" role="tabpanel" aria-labelledby="general-tab"
             tabindex="0">
             <div id="tables-container" class="h-100 d-flex flex-column" dir="rtl">
-                {% if request.user.is_superuser or request.user.is_global_sales_editor or request.user.is_global_sales_viewer %}
+                {% if request.user.is_superuser or request.user.is_global_sales_viewer %}
                     {% include "esfa_eyes/components/sheet_loader.html" with title="Global Sales" component_id="global-sales" api_endpoint="/global_sales" %}
                 {% endif %}
 
@@ -68,13 +68,11 @@
         </div>
 
         <!-- Private Sales Tab -->
-        {% if request.user.is_detailed_sales_editor or request.user.is_detailed_sales_viewer %}
+        {% if request.user.is_detailed_sales_viewer %}
         <div class="tab-pane fade h-100" id="private-sales-tab-pane" role="tabpanel" aria-labelledby="private-sales-tab"
             tabindex="0">
             <div class="d-flex flex-column gap-4" dir="rtl">
-                {% if request.user.is_detailed_sales_editor or request.user.is_detailed_sales_viewer %}
-                    {% include "esfa_eyes/components/sheet_loader.html" with title="Private Sales" component_id="private-sales" api_endpoint="/detailed_sales" %}
-                {% endif %}
+                {% include "esfa_eyes/components/sheet_loader.html" with title="Private Sales" component_id="private-sales" api_endpoint="/detailed_sales" %}
             </div>
         </div>
         {% endif %}

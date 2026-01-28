@@ -32,10 +32,8 @@ class User(AbstractUser):
     is_FoodManager = models.BooleanField("is_FoodManager", default=False)
     is_PaymentManager = models.BooleanField("is_PaymentManager", default=False)
     # access to esfa eyes detailed sales sheet
-    is_detailed_sales_editor = models.BooleanField("is_detailed_sales_editor", default=False)
     is_detailed_sales_viewer = models.BooleanField("is_detailed_sales_viewer", default=False)
     # access to esfa eyes gobal sales sheet
-    is_global_sales_editor = models.BooleanField("is_global_sales_editor", default=False)
     is_global_sales_viewer = models.BooleanField("is_global_sales_viewer", default=False)
     # access to esfa eyes tables
     is_FinancialManager = models.BooleanField("is_FinancialManager", default=False)
