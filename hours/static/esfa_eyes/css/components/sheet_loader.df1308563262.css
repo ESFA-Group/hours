@@ -1,0 +1,180 @@
+/**
+ * Sheet Loader Component Styles
+ * Modern, minimal design with 3 states
+ */
+
+/* ==================== Base Component ==================== */
+
+.sheet-loader-component {
+	border-radius: 12px;
+	overflow: hidden;
+	background: white;
+	margin-bottom: 1rem;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	transition: box-shadow 0.2s ease;
+}
+
+.sheet-loader-component:hover {
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* ==================== Header Bar ==================== */
+
+.sheet-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.75rem 1rem;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+}
+
+.sheet-title {
+	font-weight: 600;
+	font-size: 1rem;
+	display: flex;
+	align-items: center;
+}
+
+.sheet-title i {
+	opacity: 0.8;
+}
+
+.sheet-controls {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.sheet-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border: none;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.15);
+	color: white;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	backdrop-filter: blur(4px);
+}
+
+.sheet-btn:hover {
+	background: rgba(255, 255, 255, 0.25);
+	transform: scale(1.05);
+}
+
+.sheet-btn:active {
+	transform: scale(0.95);
+}
+
+.sheet-fullscreen-btn:hover {
+	background: rgba(255, 255, 255, 0.3);
+}
+
+.sheet-close-btn {
+	background: rgba(255, 59, 48, 0.2);
+}
+
+.sheet-close-btn:hover {
+	background: rgba(255, 59, 48, 0.4);
+}
+
+/* ==================== Content Area ==================== */
+
+.sheet-content {
+	overflow: hidden;
+	transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	background: #fafafa;
+}
+
+.sheet-iframe-wrapper {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.sheet-iframe-wrapper iframe {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	display: block;
+}
+
+.sheet-loader {
+	padding: 2rem;
+	color: #6c757d;
+	font-size: 0.9rem;
+}
+
+/* ==================== State: Collapsed ==================== */
+
+.sheet-loader-component[data-state="collapsed"] .sheet-content {
+	height: 0;
+}
+
+/* ==================== State: Expanded (half-open) ==================== */
+
+.sheet-loader-component[data-state="expanded"] .sheet-content {
+	height: 420px;
+}
+
+/* ==================== State: Fullscreen ==================== */
+
+body.sheet-fullscreen-active {
+	overflow: hidden;
+}
+
+.sheet-loader-component.sheet-fullscreen-mode {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9999;
+	margin: 0;
+	border-radius: 0;
+	display: flex;
+	flex-direction: column;
+	animation: sheetSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: none;
+}
+
+@keyframes sheetSlideIn {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+.sheet-loader-component.sheet-fullscreen-mode .sheet-header {
+	flex-shrink: 0;
+	padding: 1rem 1.5rem;
+}
+
+.sheet-loader-component.sheet-fullscreen-mode .sheet-title {
+	font-size: 1.1rem;
+}
+
+.sheet-loader-component.sheet-fullscreen-mode .sheet-btn {
+	width: 40px;
+	height: 40px;
+}
+
+.sheet-loader-component.sheet-fullscreen-mode .sheet-content {
+	flex: 1;
+	height: auto !important;
+	background: white;
+}
+
+.sheet-loader-component.sheet-fullscreen-mode .sheet-iframe-wrapper {
+	height: 100%;
+}
