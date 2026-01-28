@@ -81,5 +81,6 @@ class DetailedSalesApiView(APIView):
 		user = self.request.user
 		
 		url = "https://docs.google.com/spreadsheets/d/1DyZ-KrnPkuuJbdqg3pPjQIM49SllOiERQY3vgIOEnVw/edit?usp=sharing"
-
+		my_url = "https://docs.google.com/spreadsheets/d/1eFN39ZVBw7vNlX7N-XnhY7WtzvMfc6aCw_mu2fTufWs/edit?usp=sharing"
+		url = my_url
 		return Response(url, status=status.HTTP_200_OK)
