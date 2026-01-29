@@ -2,87 +2,132 @@ import pandas as pd
 import numpy as np
 import requests
 import os
-from openpyxl import load_workbook  # Requires openpyxl for table detection
-
-# sheet_id = "164IpVmO9f7u8Mux4b6Yfjcee6nQJJtYZT8yGMYcZ4ow"
-# url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
-
-url = "https://docs.google.com/spreadsheets/d/1eFN39ZVBw7vNlX7N-XnhY7WtzvMfc6aCw_mu2fTufWs/edit?usp=sharing"
-url = url.replace("edit?usp=sharing", "export?format=xlsx")
-
-print(f"Attempting to fetch: {url}")
-local_file = "debug_data.xlsx"
+from openpyxl import load_workbook
+from openpyxl.utils import column_index_from_string
 
 
-if os.path.exists(local_file):
-    print(f"Loading from local cache: {local_file}")
-    xl = pd.ExcelFile(local_file)
-else:
+def download_excel_file(url, local_file="debug_data.xlsx"):
+    """Download Excel file from URL or load from local cache."""
+    if os.path.exists(local_file):
+        print(f"Loading from local cache: {local_file}")
+        return local_file
+    
     print(f"Fetching from web: {url}")
     try:
-        # Download the content
         response = requests.get(url)
-        response.raise_for_status() # Check for errors
+        response.raise_for_status()
         
-        # Save to local disk
         with open(local_file, "wb") as f:
             f.write(response.content)
             
-        # Load into pandas
-        xl = pd.ExcelFile(local_file)
+        return local_file
     except Exception as e:
         print(f"Failed to fetch data: {e}")
         raise
 
-try:
-    # Load workbook with openpyxl to access table objects
-    wb = load_workbook(local_file, data_only=True)
+
+def parse_table_range(table_ref):
+    """Parse Excel table range and return dimensions."""
+    ref_parts = table_ref.split(':')
+    if len(ref_parts) != 2:
+        return None
     
+    start_cell, end_cell = ref_parts
+    
+    # Extract column letters and row numbers
+    start_col = ''.join(filter(str.isalpha, start_cell))
+    start_row = int(''.join(filter(str.isdigit, start_cell)))
+    end_col = ''.join(filter(str.isalpha, end_cell))
+    end_row = int(''.join(filter(str.isdigit, end_cell)))
+    
+    # Convert to indices
+    start_col_idx = column_index_from_string(start_col)
+    end_col_idx = column_index_from_string(end_col)
+    
+    rows = end_row - start_row + 1
+    cols = end_col_idx - start_col_idx + 1
+    
+    return {
+        'range': table_ref,
+        'start': start_cell,
+        'end': end_cell,
+        'start_row': start_row,
+        'end_row': end_row,
+        'start_col': start_col,
+        'end_col': end_col,
+        'start_col_idx': start_col_idx,
+        'end_col_idx': end_col_idx,
+        'rows': rows,
+        'cols': cols,
+        'data_rows': rows - 1
+    }
+
+
+def get_sheet_tables(file_path):
+    try:
+        wb = load_workbook(file_path, data_only=True)
+        sheet_tables = {}
+        
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            tables_info = []
+            
+            if hasattr(ws, 'tables'):
+                for table_name, table_ref in ws.tables.items():
+                    table_data = parse_table_range(table_ref)
+                    if table_data:
+                        table_data['name'] = table_name
+                        tables_info.append(table_data)
+            
+            sheet_tables[sheet_name] = tables_info
+        
+        return sheet_tables
+    
+    except Exception as e:
+        print(f"Error loading workbook: {e}")
+        raise
+
+
+def print_table_summary(sheet_tables):
+    """Print formatted summary of tables in sheets."""
     print("Successfully fetched Excel file.")
-    print(f"Sheet names found: {wb.sheetnames}\n")
     print("-" * 40)
     
-    for sheet_name in wb.sheetnames:
-        ws = wb[sheet_name]
+    for sheet_name, tables in sheet_tables.items():
+        print(f"### Sheet: '{sheet_name}'")
+        print(f"   Found {len(tables)} Excel Table object(s):")
         
-        # Check for Excel Table objects (ListObject in Excel)
-        if hasattr(ws, 'tables'):
-            tables = ws.tables
-            print(f"### Sheet: '{sheet_name}'")
-            print(f"   Found {len(tables)} Excel Table object(s):")
-            
-            for table_name, table_ref in tables.items():
-                print(f"\n   Table Name: '{table_name}'")
-                print(f"   Range: {table_ref}")
-                
-                # Parse the range to get dimensions
-                ref_parts = table_ref.split(':')
-                if len(ref_parts) == 2:
-                    start_cell = ref_parts[0]
-                    end_cell = ref_parts[1]
-                    print(f"   From {start_cell} to {end_cell}")
-                    
-                    # Convert Excel references to indices
-                    from openpyxl.utils import column_index_from_string, coordinate_to_tuple
-                    
-                    start_col_letter = ''.join(filter(str.isalpha, start_cell))
-                    start_col_idx = column_index_from_string(start_col_letter)
-                    start_row_idx = int(''.join(filter(str.isdigit, start_cell)))
-                    
-                    end_col_letter = ''.join(filter(str.isalpha, end_cell))
-                    end_col_idx = column_index_from_string(end_col_letter)
-                    end_row_idx = int(''.join(filter(str.isdigit, end_cell)))
-                    
-                    rows = end_row_idx - start_row_idx + 1
-                    cols = end_col_idx - start_col_idx + 1
-                    
-                    print(f"   Dimensions: {rows} rows (including header) x {cols} columns")
-                    print(f"   Data rows: {rows-1} rows (excluding header)")
-            
-            if len(tables) == 0:
-                print(f"   No formal Excel Table objects found")
+        for table in tables:
+            print(f"\n   Table Name: '{table['name']}'")
+            print(f"   Range: {table['range']}")
+            print(f"   From {table['start']} to {table['end']}")
+            print(f"   Dimensions: {table['rows']} rows (including header) x {table['cols']} columns")
+            print(f"   Data rows: {table['data_rows']} rows (excluding header)")
+        
+        if not tables:
+            print(f"   No formal Excel Table objects found")
         
         print()
 
-except Exception as e:
-    print(f"Error: {e}")
+
+def main():
+    # Configure URL
+    url = "https://docs.google.com/spreadsheets/d/1eFN39ZVBw7vNlX7N-XnhY7WtzvMfc6aCw_mu2fTufWs/edit?usp=sharing"
+    url = url.replace("edit?usp=sharing", "export?format=xlsx")
+    
+    print(f"Attempting to fetch: {url}")
+    
+    # Download or load file
+    local_file = download_excel_file(url)
+    
+    # Get table information
+    sheet_tables = get_sheet_tables(local_file)
+    
+    # Print summary
+    print_table_summary(sheet_tables)
+    
+    return sheet_tables
+
+
+if __name__ == "__main__":
+    result = main()
