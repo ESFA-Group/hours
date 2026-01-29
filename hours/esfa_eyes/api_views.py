@@ -81,5 +81,14 @@ class DetailedSalesApiView(APIView):
 		user = self.request.user
 		
 		url = "https://docs.google.com/spreadsheets/d/1DyZ-KrnPkuuJbdqg3pPjQIM49SllOiERQY3vgIOEnVw/edit?usp=sharing"
+		return Response(url, status=status.HTTP_200_OK)
 
+
+class StaffInfoApiView(APIView):
+	permission_classes = [customPermissions.hasStaffInfoAccess]
+	
+	def get(self, request):
+		user = self.request.user
+		
+		url = "https://docs.google.com/spreadsheets/d/1NOEgVtkJAwRoBmt0NXxoQ6-jA_CGuEF21ccSxbfTINQ/edit?usp=sharing"
 		return Response(url, status=status.HTTP_200_OK)

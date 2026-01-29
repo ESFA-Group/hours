@@ -49,6 +49,15 @@
             </button>
         </li>
         {% endif %}
+        {% if request.user.is_staff_info_viewer %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="staff-info-tab" data-bs-toggle="tab"
+                data-bs-target="#staff-info-tab-pane" type="button" role="tab" aria-controls="private-sales-tab-pane"
+                aria-selected="false">
+                <i class="fa fa-user-secret me-2"></i>staff info
+            </button>
+        </li>
+        {% endif %}
     </ul>
 
     <!-- Tab Content -->
@@ -73,6 +82,16 @@
             tabindex="0">
             <div class="d-flex flex-column gap-4" dir="rtl">
                 {% include "esfa_eyes/components/sheet_loader.html" with title="Private Sales" component_id="private-sales" api_endpoint="/detailed_sales" %}
+            </div>
+        </div>
+        {% endif %}
+        
+        
+        {% if request.user.is_staff_info_viewer %}
+        <div class="tab-pane fade h-100" id="staff-info-tab-pane" role="tabpanel" aria-labelledby="staff-info-tab"
+            tabindex="0">
+            <div class="d-flex flex-column gap-4" dir="rtl">
+                {% include "esfa_eyes/components/sheet_loader.html" with title="Staff Info" component_id="staff-info" api_endpoint="/staff_info" %}
             </div>
         </div>
         {% endif %}

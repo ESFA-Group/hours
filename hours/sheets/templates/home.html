@@ -157,7 +157,7 @@
                     href="{% url 'sheets:daily_report_management' %}"
                     style="width: 250px">Daily report management</a>
                 {% endif %}
-                {% if request.user.is_superuser or request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_ProductionManager or request.user.is_KavoshProductionManager or request.user.is_KiaProductionManager or request.user.is_FinancialManager_readonly or request.user.is_InternationalFinanceManager_readonly or request.user.is_InternationalSalesManager_readonly or request.user.is_ProductionManager_readonly or request.user.is_KiaProductionManager_readonly or request.user.is_KavoshProductionManager_readonly  or request.user.is_global_sales_viewer or request.user.is_detailed_sales_viewer %}
+                {% if request.user.is_superuser or request.user.is_FinancialManager or request.user.is_InternationalFinanceManager or request.user.is_InternationalSalesManager or request.user.is_ProductionManager or request.user.is_KavoshProductionManager or request.user.is_KiaProductionManager or request.user.is_FinancialManager_readonly or request.user.is_InternationalFinanceManager_readonly or request.user.is_InternationalSalesManager_readonly or request.user.is_ProductionManager_readonly or request.user.is_KiaProductionManager_readonly or request.user.is_KavoshProductionManager_readonly  or request.user.is_global_sales_viewer or request.user.is_detailed_sales_viewer or request.user.is_staff_info_viewer %}
                     <a class="btn btn-info mx-1"
                     href="{% url 'esfa_eyes:Esfa Eyes Dashbord' %}"
                     style="width: 180px">Esfa Eyes</a>
