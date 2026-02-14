@@ -44,45 +44,46 @@
             <div class="col col-12 col-lg-4 mt-2">
 
                 <div style="position: sticky; top: 10px;">
-                    <div class="row">
-                        <div class="col col-4 col-md-4">
+                    <div class="d-flex justify-content-between" style="gap: 10px;">
+                        <div class="flex-grow-1 text-center">
                             <strong>Year</strong>
                             <div class="mt-1">
-                                <select name="year"
-                                        id="year"
-                                        style="min-width: 100px;
-                                               border-radius: 5px;
-                                               height: 35px">
+                                <select name="year" id="year" class="form-select">
                                 </select>
                             </div>
                         </div>
-                        <div class="col col-4 col-md-4">
+                        <div class="flex-grow-1 text-center">
                             <strong>Month</strong>
                             <div class="mt-1">
-                                <select name="month"
-                                        id="month"
-                                        style="min-width: 100px;
-                                               border-radius: 5px;
-                                               height: 35px">
+                                <select name="month" id="month" class="form-select">
                                     {{ 1|render_month_options }}
                                 </select>
                             </div>
                         </div>
-                        <div class="col col-4 col-md-4">
-                            <button id="submit-month"
-                                    class="btn btn-success"
-                                    style="width: 100px;
-                                           position: relative;
-                                           top: 25px;
-                                           float: right;
-                                           display: none"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#submitModal">
+                        {% if request.user.is_staff %}
+                            <div class="flex-grow-1 text-center mt-4">
+                                <input type="file"
+                                    id="excelFileInput"
+                                    style="display:none"
+                                    accept=".xlsx,.xls"
+                                    onchange="handleExcelImport(event)">
+                                <button id="add-hour"
+                                        class="btn btn-warning d-flex align-items-center justify-content-around" >
+                                    <i id="add-hour-icon" class="fa fa-file-import"></i>
+                                    <div id="add-hour-spinner" class="spinner-border text-dark d-none">
+                                    </div>                    
+                                    <span> Add Hours</span>
+                                </button>
+                            </div>
+                        {% endif %}
+                        <div class="flex-grow-1 text-center mt-4">
+                            <button id="submit-month" class="btn btn-success"
+                                    data-bs-toggle="modal" data-bs-target="#submitModal" >
                                 Submit
                             </button>
                         </div>
                     </div>
-
+                    
                     <hr>
 
                     <strong>Add Projects</strong>
@@ -239,6 +240,70 @@
         </div>
     </div>
 
+    <!-- Success Modal -->
+    <div class="modal fade"
+        id="successModal"
+        data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Import Data Result
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-success">succesfully updated</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-success"
+                            data-bs-dismiss="modal"
+                            id="submit">
+                        Ok
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warrning Modal -->
+    <div class="modal fade"
+        id="warningModal"
+        data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Import Data Result
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-warning">partially updated ‼️</p>
+                    <p>Users not found:</p>
+                    <ul id="missing-users-list"></ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-success"
+                            data-bs-dismiss="modal"
+                            id="submit">
+                        Ok
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
     <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
     <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
@@ -321,7 +386,6 @@
         COMPLIMENTARY.parentNode.classList.add('d-none');
         const REFUND_TEXT = document.getElementById('refund-text')
         if(!isPayed){
-            console.log("hi")
             REFUND.textContent = `${value}`
             REFUND_TEXT.textContent = `Please transfer ${value}R to account number:\n 1234 5678 9012 3456`;
         }
@@ -373,15 +437,54 @@
             are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
         */
         const headers = window.spreadTable.getHeaders(true);
+        let shouldOrderAndSave = false;
+
         rawData.map(row => {
             for(let [key, value] of Object.entries(row)){
-                if(!headers.includes(key)){
-                    row[headers[key]] = value;
-                    delete row[key];
+                switch(key){
+                    case "Hours":
+                        if row["Remote"] !== "":
+                            row["Remote"] = value;                         
+                        delete row[key];
+                        row["Auto Hours"] = '';
+                        row["Rest"] = '';
+                        shouldOrderAndSave = true;
+                        break;
+                    default:
+                        if(!headers.includes(key)){
+                            if (headers[key] !=="Hours" && row[headers[key]] === undefined) {
+                                row[headers[key]] = value;
+                            }
+                            delete row[key];
+                        }
+                        break;
                 }
             }
         })
-        return rawData
+        
+        if(!shouldOrderAndSave){
+            return rawData
+        }
+        
+        // Then create a new array with ordered objects
+        const orderedData = [];
+        for (let i = 0; i < rawData.length; i++) {
+            const row = rawData[i];
+            const orderedRow = {};
+            
+            // Add fields in the exact order they appear in the headers
+            headers.forEach(header => {
+                if(header !== "Hours"){
+                    orderedRow[header] = row[header] !== undefined ? row[header] : '';
+                }
+            });
+            
+            orderedData.push(orderedRow);
+        }
+        
+        saveSheet(orderedData);
+
+        return orderedData
     }
 
     // function decodeTableData(data){
@@ -486,8 +589,8 @@
     }
 
     function getTableProjects(tableData){
-        const defaultHeaders = new Set(['Day', 'WeekDay', 'Hours']);
         const allHeaders = new Set(Object.keys(tableData[0]));
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Remote', 'Rest']);
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
     }
@@ -499,7 +602,10 @@
         let total = 0;
         let daysCount = 0;
         tableData.forEach(row => {
-            const mins = hhmm2minutes(row.Hours); 
+            const auto = hhmm2minutes(row["Auto Hours"]); 
+            const rem = hhmm2minutes(row["Remote"]); 
+            const rest = hhmm2minutes(row["Rest"]); 
+            const mins = auto + rem - rest;
             for(const [prj, value] of Object.entries(row)){
                 if(!projects.includes(prj))
                     continue
@@ -584,6 +690,7 @@
     function onChangeHandler(worksheet, cell, x, y, value){
         const rawData = window.spreadTable.getJson();
         const tableData = convertTableData(rawData);
+
         // automatically fill 100% if there is only one project in table
         const projects = getTableProjects(tableData);
         const standardValue = TryStandartizeValue(value);
@@ -594,10 +701,10 @@
         if(projects.length === 1 && worksheet){
             x = Number(x);
             y = Number(y);
-            let hour = window.spreadTable.getCellFromCoords(x, y)?.textContent;
-            let percent = window.spreadTable.getCellFromCoords(x + 1, y)?.textContent;
-            if(hour && percent === ''){
-                window.spreadTable.updateCell(x + 1, y, "100"); // this will trigger onChange event again
+            let cell = window.spreadTable.getCellFromCoords(x, y)?.textContent;
+            let percent = window.spreadTable.getCellFromCoords(5, y)?.textContent;
+            if(cell && percent === ''){
+                window.spreadTable.updateCell(5, y, "100"); // this will trigger onChange event again
                 return
             }
         }
@@ -616,7 +723,7 @@
         }
         const minutesInfo = getMinutesByProject(tableData);
         let {totalTime, meanTime, ...minutesByProject} = minutesInfo;
-        const workedDaysCount = tableData.filter(row => hhmm2minutes(row.Hours) > 0).length;
+        const workedDaysCount = tableData.filter(row => hhmm2minutes(row["Auto Hours"]) > 0 || hhmm2minutes(row["Remote"]) > 0).length;
         updateHoursInfo(totalTime, meanTime, workedDaysCount);
         updateChart(minutesByProject);
         updatePaymentsValue()
@@ -648,11 +755,12 @@
     }
 
     async function constructTable(data, readOnlyAll = false){
-        
         const columns = [
             {type: 'text', title: 'Day', width: 80, readOnly: true},
             {type: 'text', title: 'WeekDay', width: 130, readOnly: true},
-            {type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
+            {type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true},
+            {type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
+            {type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
         ];
 
         for(const prj of getTableProjects(data)){
@@ -786,6 +894,84 @@
         $("#submit-month").prop("disabled", submitted);
         $("#submit-month").text(submitted? "Submitted": "Submit");
     }
+
+    function handleExcelImport(event) {
+        excelImmportLoadingStart()
+        var file = event.target.files[0];
+        var formData = new FormData();
+    
+        // Append the file to the form data
+        formData.append('file', file);
+        
+        // Send the file to the backend
+        const year = $("#year").val();
+        const month = $("#month").val();
+        const url = `{% url "sheets:hours_excel_import" year='yearHolder' month='monthHolder'  %}`
+            .replace("yearHolder", year)
+            .replace("monthHolder", month);
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{csrf_token}}',
+            },
+            body:  formData,
+        })
+        .then(res => {
+            if (res.ok) {
+                return res.json()
+            } else {
+                throw new Error('Network response was not ok');
+            }
+        })
+        .then(json =>{
+            if(json.status == 'error'){
+                jSuites.notification({
+                    error: 1,
+                    name: 'Error',
+                    title: 'Failed to add Hours',
+                    message: json.message,
+                    timeout: 6000,
+                });
+                return;
+            }
+            
+            if(json.users_not_found.length > 0){
+                showImportError(json.users_not_found)
+            }
+
+            //showImportSucces()            
+        })
+        .then(()=> {
+            excelImmportLoadingDone();
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function showImportError(missingUsersList){
+        $('#warningModal').modal('show')
+        $('#missing-users-list').empty(); // Clear existing list
+
+        $.each(missingUsersList, function(index, user) {
+            $('#missing-users-list').append(`<li>${user.name} (Id: ${user.user_id})</li>`);
+        });
+    }
+
+    function showImportSucces(){
+        $('#successModal').modal('show')
+        $('.modal-body').html("<p>succesfully updated✅</p>");
+    }
+
+    function excelImmportLoadingStart(){
+        $('#add-hour').prop("disabled", true);
+        $('#add-hour-spinner').show();
+        $('#add-hour-icon').hide()
+    }
+
+    function excelImmportLoadingDone(){
+        $('#add-hour').prop("disabled", false);
+        $('#add-hour-spinner').hide()
+        $('#add-hour-icon').show();
+    }
     
     $("document").ready(async function() {
 
@@ -823,7 +1009,11 @@
 
         $("#submit").click(submitSheet);
 
+        $('#add-hour').click(function(){   
+            $("#excelFileInput").click();
+        });
+
     });
-     
+
     </script>
 {% endblock body %}
