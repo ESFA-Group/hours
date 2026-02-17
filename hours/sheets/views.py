@@ -4,6 +4,18 @@ from django.utils.decorators import method_decorator
 from sheets.customDecorators import *
 from django.db.models import QuerySet
 from django.core.files.storage import default_storage
+from django.core.management import call_command
+from multiprocessing import Process
+from rest_framework.response import Response
+from rest_framework.status import (
+	HTTP_200_OK,
+	HTTP_400_BAD_REQUEST,
+	HTTP_418_IM_A_TEAPOT,
+	HTTP_404_NOT_FOUND,
+	HTTP_409_CONFLICT,
+	HTTP_503_SERVICE_UNAVAILABLE,
+	HTTP_500_INTERNAL_SERVER_ERROR,
+)
 
 import pandas as pd
 import numpy as np
@@ -623,6 +635,9 @@ class HoursExcelImportView(View):
 	
 	def post(self, request, year: str, month: str):
 		uploaded = request.FILES['file']
-		path = default_storage.save(f"tmp/{uploaded.name}", uploaded)
-		task = import_hours_task.delay(path, year, month)
-		return JsonResponse({"task_id": task.id}, status=202)
+		path = default_storage.save(uploaded.name, uploaded)
+		path = default_storage.path(path)
+		# Pass year and month as arguments to the management command
+		process = Process(target=call_command, args=('import_hours', path, year, month))
+		process.start()
+		return Response({"status": "import started", "file": uploaded.name, "year": year, "month": month}, status=HTTP_200_OK)

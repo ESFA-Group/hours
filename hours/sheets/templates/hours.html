@@ -3,154 +3,150 @@
 {% load connector_template_filters %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.css' %}">
-    <link rel="stylesheet"
-          href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
-    <link rel="stylesheet"
-          href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
-    <style>
-        :root {
-            --jexcel_header_color: #000;
-            --jexcel_header_color_highlighted: #000;
-            --jexcel_header_background: #f3f3f3;
-            --jexcel_header_background_highlighted: #dcdcdc;
-            --jexcel_content_color: #000;
-            --jexcel_content_color_highlighted: #000;
-            --jexcel_content_background: #fff;
-            --jexcel_content_background_highlighted: rgba(0,0,0,0.05);
-            --jexcel_menu_background: #fff;
-            --jexcel_menu_background_highlighted: #ebebeb;
-            --jexcel_menu_color: #555;
-            --jexcel_menu_color_highlighted: #555;
-            --jexcel_menu_box_shadow: 2px 2px 2px 0px rgba(143, 144, 145, 1);
-            --jexcel_border_color: #ccc;
-            --jexcel_border_color_highlighted: #000;
-            --jexcel_cursor: #eee;
-            --active_color: #007aff;
-        }
-        /* .jexcel tbody tr td{
+<link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.css' %}">
+<link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
+<link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
+<style>
+    :root {
+        --jexcel_header_color: #000;
+        --jexcel_header_color_highlighted: #000;
+        --jexcel_header_background: #f3f3f3;
+        --jexcel_header_background_highlighted: #dcdcdc;
+        --jexcel_content_color: #000;
+        --jexcel_content_color_highlighted: #000;
+        --jexcel_content_background: #fff;
+        --jexcel_content_background_highlighted: rgba(0, 0, 0, 0.05);
+        --jexcel_menu_background: #fff;
+        --jexcel_menu_background_highlighted: #ebebeb;
+        --jexcel_menu_color: #555;
+        --jexcel_menu_color_highlighted: #555;
+        --jexcel_menu_box_shadow: 2px 2px 2px 0px rgba(143, 144, 145, 1);
+        --jexcel_border_color: #ccc;
+        --jexcel_border_color_highlighted: #000;
+        --jexcel_cursor: #eee;
+        --active_color: #007aff;
+    }
+
+    /* .jexcel tbody tr td{
             background-color: rgba(200, 0, 0, 0.2);
         } */
-        .redFont{
-            color: red;
-        }
-    </style>
+    .redFont {
+        color: red;
+    }
+</style>
 {% endblock extra_css %}
 {% block body %}
 
-    <div class="px-4">
-        <div class="row">
+<div class="px-4">
+    <div class="row">
 
-            <div class="col col-12 col-lg-4 mt-2">
+        <div class="col col-12 col-lg-4 mt-2">
 
-                <div style="position: sticky; top: 10px;">
-                    <div class="d-flex justify-content-between" style="gap: 10px;">
-                        <div class="flex-grow-1 text-center">
-                            <strong>Year</strong>
-                            <div class="mt-1">
-                                <select name="year" id="year" class="form-select">
-                                </select>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 text-center">
-                            <strong>Month</strong>
-                            <div class="mt-1">
-                                <select name="month" id="month" class="form-select">
-                                    {{ 1|render_month_options }}
-                                </select>
-                            </div>
-                        </div>
-                        {% if request.user.is_staff %}
-                            <div class="flex-grow-1 text-center mt-4">
-                                <input type="file"
-                                    id="excelFileInput"
-                                    style="display:none"
-                                    accept=".xlsx,.xls"
-                                    onchange="handleExcelImport(event)">
-                                <button id="add-hour"
-                                        class="btn btn-warning d-flex align-items-center justify-content-around" >
-                                    <i id="add-hour-icon" class="fa fa-file-import"></i>
-                                    <div id="add-hour-spinner" class="spinner-border text-dark d-none">
-                                    </div>                    
-                                    <span> Add Hours</span>
-                                </button>
-                            </div>
-                        {% endif %}
-                        <div class="flex-grow-1 text-center mt-4">
-                            <button id="submit-month" class="btn btn-success"
-                                    data-bs-toggle="modal" data-bs-target="#submitModal" >
-                                Submit
-                            </button>
+            <div style="position: sticky; top: 10px;">
+                <div class="d-flex justify-content-between" style="gap: 10px;">
+                    <div class="flex-grow-1 text-center">
+                        <strong>Year</strong>
+                        <div class="mt-1">
+                            <select name="year" id="year" class="form-select">
+                            </select>
                         </div>
                     </div>
-                    
-                    <hr>
-
-                    <strong>Add Projects</strong>
-                    <div class="mt-2 d-flex justify-content-between">
-                        <select name="projects"
-                                id="projects"
-                                style="min-width: 200px;
-                                       border-radius: 5px">
-                        </select>
-                        <button id="add-project" class="btn btn-primary" style="width: 75px;">
-                            Add
+                    <div class="flex-grow-1 text-center">
+                        <strong>Month</strong>
+                        <div class="mt-1">
+                            <select name="month" id="month" class="form-select">
+                                {{ 1|render_month_options }}
+                            </select>
+                        </div>
+                    </div>
+                    {% if request.user.is_staff %}
+                    <div class="flex-grow-1 text-center mt-4">
+                        <input type="file" id="excelFileInput" style="display:none" accept=".xlsx,.xls"
+                            onchange="handleExcelImport(event)">
+                        <button id="add-hour" class="btn btn-warning d-flex align-items-center justify-content-around">
+                            <i id="add-hour-icon" class="fa fa-file-import"></i>
+                            <div id="add-hour-spinner" class="spinner-border text-dark d-none">
+                            </div>
+                            <span>Add Hours</span>
                         </button>
                     </div>
+                    {% endif %}
+                    <div class="flex-grow-1 text-center mt-4">
+                        <button id="submit-month" class="btn btn-success" data-bs-toggle="modal"
+                            data-bs-target="#submitModal">
+                            Submit
+                        </button>
+                    </div>
+                </div>
 
-                    <hr>
+                <hr>
 
-                    <div class="accordion" id="accordionExample">
-                        <!-- Total working hours -->
-                        <div class="accordion-item">
-                          <h4 class="accordion-header" id="headingOne">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                              Working stats
+                <strong>Add Projects</strong>
+                <div class="mt-2 d-flex justify-content-between">
+                    <select name="projects" id="projects" style="min-width: 200px;
+                                       border-radius: 5px">
+                    </select>
+                    <button id="add-project" class="btn btn-primary" style="width: 75px;">
+                        Add
+                    </button>
+                </div>
+
+                <hr>
+
+                <div class="accordion" id="accordionExample">
+                    <!-- Total working hours -->
+                    <div class="accordion-item">
+                        <h4 class="accordion-header" id="headingOne">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                Working stats
                             </button>
-                          </h4>
-                          <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne">
+                        </h4>
+                        <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne">
                             <div class="accordion-body">
-                              <p class="d-flex justify-content-between">
-                                <strong>Total working hours:</strong>
-                                <strong id="total-hours"></strong>
-                              </p>
-                              <p class="d-flex justify-content-between">
-                                <strong>Average working hours (per day):</strong>
-                                <strong id="mean-hours"></strong>
-                            </p>
-                            <p class="d-flex justify-content-between">
-                                <strong>No. of days worked:</strong>
-                                <strong id="worked-days-count"></strong>
-                            </p>
+                                <p class="d-flex justify-content-between">
+                                    <strong>Total working hours:</strong>
+                                    <strong id="total-hours"></strong>
+                                </p>
+                                <p class="d-flex justify-content-between">
+                                    <strong>Average working hours (per day):</strong>
+                                    <strong id="mean-hours"></strong>
+                                </p>
+                                <p class="d-flex justify-content-between">
+                                    <strong>No. of days worked:</strong>
+                                    <strong id="worked-days-count"></strong>
+                                </p>
                             </div>
-                          </div>
                         </div>
-                      
-                        <!-- Foods cost -->
-                        <div class="accordion-item">
-                          <h4 class="accordion-header" id="headingTwo">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                              Costs
+                    </div>
+
+                    <!-- Foods cost -->
+                    <div class="accordion-item">
+                        <h4 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                Costs
                             </button>
-                          </h4>
-                          <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo">
+                        </h4>
+                        <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo">
                             <div class="accordion-body">
-                              <p class="d-flex justify-content-between">
-                                <strong>Foods cost:</strong>
-                                <strong id="food_reduction"></strong>
-                              </p>
+                                <p class="d-flex justify-content-between">
+                                    <strong>Foods cost:</strong>
+                                    <strong id="food_reduction"></strong>
+                                </p>
                             </div>
-                          </div>
                         </div>
-                      
-                        <!-- Payment 1 -->
-                        <div class="accordion-item">
-                          <h4 class="accordion-header" id="headingThree">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                              Payments
+                    </div>
+
+                    <!-- Payment 1 -->
+                    <div class="accordion-item">
+                        <h4 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                Payments
                             </button>
-                          </h4>
-                          <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree">
+                        </h4>
+                        <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree">
                             <div class="accordion-body">
                                 <p class="d-flex justify-content-between">
                                     <strong>Payment 1:</strong>
@@ -172,142 +168,116 @@
                                     <strong id="refund-text" class="redFont"></strong>
                                 </p>
                             </div>
-                          </div>
                         </div>
                     </div>
-
-                   
-                    <hr>
-
-                    <div class="chart-container">
-                        <div id="projects-chart">
-                        </div>
-                    </div>
-
                 </div>
-            </div>
 
-            <div class="col col-12 col-lg-8"
-                 style="overflow-x: auto;
+
+                <hr>
+
+                <div class="chart-container">
+                    <div id="projects-chart">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="col col-12 col-lg-8" style="overflow-x: auto;
                         border-left: 1px solid;
                         padding-left: 10px">
-                <div id="spreadsheet">
-                </div>
+            <div id="spreadsheet">
             </div>
-
         </div>
 
     </div>
 
-    <!-- Submit Modal -->
-    <div class="modal fade"
-         id="submitModal"
-         data-bs-backdrop="static"
-         data-bs-keyboard="false">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        Submit Hours
-                    </h5>
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal"
-                            aria-label="Close">
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p>
-                        Are you sure you want to submit this month's hours?
-                        <br>
-                        <span class="fw-bold">
-                            if you submit, you <span class="text-danger">won't</span> be able to unsubmit this sheet later.
-                        </span>
-                    </p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        Close
-                    </button>
-                    <button type="button"
-                            class="btn btn-success"
-                            data-bs-dismiss="modal"
-                            id="submit">
-                        Submit
-                    </button>
-                </div>
+</div>
+
+<!-- Submit Modal -->
+<div class="modal fade" id="submitModal" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    Submit Hours
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>
+                    Are you sure you want to submit this month's hours?
+                    <br>
+                    <span class="fw-bold">
+                        if you submit, you <span class="text-danger">won't</span> be able to unsubmit this sheet later.
+                    </span>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="submit">
+                    Submit
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Success Modal -->
-    <div class="modal fade"
-        id="successModal"
-        data-bs-keyboard="false">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        Import Data Result
-                    </h5>
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal"
-                            aria-label="Close">
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-success">succesfully updated</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button"
-                            class="btn btn-success"
-                            data-bs-dismiss="modal"
-                            id="submit">
-                        Ok
-                    </button>
-                </div>
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    Import Data Result
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-success">succesfully updated</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="submit">
+                    Ok
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Warrning Modal -->
-    <div class="modal fade"
-        id="warningModal"
-        data-bs-keyboard="false">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        Import Data Result
-                    </h5>
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal"
-                            aria-label="Close">
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-warning">partially updated ‼️</p>
-                    <p>Users not found:</p>
-                    <ul id="missing-users-list"></ul>
-                </div>
-                <div class="modal-footer">
-                    <button type="button"
-                            class="btn btn-success"
-                            data-bs-dismiss="modal"
-                            id="submit">
-                        Ok
-                    </button>
-                </div>
+<!-- Warrning Modal -->
+<div class="modal fade" id="warningModal" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    Import Data Result
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-warning">partially updated ‼️</p>
+                <p>Users not found:</p>
+                <ul id="missing-users-list"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="submit">
+                    Ok
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
-    <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
-    <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
-    <script>
+<script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
+<script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
+<script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
+<script>
     // JSuites toast settings:
     // error: 1,
     // icon: null,
@@ -320,99 +290,99 @@
     // autoHide: true,
     // closeable: true,
 
-    const [ BASE_PAYMENT, COMPLIMENTARY, FOOD_REDUCTION, TOTAL ] = get_payment_holders_eleements();
+    const [BASE_PAYMENT, COMPLIMENTARY, FOOD_REDUCTION, TOTAL] = get_payment_holders_eleements();
 
-    function get_payment_holders_eleements(){
+    function get_payment_holders_eleements() {
         let base = document.getElementById('base-payment');
         let complimentary = document.getElementById('complimentary');
         let food_reduction = document.getElementById('food_reduction');
         let total = document.getElementById('total-pay');
-        return [ base, complimentary, food_reduction, total ];
+        return [base, complimentary, food_reduction, total];
     }
-    
-    async function updatePaymentsValue(){
+
+    async function updatePaymentsValue() {
         let public_payment_info = await getPaymentsValue();
-        
-        if (public_payment_info.paymentStatus === 0){ // Only Base
+
+        if (public_payment_info.paymentStatus === 0) { // Only Base
             updateBase(public_payment_info.basePayment);
             updateComplimentary(public_payment_info.complementaryPayment);
             updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment)
         }
-        if (public_payment_info.paymentStatus === 1){ // Only Base
+        if (public_payment_info.paymentStatus === 1) { // Only Base
             updateBase(public_payment_info.basePayment, true);
             updateComplimentary(public_payment_info.complementaryPayment);
             updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment)
         }
-        else if (public_payment_info.paymentStatus === 2){ //Only Complementary
+        else if (public_payment_info.paymentStatus === 2) { //Only Complementary
             updateBase(public_payment_info.basePayment);
             updateComplimentary(public_payment_info.complementaryPayment, true);
             updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment, public_payment_info.basePayment === 0);
         }
-        else if (public_payment_info.paymentStatus === 3){ //Base+Complementary
+        else if (public_payment_info.paymentStatus === 3) { //Base+Complementary
             updateBase(public_payment_info.basePayment, true);
             updateComplimentary(public_payment_info.complementaryPayment, true);
             updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment, true);
         }
-        else if (public_payment_info.paymentStatus === 4){ //Refund Needed
+        else if (public_payment_info.paymentStatus === 4) { //Refund Needed
             updateBase(public_payment_info.basePayment, true);
             updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment);
             handleRefund(public_payment_info.complementaryPayment)
-        }      
-        else if (public_payment_info.paymentStatus === 5){ //Refund Paid
+        }
+        else if (public_payment_info.paymentStatus === 5) { //Refund Paid
             updateBase(public_payment_info.basePayment, true);
             updateTotal(public_payment_info.complementaryPayment + public_payment_info.basePayment, true);
             handleRefund(public_payment_info.complementaryPayment, true)
         }
-        handleFoodReduction(public_payment_info.food_reduction);   
+        handleFoodReduction(public_payment_info.food_reduction);
     }
-    function updateBase(value, isPayed = false){
+    function updateBase(value, isPayed = false) {
         value = value.toLocaleString('en-US');
-        const paymentStatus = isPayed || value === 0? "✅" : "";
+        const paymentStatus = isPayed || value === 0 ? "✅" : "";
         BASE_PAYMENT.textContent = `${value}${paymentStatus}`;
     }
-    function updateComplimentary(value, isPayed = false){
+    function updateComplimentary(value, isPayed = false) {
         value = value.toLocaleString('en-US');
-        const paymentStatus = isPayed || value === 0? "✅" : "";
+        const paymentStatus = isPayed || value === 0 ? "✅" : "";
         COMPLIMENTARY.textContent = `${value}${paymentStatus}`;
     }
-    function updateTotal(value, isPayed = false){
+    function updateTotal(value, isPayed = false) {
         value = value.toLocaleString('en-US');
-        TOTAL.textContent = `${value}${isPayed?"✅":""}`;
+        TOTAL.textContent = `${value}${isPayed ? "✅" : ""}`;
     }
-    function handleRefund(value, isPayed = false){
+    function handleRefund(value, isPayed = false) {
         value = (-value).toLocaleString('en-US');
         const REFUND = document.getElementById('refund')
         REFUND.parentNode.classList.remove('d-none');
         COMPLIMENTARY.parentNode.classList.add('d-none');
         const REFUND_TEXT = document.getElementById('refund-text')
-        if(!isPayed){
+        if (!isPayed) {
             REFUND.textContent = `${value}`
             REFUND_TEXT.textContent = `Please transfer ${value}R to account number:\n 1234 5678 9012 3456`;
         }
-        else{
+        else {
             REFUND.textContent = `${value}✅`
             REFUND.classList.remove("redFont")
             REFUND_TEXT.textContent = ``;
         }
     }
-    function handleFoodReduction(food_reduction){
+    function handleFoodReduction(food_reduction) {
         value = (food_reduction).toLocaleString('en-US');
         FOOD_REDUCTION.parentNode.classList.remove('d-none');
         FOOD_REDUCTION.textContent = value;
     }
 
-    async function getPaymentsValue(){
+    async function getPaymentsValue() {
         const year = $("#year").val();
         const month = $("#month").val();
         const url = `{% url "sheets:api_public_payment" year='yearHolder' month='monthHolder' %}`
             .replace("yearHolder", year)
             .replace("monthHolder", month);
 
-        try{
+        try {
             let res = await fetch(url);
             return await res.json();
         }
-        catch (err){
+        catch (err) {
             jSuites.notification({
                 error: 1,
                 name: 'Error',
@@ -423,7 +393,7 @@
         }
     }
 
-    function addColumnToTable(config, data=[]){
+    function addColumnToTable(config, data = []) {
         // config format: [{width:200, title: 'hi'}]
         // data format:  [[1,2,3]]
         window.spreadTable.options.allowInsertColumn = true;
@@ -432,7 +402,7 @@
         window.spreadTable.setHeader()
     }
 
-    function convertTableData(rawData){
+    function convertTableData(rawData) {
         /*  table's getJson method won't return table data correctly, some headers (mostly created ones in project adding) 
             are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
         */
@@ -440,19 +410,26 @@
         let shouldOrderAndSave = false;
 
         rawData.map(row => {
-            for(let [key, value] of Object.entries(row)){
-                switch(key){
+            for (let [key, value] of Object.entries(row)) {
+                switch (key) {
                     case "Hours":
-                        if row["Remote"] !== "":
-                            row["Remote"] = value;                         
+                        if (headers.includes("Auto Hours")) {
+                            // "Hours" is a getJson() artifact for the "Auto Hours" column — remap it
+                            row["Auto Hours"] = value;
+                        } else {
+                            // Legacy migration: old "Hours" column → new format
+                            if (row["Remote"] !== "") {
+                                row["Remote"] = value;
+                            }
+                            row["Auto Hours"] = '';
+                            row["Rest"] = '';
+                            shouldOrderAndSave = true;
+                        }
                         delete row[key];
-                        row["Auto Hours"] = '';
-                        row["Rest"] = '';
-                        shouldOrderAndSave = true;
                         break;
                     default:
-                        if(!headers.includes(key)){
-                            if (headers[key] !=="Hours" && row[headers[key]] === undefined) {
+                        if (!headers.includes(key)) {
+                            if (headers[key] !== "Hours" && row[headers[key]] === undefined) {
                                 row[headers[key]] = value;
                             }
                             delete row[key];
@@ -461,27 +438,27 @@
                 }
             }
         })
-        
-        if(!shouldOrderAndSave){
+
+        if (!shouldOrderAndSave) {
             return rawData
         }
-        
+
         // Then create a new array with ordered objects
         const orderedData = [];
         for (let i = 0; i < rawData.length; i++) {
             const row = rawData[i];
             const orderedRow = {};
-            
+
             // Add fields in the exact order they appear in the headers
             headers.forEach(header => {
-                if(header !== "Hours"){
+                if (header !== "Hours") {
                     orderedRow[header] = row[header] !== undefined ? row[header] : '';
                 }
             });
-            
+
             orderedData.push(orderedRow);
         }
-        
+
         saveSheet(orderedData);
 
         return orderedData
@@ -502,7 +479,7 @@
     //     return data
     // }
 
-    function saveSheet(data){
+    function saveSheet(data) {
         const year = $("#year").val();
         const month = $("#month").val();
         const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
@@ -514,21 +491,21 @@
                 'Content-Type': 'application/json',
                 'X-CSRFToken': '{{csrf_token}}',
             },
-            body: JSON.stringify({"data": data, "saveSheet": true}),
+            body: JSON.stringify({ "data": data, "saveSheet": true }),
         })
-        .then(res => res.json())
-        .then(() => updatePaymentsValue() )
-        .catch(err => {
-            jSuites.notification({
-                error: 1,
-                name: 'Error',
-                title: "Updating Sheet",
-                message: err,
+            .then(res => res.json())
+            .then(() => updatePaymentsValue())
+            .catch(err => {
+                jSuites.notification({
+                    error: 1,
+                    name: 'Error',
+                    title: "Updating Sheet",
+                    message: err,
+                });
             });
-        });
     }
 
-    function submitSheet(){
+    function submitSheet() {
         const year = $("#year").val();
         const month = $("#month").val();
         const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
@@ -540,81 +517,81 @@
                 'Content-Type': 'application/json',
                 'X-CSRFToken': '{{csrf_token}}',
             },
-            body: JSON.stringify({"submit": true}),
+            body: JSON.stringify({ "submit": true }),
         })
-        .then(res => res.json())
-        .then(data => {
-            if(data.success){
-                handleSubmit(true);
-                initTable()
-                return
-            }
-            else if(data.flaw){
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    handleSubmit(true);
+                    initTable()
+                    return
+                }
+                else if (data.flaw) {
+                    jSuites.notification({
+                        error: 1,
+                        name: 'Error',
+                        title: "Submitting Sheet",
+                        message: "Please first complete your personal information.",
+                    });
+                    return
+                }
                 jSuites.notification({
                     error: 1,
                     name: 'Error',
                     title: "Submitting Sheet",
-                    message: "Please first complete your personal information.",
+                    message: "No sheet has been defined for selected month",
                 });
-                return
-            }
-            jSuites.notification({
-                error: 1,
-                name: 'Error',
-                title: "Submitting Sheet",
-                message: "No sheet has been defined for selected month",
+            })
+            .catch(err => {
+                jSuites.notification({
+                    error: 1,
+                    name: 'Error',
+                    title: "Submitting Sheet",
+                    message: err,
+                });
             });
-        })
-        .catch(err => {
-            jSuites.notification({
-                error: 1,
-                name: 'Error',
-                title: "Submitting Sheet",
-                message: err,
-            });
-        });
     }
 
-    function hhmm2minutes(str){
-        if(typeof str !=='string' || !str.includes(":"))
+    function hhmm2minutes(str) {
+        if (typeof str !== 'string' || !str.includes(":"))
             return 0
         const [h, m] = str.split(":");
         return Number(h) * 60 + Number(m)
     }
 
-    function parseProjectPorp(str){
-        if(typeof str !=='string')
+    function parseProjectPorp(str) {
+        if (typeof str !== 'string')
             return 0
         return Number(str.replaceAll("%", "").trim())
     }
 
-    function getTableProjects(tableData){
+    function getTableProjects(tableData) {
         const allHeaders = new Set(Object.keys(tableData[0]));
         const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Remote', 'Rest']);
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
     }
 
-    function getMinutesByProject(tableData){
+    function getMinutesByProject(tableData) {
         const projects = getTableProjects(tableData);
         const minutesByProject = new Object();
         projects.forEach(prj => minutesByProject[prj] = 0);
         let total = 0;
         let daysCount = 0;
         tableData.forEach(row => {
-            const auto = hhmm2minutes(row["Auto Hours"]); 
-            const rem = hhmm2minutes(row["Remote"]); 
-            const rest = hhmm2minutes(row["Rest"]); 
+            const auto = hhmm2minutes(row["Auto Hours"]);
+            const rem = hhmm2minutes(row["Remote"]);
+            const rest = hhmm2minutes(row["Rest"]);
             const mins = auto + rem - rest;
-            for(const [prj, value] of Object.entries(row)){
-                if(!projects.includes(prj))
+            for (const [prj, value] of Object.entries(row)) {
+                if (!projects.includes(prj))
                     continue
-                let percent = parseProjectPorp(row[prj]); 
+                let percent = parseProjectPorp(row[prj]);
                 const prjMinutes = mins * percent / 100;
                 minutesByProject[prj] += prjMinutes;
             }
             total += mins;
-            if(mins)
+            if (mins)
                 daysCount += 1;
         });
         minutesByProject.totalTime = total;
@@ -622,17 +599,17 @@
         return minutesByProject
     }
 
-    function updateHoursInfo(totalMinutes, minutesMean, workedDaysCount){
+    function updateHoursInfo(totalMinutes, minutesMean, workedDaysCount) {
         const totalH = Math.floor(totalMinutes / 60);
         const totalM = totalMinutes % 60;
         const meanH = Math.floor(minutesMean / 60);
         const meanM = minutesMean % 60;
-        $("#total-hours").text(`${totalH < 10? 0: ''}${totalH}:${totalM < 10? 0: ''}${totalM}`); 
-        $("#mean-hours").text(`${meanH < 10? 0: ''}${meanH}:${meanM < 10? 0: ''}${meanM}`); 
-        $("#worked-days-count").text(workedDaysCount); 
+        $("#total-hours").text(`${totalH < 10 ? 0 : ''}${totalH}:${totalM < 10 ? 0 : ''}${totalM}`);
+        $("#mean-hours").text(`${meanH < 10 ? 0 : ''}${meanH}:${meanM < 10 ? 0 : ''}${meanM}`);
+        $("#worked-days-count").text(workedDaysCount);
     }
 
-    function updateChart(minutesByProject){
+    function updateChart(minutesByProject) {
 
         const data = [{
             type: 'pie',
@@ -642,52 +619,52 @@
         }];
 
         const layout = {
-            legend: {"orientation": "h"},
-            margin: {l: 5, r: 5, b: 10, t: 10, pad: 0},
+            legend: { "orientation": "h" },
+            margin: { l: 5, r: 5, b: 10, t: 10, pad: 0 },
         };
 
-        const config = {responsive: true};
+        const config = { responsive: true };
 
         Plotly.newPlot('projects-chart', data, layout, config);
     }
 
-    function validateSheet(tableData){
+    function validateSheet(tableData) {
         // validation function just indicates invalidity of row data
         const projects = getTableProjects(tableData);
-        if(!projects.length){
-            $(`.jexcel tbody td`).css({"background-color": "rgba(255, 50, 75, 0.1)"});
+        if (!projects.length) {
+            $(`.jexcel tbody td`).css({ "background-color": "rgba(255, 50, 75, 0.1)" });
             return false
         }
-        $(`.jexcel tbody td`).css({"background-color": "white"});
+        $(`.jexcel tbody td`).css({ "background-color": "white" });
 
         const today = new JDate().getDate();
         const month = new JDate().getMonth();
         let valid = true;
 
         tableData.forEach((row, idx) => {
-            if(idx === today - 1 && month == $("#month").val())
-                $(`.jexcel tbody tr`).eq(idx).find("td").css({"background-color": "rgba(20, 150, 255, 0.1)"});
+            if (idx === today - 1 && month == $("#month").val())
+                $(`.jexcel tbody tr`).eq(idx).find("td").css({ "background-color": "rgba(20, 150, 255, 0.1)" });
 
-            if(!row.Hours)
+            if (!row.Hours)
                 return
 
             let percent = 0;
-            for(const [prj, value] of Object.entries(row)){
-                if(!projects.includes(prj))
+            for (const [prj, value] of Object.entries(row)) {
+                if (!projects.includes(prj))
                     continue
-                percent += parseProjectPorp(row[prj]); 
+                percent += parseProjectPorp(row[prj]);
             }
             const err = percent != 100;
             valid = valid && !err;
-            
-            const bgcolor = err? "rgba(255, 50, 75, 0.1)": "white";
-            $(`.jexcel tbody tr`).eq(idx).find("td").css({"background-color": bgcolor});
+
+            const bgcolor = err ? "rgba(255, 50, 75, 0.1)" : "white";
+            $(`.jexcel tbody tr`).eq(idx).find("td").css({ "background-color": bgcolor });
         });
 
         return valid
     }
 
-    function onChangeHandler(worksheet, cell, x, y, value){
+    function onChangeHandler(worksheet, cell, x, y, value) {
         const rawData = window.spreadTable.getJson();
         const tableData = convertTableData(rawData);
 
@@ -698,19 +675,19 @@
             window.spreadTable.updateCell(2, y, standardValue);
             return;
         }
-        if(projects.length === 1 && worksheet){
+        if (projects.length === 1 && worksheet) {
             x = Number(x);
             y = Number(y);
             let cell = window.spreadTable.getCellFromCoords(x, y)?.textContent;
             let percent = window.spreadTable.getCellFromCoords(5, y)?.textContent;
-            if(cell && percent === ''){
+            if (cell && percent === '') {
                 window.spreadTable.updateCell(5, y, "100"); // this will trigger onChange event again
                 return
             }
         }
 
         const valid = validateSheet(tableData);
-        if(!valid){
+        if (!valid) {
             const msg = `At least 1 project should be added to table, and sum of project proportions should be equal to 100%.`
             jSuites.notification({
                 error: 1,
@@ -722,12 +699,12 @@
             // return false
         }
         const minutesInfo = getMinutesByProject(tableData);
-        let {totalTime, meanTime, ...minutesByProject} = minutesInfo;
+        let { totalTime, meanTime, ...minutesByProject } = minutesInfo;
         const workedDaysCount = tableData.filter(row => hhmm2minutes(row["Auto Hours"]) > 0 || hhmm2minutes(row["Remote"]) > 0).length;
         updateHoursInfo(totalTime, meanTime, workedDaysCount);
         updateChart(minutesByProject);
         updatePaymentsValue()
-        if(worksheet){
+        if (worksheet) {
             saveSheet(tableData);
         }
     }
@@ -744,27 +721,27 @@
         return parts[0].padStart(2, '0') + ":" + parts[1].padStart(2, '0')
     }
 
-    function onselectionHandler(worksheet, px, py, ux, uy, origin){
+    function onselectionHandler(worksheet, px, py, ux, uy, origin) {
         // scroll to element while working with arrow keys or sth when selected element is out of viewport
         const td = $(worksheet).find('td.highlight-selected.highlight').get(0);
-        if(td === undefined)
+        if (td === undefined)
             return false
         const box = td.getBoundingClientRect();
-        if(box.top > window.innerHeight || box.bottom <= 0)
+        if (box.top > window.innerHeight || box.bottom <= 0)
             td.scrollIntoView();
     }
 
-    async function constructTable(data, readOnlyAll = false){
+    async function constructTable(data, readOnlyAll = false) {
         const columns = [
-            {type: 'text', title: 'Day', width: 80, readOnly: true},
-            {type: 'text', title: 'WeekDay', width: 130, readOnly: true},
-            {type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true},
-            {type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
-            {type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll},
+            { type: 'text', title: 'Day', width: 80, readOnly: true },
+            { type: 'text', title: 'WeekDay', width: 130, readOnly: true },
+            { type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true },
+            { type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
+            { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
         ];
 
-        for(const prj of getTableProjects(data)){
-            columns.push({type: 'numeric', title: prj, mask: '#,##0.00 %', width: 100, readOnly: readOnlyAll});
+        for (const prj of getTableProjects(data)) {
+            columns.push({ type: 'numeric', title: prj, mask: '#,##0.00 %', width: 100, readOnly: readOnlyAll });
         }
 
         window.spreadTable = jspreadsheet(document.getElementById('spreadsheet'), {
@@ -783,8 +760,8 @@
             tableOverflow: true,
             tableHeight: "150vh",
             //tableWidth: "500px",
-            updateTable: function(el, cell, x, y, source, value, id) {
-                if(value == "Fri"){
+            updateTable: function (el, cell, x, y, source, value, id) {
+                if (value == "Fri") {
                     cell.style.color = 'red';
                 }
             }
@@ -800,20 +777,22 @@
                 const weekDayColumn = 2;
                 let day = Number(row.cells[dayColumn].textContent);
 
-                if (holidays.includes(day)) { 
+                if (holidays.includes(day)) {
                     row.cells[weekDayColumn].style.color = 'red';
                 }
             });
+        }).catch(err => {
+            console.warn("Could not fetch holidays:", err);
         });
     }
 
-    async function getProjects(){
+    async function getProjects() {
         const url = '{% url "sheets:api_projects"%}';
-        try{
+        try {
             let res = await fetch(url);
             return await res.json();
         }
-        catch (err){
+        catch (err) {
             jSuites.notification({
                 error: 1,
                 name: 'Error',
@@ -824,31 +803,31 @@
         }
     }
 
-    async function fillProjects(){
+    async function fillProjects() {
         $("#projects option").remove();
         let projects = await getProjects();
-        for(prj of projects){
+        for (prj of projects) {
             $("#projects").append(
                 $("<option>").text(prj.name),
             );
         }
     }
 
-    function fillYears(year){
-        for(let i=window.START_YEAR; i<=year; i++){
+    function fillYears(year) {
+        for (let i = window.START_YEAR; i <= year; i++) {
             $("#year").append($("<option>").text(i));
         }
     }
 
-    async function getSheet(year, month){
+    async function getSheet(year, month) {
         const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
             .replace("yearHolder", year)
             .replace("monthHolder", month);
-        try{
+        try {
             let res = await fetch(url);
             return await res.json();
         }
-        catch (err){
+        catch (err) {
             jSuites.notification({
                 error: 1,
                 name: 'Error',
@@ -858,51 +837,51 @@
         }
     }
 
-    function addProjectToTable(project){
-        const config = {type: 'numeric', title: project, mask: '#,##0.00 %', width: 100};
+    function addProjectToTable(project) {
+        const config = { type: 'numeric', title: project, mask: '#,##0.00 %', width: 100 };
         addColumnToTable(config);
     }
 
-    async function initTable(){
+    async function initTable() {
         const year = $("#year").val();
         const month = $("#month").val();
         let sheet = await getSheet(year, month);
 
 
-        if(typeof window.spreadTable === 'object')
+        if (typeof window.spreadTable === 'object')
             window.spreadTable.destroy();
-        
+
         handleSubmit(sheet.submitted);
         toggleSubmit();
         constructTable(sheet.data, sheet.submitted);
         onChangeHandler();
     }
 
-    function toggleSubmit(){
+    function toggleSubmit() {
         // shows or hides submit
         const [y, m, d] = getToday();
         const year = Number($("#year").val());
         const month = Number($("#month").val());
 
         $("#submit-month").toggle(
-            (year < y ) || (year === y && month < m) || (year === y && month === m && d > 28)
+            (year < y) || (year === y && month < m) || (year === y && month === m && d > 28)
         );
     }
 
-    function handleSubmit(submitted){
+    function handleSubmit(submitted) {
         // enables or disables submit
         $("#submit-month").prop("disabled", submitted);
-        $("#submit-month").text(submitted? "Submitted": "Submit");
+        $("#submit-month").text(submitted ? "Submitted" : "Submit");
     }
 
     function handleExcelImport(event) {
         excelImmportLoadingStart()
         var file = event.target.files[0];
         var formData = new FormData();
-    
+
         // Append the file to the form data
         formData.append('file', file);
-        
+
         // Send the file to the backend
         const year = $("#year").val();
         const month = $("#month").val();
@@ -914,87 +893,87 @@
             headers: {
                 'X-CSRFToken': '{{csrf_token}}',
             },
-            body:  formData,
+            body: formData,
         })
-        .then(res => {
-            if (res.ok) {
-                return res.json()
-            } else {
-                throw new Error('Network response was not ok');
-            }
-        })
-        .then(json =>{
-            if(json.status == 'error'){
-                jSuites.notification({
-                    error: 1,
-                    name: 'Error',
-                    title: 'Failed to add Hours',
-                    message: json.message,
-                    timeout: 6000,
-                });
-                return;
-            }
-            
-            if(json.users_not_found.length > 0){
-                showImportError(json.users_not_found)
-            }
+            .then(res => {
+                if (res.ok) {
+                    return res.json()
+                } else {
+                    throw new Error('Network response was not ok');
+                }
+            })
+            .then(json => {
+                if (json.status == 'error') {
+                    jSuites.notification({
+                        error: 1,
+                        name: 'Error',
+                        title: 'Failed to add Hours',
+                        message: json.message,
+                        timeout: 6000,
+                    });
+                    return;
+                }
 
-            //showImportSucces()            
-        })
-        .then(()=> {
-            excelImmportLoadingDone();
-        })
-        .catch(error => console.error('Error:', error));
+                if (json.users_not_found.length > 0) {
+                    showImportError(json.users_not_found)
+                }
+
+                //showImportSucces()            
+            })
+            .then(() => {
+                excelImmportLoadingDone();
+            })
+            .catch(error => console.error('Error:', error));
     }
 
-    function showImportError(missingUsersList){
+    function showImportError(missingUsersList) {
         $('#warningModal').modal('show')
         $('#missing-users-list').empty(); // Clear existing list
 
-        $.each(missingUsersList, function(index, user) {
+        $.each(missingUsersList, function (index, user) {
             $('#missing-users-list').append(`<li>${user.name} (Id: ${user.user_id})</li>`);
         });
     }
 
-    function showImportSucces(){
+    function showImportSucces() {
         $('#successModal').modal('show')
         $('.modal-body').html("<p>succesfully updated✅</p>");
     }
 
-    function excelImmportLoadingStart(){
+    function excelImmportLoadingStart() {
         $('#add-hour').prop("disabled", true);
         $('#add-hour-spinner').show();
         $('#add-hour-icon').hide()
     }
 
-    function excelImmportLoadingDone(){
+    function excelImmportLoadingDone() {
         $('#add-hour').prop("disabled", false);
         $('#add-hour-spinner').hide()
         $('#add-hour-icon').show();
     }
-    
-    $("document").ready(async function() {
+
+    $("document").ready(async function () {
 
         fillProjects();
 
         const today = new JDate();
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth();
-        fillYears(currentYear); 
+        fillYears(currentYear);
         $("#month").val(currentMonth);
         $("#year").val(currentYear);
 
         initTable();
         toggleSubmit();
-        $("#year, #month").change(function(){
+        $("#year, #month").change(function () {
             initTable();
             toggleSubmit();
         });
 
-        $("#add-project").click(function(){
+        $("#add-project").click(function () {
             const project = $("#projects").val();
             const headers = window.spreadTable.getHeaders(true);
-            if (headers.includes(project)){
+            if (headers.includes(project)) {
                 jSuites.notification({
                     name: "Adding Project",
                     message: `Project "${project}" already exits in this sheet.`,
@@ -1009,11 +988,11 @@
 
         $("#submit").click(submitSheet);
 
-        $('#add-hour').click(function(){   
+        $('#add-hour').click(function () {
             $("#excelFileInput").click();
         });
 
     });
 
-    </script>
+</script>
 {% endblock body %}

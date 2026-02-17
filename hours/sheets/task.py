@@ -28,7 +28,7 @@ def import_hours_task(self, file_path, year, month):
                 "message": "year or month is not match",
                 "users_not_found": not_founds,
             }
-            return JsonResponse(response_data)
+            return response_data
         
         d = int(date.split('/')[2])
 
