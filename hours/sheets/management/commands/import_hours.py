@@ -36,70 +36,76 @@ USER_ID_MAP = {
 	31: 81,     #Sajad, Banooie
 	32: 84,     #Amir, EBADI
 	33: 85,     #Mohammad, Malekan
-    34: 74,     #Erfan, Riahi
+	34: 74,     #Erfan, Riahi
 	35: 86,     #Amin, Tavakoli
 	36: 88,     #Hossein, Nakhostin
 	37: 89,     #Niloofar, Moghadam
-	38: ,     #Taherkhani, Milad
-	39: ,     #Olad, Saeed
-	41: ,     #Saboor, hassan
-	42: ,     #Kazemi, Yasin
-	43: ,     #rezaee, soheil
-	44: ,     #jahanbakhshi, mehrdad
-	45: ,     #sabori, mahla
-	46: ,     #hasanpoor, mohsen
-	47: ,     #khandani, mohadese
-	48: ,     #اسد زاده, علی
-	49: ,     # فاطمه	ساعدي
-	50: ,     # محمد سعيد	قنبري
-	51: ,     # اميرحسين	اصلاحچي
-	52: ,     # رضا	فرضي
-	53: ,     # محمد امين	زينالي خامنه
-    54: ,     # محمد مهدي	كريمي
-    55: ,     # مهوش	عابدين پور
-    56: ,     # سيد عارف	طباطبايي
-    57: ,     # فرجاد	جعفري
-    58: ,     # سعيد	جالو
+	38: 111,     #Taherkhani, Milad ?
+	39: 90,     #Olad, Saeed
+	41: -1,     #Saboor, hassan
+	42: 101,     #Kazemi, Yasin
+	43: 93,     #rezaee, soheil
+	44: 95,     #jahanbakhshi, mehrdad
+	45: 113,     #sabori, mahla ?
+	46: 119,     #hasanpoor, mohsen ?
+	47: 118,     #khandani, mohadese
+	48: 121,     #اسد زاده, علی
+	49: 125,     # فاطمه	ساعدي
+	50: 122,     # محمد سعيد	قنبري
+	51: 126,     # اميرحسين	اصلاحچي
+	52: 120,     # رضا	فرضي
+	53: 124,     # محمد امين	زينالي خامنه
+	54: 128,     # محمد مهدي	كريمي
+	55: 130,     # مهوش	عابدين پور
+	56: 129,     # سيد عارف	طباطبايي
+	57: 45,     # فرجاد	جعفري
+	58: 57,     # سعيد	جالو
+	-1: 54,     # مهشید خیری
 }
 
 
 class Command(BaseCommand):
-    help = 'Import hours from Excel file and update Sheet records.'
+	help = 'Import hours from Excel file and update Sheet records.'
 
-    def add_arguments(self, parser):
-        parser.add_argument('file_path', type=str, help='Path to the Excel file')
-        parser.add_argument('year', type=str, help='Year')
-        parser.add_argument('month', type=str, help='Month')
+	def add_arguments(self, parser):
+		parser.add_argument('file_path', type=str, help='Path to the Excel file')
+		parser.add_argument('year', type=str, help='Year')
+		parser.add_argument('month', type=str, help='Month')
 
-    def handle(self, *args, **options):
-        file_path = options['file_path']
-        year = options['year']
-        month = options['month']
-        df = pd.read_excel(file_path)
-        df.fillna(0, inplace=True)
-        not_founds = []
-        current_sheet = None
-        for index, row in df.iterrows():
-            try:
-                user_id = USER_ID_MAP[row["کد پرسنلي"] | row["کد در دستگاه"]]
-            except Exception:
-                if row["نام خانوادگي"] not in not_founds:
-                    not_founds.append(row["نام خانوادگي"])
-                continue
-            date = row["تاريخ"]
-            hours = row["مدت کارکرد"]
-            y = date.split('/')[0]
-            m = date.split('/')[1]
-            if int(month) != int(m) or year != y:
-                self.stdout.write(self.style.ERROR('year or month is not match'))
-                continue
-            d = int(date.split('/')[2])
-            if current_sheet is None or current_sheet.user_id != user_id:
-                if user_id == -1:
-                    continue
-                current_sheet = Sheet.objects.get(user_id=user_id, year=year, month=month)
-                current_sheet.normalize_sheet()
-            currentDayData = current_sheet.data[d-1]
-            currentDayData["Auto Hours"] = f"{hours.hour}:{hours.minute}"
-            current_sheet.save()
-        self.stdout.write(self.style.SUCCESS(f"Import finished. Users not found: {not_founds}"))
+	def handle(self, *args, **options):
+		file_path = options['file_path']
+		year = options['year']
+		month = options['month']
+		df = pd.read_excel(file_path)
+		df.fillna(0, inplace=True)
+		not_founds = []
+		current_sheet = None
+		for index, row in df.iterrows():
+			personnel_code = row.get("کد پرسنلي")
+			device_code = row.get("کد در دستگاه")
+			if personnel_code and personnel_code in USER_ID_MAP:
+				user_id = USER_ID_MAP[personnel_code]
+			elif device_code and device_code in USER_ID_MAP:
+				user_id = USER_ID_MAP[device_code]
+			else:
+				missing_info = f"{row['نام خانوادگي']} (codes: {personnel_code}, {device_code})"
+				if missing_info not in not_founds:
+					not_founds.append(missing_info)
+				continue
+			date = row["تاريخ"]
+			hours = row["مدت کارکرد"]
+			y = date.split('/')[0]
+			m = date.split('/')[1]
+			if int(month) != int(m) or year != y:
+				self.stdout.write(self.style.ERROR('year or month is not match'))
+				continue
+			d = int(date.split('/')[2])
+			if current_sheet is None or current_sheet.user_id != user_id:
+				if user_id == -1:
+					continue
+				current_sheet = Sheet.objects.get(user_id=user_id, year=year, month=month)
+				current_sheet.normalize_sheet()
+			currentDayData = current_sheet.data[d-1]
+			currentDayData["Auto Hours"] = f"{hours.hour}:{hours.minute}"
+			# current_sheet.save()
+		self.stdout.write(self.style.SUCCESS(f"Import finished. Users not found: {not_founds}"))
