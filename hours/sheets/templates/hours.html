@@ -559,6 +559,13 @@
         return Number(h) * 60 + Number(m)
     }
 
+    function minutes2hhmm(mins) {
+        if (mins < 0) mins = 0;
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
+    }
+
     function parseProjectPorp(str) {
         if (typeof str !== 'string')
             return 0
@@ -567,7 +574,7 @@
 
     function getTableProjects(tableData) {
         const allHeaders = new Set(Object.keys(tableData[0]));
-        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Remote', 'Rest']);
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Rest', 'Remote', 'Total']);
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
     }
@@ -579,10 +586,7 @@
         let total = 0;
         let daysCount = 0;
         tableData.forEach(row => {
-            const auto = hhmm2minutes(row["Auto Hours"]);
-            const rem = hhmm2minutes(row["Remote"]);
-            const rest = hhmm2minutes(row["Rest"]);
-            const mins = auto + rem - rest;
+            const mins = hhmm2minutes(row["Total"]);
             for (const [prj, value] of Object.entries(row)) {
                 if (!projects.includes(prj))
                     continue
@@ -645,7 +649,7 @@
             if (idx === today - 1 && month == $("#month").val())
                 $(`.jexcel tbody tr`).eq(idx).find("td").css({ "background-color": "rgba(20, 150, 255, 0.1)" });
 
-            if (!row.Hours)
+            if (hhmm2minutes(row["Total"]) === 0)
                 return
 
             let percent = 0;
@@ -686,6 +690,18 @@
             }
         }
 
+        if (worksheet && (x == 3 || x == 4)) { // Rest or Remote changed
+            let autoVal = window.spreadTable.getValueFromCoords(2, y) || "00:00";
+            let restVal = window.spreadTable.getValueFromCoords(3, y) || "00:00";
+            let remVal = window.spreadTable.getValueFromCoords(4, y) || "00:00";
+            let autoM = hhmm2minutes(autoVal);
+            let restM = hhmm2minutes(restVal);
+            let remM = hhmm2minutes(remVal);
+            let totalM = autoM + remM - restM;
+            let totalStr = minutes2hhmm(totalM);
+            window.spreadTable.setValueFromCoords(5, y, totalStr, false);
+        }
+
         const valid = validateSheet(tableData);
         if (!valid) {
             const msg = `At least 1 project should be added to table, and sum of project proportions should be equal to 100%.`
@@ -700,7 +716,7 @@
         }
         const minutesInfo = getMinutesByProject(tableData);
         let { totalTime, meanTime, ...minutesByProject } = minutesInfo;
-        const workedDaysCount = tableData.filter(row => hhmm2minutes(row["Auto Hours"]) > 0 || hhmm2minutes(row["Remote"]) > 0).length;
+        const workedDaysCount = tableData.filter(row => hhmm2minutes(row["Total"]) > 0).length;
         updateHoursInfo(totalTime, meanTime, workedDaysCount);
         updateChart(minutesByProject);
         updatePaymentsValue()
@@ -738,14 +754,35 @@
             { type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true },
             { type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
+            { type: 'numeric', title: 'Total', mask: 'hh:mm', width: 120, readOnly: true },
         ];
 
-        for (const prj of getTableProjects(data)) {
-            columns.push({ type: 'numeric', title: prj, mask: '#,##0.00 %', width: 100, readOnly: readOnlyAll });
+        // Add project columns after fixed ones
+        const projects = getTableProjects(data);
+        for (const prj of projects) {
+            columns.push({
+                type: 'numeric',
+                title: prj,
+                mask: '#,##0.00 %',
+                width: 100,
+                readOnly: readOnlyAll
+            });
         }
 
+        // console.log("data", data);
+        // console.log(data);
+
+        const orderedData = data.map(row => {
+            const newRow = {};
+            columns.forEach(col => {
+                const title = col.title;
+                newRow[title] = row[title] !== undefined ? row[title] : '';
+            });
+            return newRow;
+        });
+
         window.spreadTable = jspreadsheet(document.getElementById('spreadsheet'), {
-            data: data,
+            data: orderedData,
             columns: columns,
             allowInsertColumn: false,
             allowInsertRow: false,
@@ -918,6 +955,7 @@
                     showImportError(json.users_not_found)
                 }
 
+                initTable();          // ← add this line
                 //showImportSucces()            
             })
             .then(() => {
@@ -972,18 +1010,46 @@
 
         $("#add-project").click(function () {
             const project = $("#projects").val();
+            if (!project) return;
+
             const headers = window.spreadTable.getHeaders(true);
             if (headers.includes(project)) {
                 jSuites.notification({
                     name: "Adding Project",
-                    message: `Project "${project}" already exits in this sheet.`,
+                    message: `Project "${project}" already exists.`,
                 });
-                return false
+                return;
             }
+
+            // Check conditions
+            const currentProjects = getTableProjects(window.spreadTable.getJson());
+            const hasAnyAutoHours = window.spreadTable.getJson().some(row =>
+                hhmm2minutes(row["Auto Hours"] || "00:00") > 0
+            );
+
+            // Add the column
             addProjectToTable(project);
-            const rawData = window.spreadTable.getJson();
-            const tableData = convertTableData(rawData);
-            const valid = validateSheet(tableData);
+
+            // Auto-fill 100% if it's the first project and someone has hours
+            if (currentProjects.length === 0 && hasAnyAutoHours) {
+                // Give jspreadsheet one tick to create the new cells
+                setTimeout(() => {
+                    const colIndex = window.spreadTable.getHeaders(true).length - 1;
+                    const numRows = window.spreadTable.rows.length;
+
+                    for (let row = 0; row < numRows; row++) {
+                        const autoStr = window.spreadTable.getValueFromCoords(2, row) || "00:00";
+                        const auto = hhmm2minutes(autoStr);
+                        if (auto > 0) {
+                            window.spreadTable.setValueFromCoords(colIndex, row, "100", false);
+                        }
+                    }
+                    onChangeHandler(); // refresh totals/chart/save
+                }, 0);
+            }
+
+            // Refresh calculations & save
+            onChangeHandler(null, null, null, null, null);
         });
 
         $("#submit").click(submitSheet);

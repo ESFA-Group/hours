@@ -93,7 +93,7 @@ class Command(BaseCommand):
 					not_founds.append(missing_info)
 				continue
 			date = row["تاريخ"]
-			hours = row["مدت کارکرد"]
+			hours = row["مدت حضور"]
 			y = date.split('/')[0]
 			m = date.split('/')[1]
 			if int(month) != int(m) or year != y:
@@ -103,9 +103,9 @@ class Command(BaseCommand):
 			if current_sheet is None or current_sheet.user_id != user_id:
 				if user_id == -1:
 					continue
-				current_sheet = Sheet.objects.get(user_id=user_id, year=year, month=month)
+				current_sheet, created = Sheet.objects.get_or_create(user_id=user_id, year=year, month=month)
 				current_sheet.normalize_sheet()
 			currentDayData = current_sheet.data[d-1]
-			currentDayData["Auto Hours"] = f"{hours.hour}:{hours.minute}"
-			# current_sheet.save()
+			currentDayData["Auto Hours"] = f"{hours.hour:02d}:{hours.minute:02d}"
+			current_sheet.save()
 		self.stdout.write(self.style.SUCCESS(f"Import finished. Users not found: {not_founds}"))

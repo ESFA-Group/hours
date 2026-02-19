@@ -249,6 +249,11 @@ class Sheet(models.Model):
 		except:
 			return 0
 
+	def minutes2hhmm(self, mins: int) -> str:
+		h = mins // 60
+		m = mins % 60
+		return f"{h:02d}:{m:02d}"
+
 	def parse_project_porp(self, string: str) -> int:
 		try:
 			return int(string.replace("%", "").strip()) / 100
@@ -256,7 +261,7 @@ class Sheet(models.Model):
 			return 0
 
 	def get_sheet_projects(self, df: pd.DataFrame) -> list:
-		defaults = ["Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest"]
+		defaults = ["Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest", "Total"]
 		projects = df.columns.difference(defaults)
 		return list(projects)
 
@@ -357,10 +362,17 @@ class Sheet(models.Model):
 					hours_value = data.pop("Hours")
 					data["Remote"] = hours_value
 				else:		
-					data["Remote"] = 0
+					data["Remote"] = "00:00"
 				if "Auto Hours" not in data:
-					data["Auto Hours"] = 0
-				data["Rest"] = 0
+					data["Auto Hours"] = "00:00"
+				data["Rest"] = "00:00"
+		
+		for data in all_data:
+			auto_m = self.hhmm2minutes(data.get("Auto Hours", "00:00"))
+			rem_m = self.hhmm2minutes(data.get("Remote", "00:00"))
+			rest_m = self.hhmm2minutes(data.get("Rest", "00:00"))
+			data["Total"] = self.minutes2hhmm(auto_m + rem_m - rest_m)
+		
 		if should_normalize_weekday:
 			self.normalize_sheet_weekday_data()
 		self.save()

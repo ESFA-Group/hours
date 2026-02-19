@@ -294,7 +294,7 @@ class MonthlyReportApiView(APIView):
     def get_sum(self, sheet: Sheet) -> pd.Series:
         """returns sheet column sums"""
         df = sheet.transform()
-        df.drop(["Day", "WeekDay", "Auto Hours", "Remote", "Rest"], axis=1, inplace=True)
+        df.drop(["Day", "WeekDay", "Auto Hours", "Remote", "Rest", "Total"], axis=1, inplace=True)
         df.rename(columns={"Hours": "Total"}, inplace=True)
         return df.sum()
 

@@ -27,7 +27,6 @@ from io import BytesIO
 
 from sheets.models import Sheet, User
 from sheets.api_views import MonthlyReportApiView
-from sheets.task import import_hours_task
 
 class JSONResponseMixin:
 	"""
