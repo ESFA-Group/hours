@@ -1,6 +1,8 @@
 import pandas as pd
 from django.core.management.base import BaseCommand
 from sheets.models import Sheet, User
+from sheets.task_utils import set_task_status
+import traceback
 
 USER_ID_MAP = {
 	1: 2,       # hassan, zahedi 
@@ -71,44 +73,56 @@ class Command(BaseCommand):
 		parser.add_argument('file_path', type=str, help='Path to the Excel file')
 		parser.add_argument('year', type=str, help='Year')
 		parser.add_argument('month', type=str, help='Month')
+		parser.add_argument('--task_id', type=str, help='Task ID for status tracking', required=False)
 
 	def handle(self, *args, **options):
-		file_path = options['file_path']
-		year = options['year']
-		month = options['month']
-		df = pd.read_excel(file_path)
-		df.fillna(0, inplace=True)
-		not_founds = []
-		current_sheet = None
-		for index, row in df.iterrows():
-			personnel_code = row.get("کد پرسنلي")
-			device_code = row.get("کد در دستگاه")
-			if personnel_code and personnel_code in USER_ID_MAP:
-				user_id = USER_ID_MAP[personnel_code]
-			elif device_code and device_code in USER_ID_MAP:
-				user_id = USER_ID_MAP[device_code]
-			else:
-				missing_info = f"{row['نام خانوادگي']} (codes: {personnel_code}, {device_code})"
-				if missing_info not in not_founds:
-					not_founds.append(missing_info)
-				continue
-			date = row["تاريخ"]
-			hours = row["مدت حضور"]
-			y = date.split('/')[0]
-			m = date.split('/')[1]
-			if int(month) != int(m) or year != y:
-				self.stdout.write(self.style.ERROR('year or month is not match'))
-				continue
-			d = int(date.split('/')[2])
-			if current_sheet is None or current_sheet.user_id != user_id:
-				if user_id == -1:
+		task_id = options.get('task_id')
+		try:
+			file_path = options['file_path']
+			year = options['year']
+			month = options['month']
+			df = pd.read_excel(file_path)
+			df.fillna(0, inplace=True)
+			not_founds = []
+			current_sheet = None
+			for index, row in df.iterrows():
+				personnel_code = row.get("کد پرسنلي")
+				device_code = row.get("کد در دستگاه")
+				if personnel_code and personnel_code in USER_ID_MAP:
+					user_id = USER_ID_MAP[personnel_code]
+				elif device_code and device_code in USER_ID_MAP:
+					user_id = USER_ID_MAP[device_code]
+				else:
+					missing_info = f"{row['نام خانوادگي']} (codes: {personnel_code}, {device_code})"
+					if missing_info not in not_founds:
+						not_founds.append(missing_info)
 					continue
-				current_sheet, created = Sheet.objects.get_or_create(user_id=user_id, year=year, month=month)
-				if created:
-					current_sheet.setup_sheet()
+				date = str(row["تاريخ"])
+				hours = row["مدت حضور"]
+				y = date.split('/')[0]
+				m = date.split('/')[1]
+				if int(month) != int(m) or year != y:
+					self.stdout.write(self.style.ERROR('year or month is not match'))
+					continue
+				d = int(date.split('/')[2])
+				if current_sheet is None or current_sheet.user_id != user_id:
+					if user_id == -1:
+						continue
+					current_sheet, created = Sheet.objects.get_or_create(user_id=user_id, year=year, month=month)
+					if created:
+						current_sheet.setup_sheet()
 
+					current_sheet.normalize_sheet()
+				currentDayData = current_sheet.data[d-1]
+				currentDayData["Auto Hours"] = f"{hours.hour:02d}:{hours.minute:02d}"
 				current_sheet.normalize_sheet()
-			currentDayData = current_sheet.data[d-1]
-			currentDayData["Auto Hours"] = f"{hours.hour:02d}:{hours.minute:02d}"
-			current_sheet.normalize_sheet()
-		self.stdout.write(self.style.SUCCESS(f"Import finished. Users not found: {not_founds}"))
+			
+			summary = f"Import finished. Users not found: {not_founds}"
+			if task_id:
+				set_task_status(task_id, 'completed', summary, data={'users_not_found': not_founds})
+			self.stdout.write(self.style.SUCCESS(summary))
+		except Exception as e:
+			error_msg = f"Import failed: {str(e)}"
+			if task_id:
+				set_task_status(task_id, 'error', error_msg, data={'traceback': traceback.format_exc()})
+			self.stdout.write(self.style.ERROR(error_msg))

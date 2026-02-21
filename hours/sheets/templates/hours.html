@@ -981,6 +981,13 @@
             body: formData,
         })
             .then(res => {
+                console.log("res", res);
+
+                if (res.status === 409) {
+                    return res.json().then(json => {
+                        throw new Error(json.message || 'Another import is in progress');
+                    });
+                }
                 if (res.ok) {
                     return res.json()
                 } else {
@@ -989,29 +996,67 @@
             })
             .then(json => {
                 if (json.status == 'error') {
-                    jSuites.notification({
-                        error: 1,
-                        name: 'Error',
-                        title: 'Failed to add Hours',
-                        message: json.message,
-                        timeout: 6000,
-                    });
-                    return;
+                    throw new Error(json.message);
                 }
 
-                if (json.users_not_found.length > 0) {
-                    showImportError(json.users_not_found)
-                }
-
-                //showImportSucces()            
+                // Start polling for status
+                const taskId = json.task_id;
+                pollImportStatus(taskId);
             })
-            .then(() => {
-                console.log("fr2wef24r23r23r");
-
+            .catch(error => {
+                console.error('Error:', error);
+                jSuites.notification({
+                    error: 1,
+                    name: 'Error',
+                    title: 'Failed to start Import',
+                    message: error.message,
+                    timeout: 6000,
+                });
                 excelImmportLoadingDone();
-                initTable();
-            })
-            .catch(error => console.error('Error:', error));
+            });
+    }
+
+    function pollImportStatus(taskId) {
+        const url = `{% url "sheets:import_status" task_id='taskIdHolder' %}`.replace('taskIdHolder', taskId);
+
+        const poll = setInterval(() => {
+            fetch(url)
+                .then(res => res.json())
+                .then(json => {
+                    if (json.status === 'completed') {
+                        clearInterval(poll);
+                        excelImmportLoadingDone();
+
+                        if (json.data && json.data.users_not_found && json.data.users_not_found.length > 0) {
+                            showImportError(json.data.users_not_found);
+                        } else {
+                            jSuites.notification({
+                                name: 'Success',
+                                title: 'Import Finished',
+                                message: 'Hours imported successfully',
+                                timeout: 4000,
+                            });
+                        }
+                        initTable();
+                    } else if (json.status === 'error') {
+                        clearInterval(poll);
+                        excelImmportLoadingDone();
+                        jSuites.notification({
+                            error: 1,
+                            name: 'Error',
+                            title: 'Import Failed',
+                            message: json.message,
+                            timeout: 8000,
+                        });
+                    }
+                    // If 'running', just continue polling
+                })
+                .catch(err => {
+                    console.error('Polling error:', err);
+                    clearInterval(poll);
+                    excelImmportLoadingDone();
+                });
+        }, 2000); // Poll every 2 seconds
     }
 
     function showImportError(missingUsersList) {

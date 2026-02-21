@@ -6,6 +6,8 @@ from django.db.models import QuerySet
 from django.core.files.storage import default_storage
 from django.core.management import call_command
 from multiprocessing import Process
+import uuid
+from .task_utils import set_task_status, is_any_task_running, get_task_status
 from rest_framework.response import Response
 from rest_framework.status import (
 	HTTP_200_OK,
@@ -633,10 +635,29 @@ class HoursExcelImportView(View):
 	}
 	
 	def post(self, request, year: str, month: str):
+		if is_any_task_running():
+			return JsonResponse({"status": "error", "message": "Another import is already in progress. Please wait."}, status=HTTP_409_CONFLICT)
+
 		uploaded = request.FILES['file']
 		path = default_storage.save(uploaded.name, uploaded)
 		path = default_storage.path(path)
+		
+		task_id = str(uuid.uuid4())
+		set_task_status(task_id, 'running', 'Import started')
+
 		# Pass year and month as arguments to the management command
-		process = Process(target=call_command, args=('import_hours', path, year, month))
+		process = Process(target=call_command, args=('import_hours', path, year, month), kwargs={'task_id': task_id})
 		process.start()
-		return Response({"status": "import started", "file": uploaded.name, "year": year, "month": month}, status=HTTP_200_OK)
+		
+		return JsonResponse({
+			"status": "import started", 
+			"task_id": task_id,
+			"file": uploaded.name, 
+			"year": year, 
+			"month": month
+		}, status=HTTP_200_OK)
+
+class ImportStatusView(View):
+	def get(self, request, task_id):
+		status_data = get_task_status(task_id)
+		return JsonResponse(status_data)
