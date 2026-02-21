@@ -222,7 +222,9 @@ class MonthlyReportApiView(APIView):
         submitted_user_names = [
             sheet.user.get_full_name() for sheet in submitted_sheets
         ]
-        sheetless_users = User.objects.select_related().exclude(
+        sheetless_users = User.objects.select_related().filter(
+            is_active=True
+        ).exclude(
             sheets__year=year, sheets__month=month
         )
         sheetless_user_names = [user.get_full_name() for user in sheetless_users]

@@ -402,85 +402,6 @@
         window.spreadTable.setHeader()
     }
 
-    function convertTableData(rawData) {
-        /*  table's getJson method won't return table data correctly, some headers (mostly created ones in project adding) 
-            are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
-        */
-        console.log("rawData:", rawData);
-        return rawData
-
-        const headers = window.spreadTable.getHeaders(true);
-        let shouldOrderAndSave = false;
-
-        rawData.map(row => {
-            for (let [key, value] of Object.entries(row)) {
-                switch (key) {
-                    case "Hours":
-                        if (headers.includes("Auto Hours")) {
-                            // "Hours" is a getJson() artifact for the "Auto Hours" column — remap it
-                            row["Auto Hours"] = value;
-                        } else {
-                            // Legacy migration: old "Hours" column → new format
-                            if (row["Remote"] !== "") {
-                                row["Remote"] = value;
-                            }
-                            row["Auto Hours"] = '';
-                            row["Rest"] = '';
-                            shouldOrderAndSave = true;
-                        }
-                        delete row[key];
-                        break;
-                    default:
-                        if (!headers.includes(key)) {
-                            if (headers[key] !== "Hours" && row[headers[key]] === undefined) {
-                                row[headers[key]] = value;
-                            }
-                            delete row[key];
-                        }
-                        break;
-                }
-            }
-        })
-
-        if (!shouldOrderAndSave) {
-            return rawData
-        }
-
-        // Then create a new array with ordered objects
-        const orderedData = [];
-        for (let i = 0; i < rawData.length; i++) {
-            const row = rawData[i];
-            const orderedRow = {};
-
-            // Add fields in the exact order they appear in the headers
-            headers.forEach(header => {
-                if (header !== "Hours") {
-                    orderedRow[header] = row[header] !== undefined ? row[header] : '';
-                }
-            });
-
-            orderedData.push(orderedRow);
-        }
-
-        saveSheet(orderedData);
-
-        return orderedData
-    }
-
-    // function decodeTableData(data){
-    //     const projects = getTableProjects(tableData);
-    //     data.map(row => {
-    //         for(let [key, value] of Object.entries(row)){
-    //             if(projects.includes(key)){
-    //                 row[key] = parseProjectPorp(value);
-    //             }
-    //             if(key === "Hours"){
-    //                 row[key] = hhmm2minutes(value);
-    //             }
-    //         }
-    //     });
-    //     return data
-    // }
 
     let saveSheetTimeout = null;
     let latestTableData = null;
@@ -680,10 +601,71 @@
         return valid
     }
 
+    function convertTableData(rawData) {
+        /*  table's getJson method won't return table data correctly, some headers (mostly created ones in project adding) 
+            are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
+        */
+        const headers = window.spreadTable.getHeaders(true);
+        let shouldOrderAndSave = false;
+
+        rawData.map(row => {
+            for (let [key, value] of Object.entries(row)) {
+                switch (key) {
+                    case "Hours":
+                        if (headers.includes("Auto Hours")) {
+                            // "Hours" is a getJson() artifact for the "Auto Hours" column — remap it
+                            row["Auto Hours"] = value;
+                        } else {
+                            // Legacy migration: old "Hours" column → new format
+                            if (row["Remote"] !== "") {
+                                row["Remote"] = value;
+                            }
+                            row["Auto Hours"] = '';
+                            row["Rest"] = '';
+                            shouldOrderAndSave = true;
+                        }
+                        delete row[key];
+                        break;
+                    default:
+                        if (!headers.includes(key)) {
+                            if (headers[key] !== "Hours" && row[headers[key]] === undefined) {
+                                row[headers[key]] = value;
+                            }
+                            delete row[key];
+                        }
+                        break;
+                }
+            }
+        })
+
+        if (!shouldOrderAndSave) {
+            return rawData
+        }
+
+        // Then create a new array with ordered objects
+        const orderedData = [];
+        for (let i = 0; i < rawData.length; i++) {
+            const row = rawData[i];
+            const orderedRow = {};
+
+            // Add fields in the exact order they appear in the headers
+            headers.forEach(header => {
+                if (header !== "Hours") {
+                    orderedRow[header] = row[header] !== undefined ? row[header] : '';
+                }
+            });
+
+            orderedData.push(orderedRow);
+        }
+
+        saveSheet(orderedData);
+
+        return orderedData
+    }
+
     function onChangeHandler(worksheet, cell, x, y, value) {
         const rawData = window.spreadTable.getJson();
         const tableData = convertTableData(rawData);
-
         const projects = getTableProjects(tableData);
 
         // Auto-fill 100% when it's the only project
@@ -807,9 +789,9 @@
             { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Total', mask: 'hh:mm', width: 120, readOnly: true },
         ];
-        
+
         // old sheets had an extra "Hours" column which is now split into Auto Hours, Rest, and Remote
-        if (data[0]["Hours"]) { 
+        if (data[0]["Hours"]) {
             columns.push(
                 { type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: true },
             )
@@ -827,9 +809,6 @@
                 readOnly: readOnlyAll
             });
         }
-
-        // console.log("data", data);
-        // console.log(data);
 
         const orderedData = data.map(row => {
             const newRow = {};
@@ -971,10 +950,12 @@
     }
 
     function handleExcelImport(event) {
+
         excelImmportLoadingStart()
         var file = event.target.files[0];
         var formData = new FormData();
 
+        console.log("handleExcelImport");
         // Append the file to the form data
         formData.append('file', file);
 
@@ -992,8 +973,6 @@
             body: formData,
         })
             .then(res => {
-                console.log("res", res);
-
                 if (res.status === 409) {
                     return res.json().then(json => {
                         throw new Error(json.message || 'Another import is in progress');
