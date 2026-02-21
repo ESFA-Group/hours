@@ -406,6 +406,9 @@
         /*  table's getJson method won't return table data correctly, some headers (mostly created ones in project adding) 
             are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
         */
+        console.log("rawData:", rawData);
+        return rawData
+
         const headers = window.spreadTable.getHeaders(true);
         let shouldOrderAndSave = false;
 
@@ -583,7 +586,7 @@
 
     function getTableProjects(tableData) {
         const allHeaders = new Set(Object.keys(tableData[0]));
-        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Rest', 'Remote', 'Total']);
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours']);
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
     }
@@ -804,6 +807,14 @@
             { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Total', mask: 'hh:mm', width: 120, readOnly: true },
         ];
+        
+        // old sheets had an extra "Hours" column which is now split into Auto Hours, Rest, and Remote
+        if (data[0]["Hours"]) { 
+            columns.push(
+                { type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: true },
+            )
+        }
+
 
         // Add project columns after fixed ones
         const projects = getTableProjects(data);
