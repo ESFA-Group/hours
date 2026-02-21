@@ -10,12 +10,16 @@ admin.site.register(ProjectFamily)
 @admin.register(Sheet)
 class SheetAdmin(admin.ModelAdmin):
     ordering = ["-year", "-month", "user_name"]
+    list_filter = ['user_name', 'year', 'month']
+    search_fields = ['user_name', 'user__first_name_p', 'user__last_name_p'] 
+    list_display = ['user_name', 'month', 'year']
 
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
     ordering = ["last_name", "first_name"]
     filter_horizontal = ('groups', 'user_permissions')
+    search_fields = ['last_name', 'first_name', 'username', 'first_name_p', 'last_name_p']  
     RESTRICTED_FIELDS = [
         'is_superuser',
         'is_staff',
