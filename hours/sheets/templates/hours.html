@@ -479,30 +479,39 @@
     //     return data
     // }
 
+    let saveSheetTimeout = null;
+    let latestTableData = null;
+
     function saveSheet(data) {
-        const year = $("#year").val();
-        const month = $("#month").val();
-        const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
-            .replace("yearHolder", year)
-            .replace("monthHolder", month);
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{csrf_token}}',
-            },
-            body: JSON.stringify({ "data": data, "saveSheet": true }),
-        })
-            .then(res => res.json())
-            .then(() => updatePaymentsValue())
-            .catch(err => {
-                jSuites.notification({
-                    error: 1,
-                    name: 'Error',
-                    title: "Updating Sheet",
-                    message: err,
+        latestTableData = data;
+        if (saveSheetTimeout) clearTimeout(saveSheetTimeout);
+
+        saveSheetTimeout = setTimeout(() => {
+            const dataToSave = latestTableData;
+            const year = $("#year").val();
+            const month = $("#month").val();
+            const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
+                .replace("yearHolder", year)
+                .replace("monthHolder", month);
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{csrf_token}}',
+                },
+                body: JSON.stringify({ "data": dataToSave, "saveSheet": true }),
+            })
+                .then(res => res.json())
+                .then(() => updatePaymentsValue())
+                .catch(err => {
+                    jSuites.notification({
+                        error: 1,
+                        name: 'Error',
+                        title: "Updating Sheet",
+                        message: err,
+                    });
                 });
-            });
+        }, 500);
     }
 
     function submitSheet() {
@@ -1076,16 +1085,14 @@
                     const numRows = window.spreadTable.rows.length;
 
                     for (let row = 0; row < numRows; row++) {
-                        const autoStr = window.spreadTable.getValueFromCoords(2, row) || "00:00";
-                        const auto = hhmm2minutes(autoStr);
                         window.spreadTable.setValueFromCoords(colIndex, row, "100", false);
                     }
-                    onChangeHandler(); // refresh totals/chart/save
+                    onChangeHandler(window.spreadTable); // refresh totals/chart/save
                 }, 0);
+            } else {
+                // Refresh calculations & save
+                onChangeHandler(window.spreadTable);
             }
-
-            // Refresh calculations & save
-            onChangeHandler(null, null, null, null, null);
         });
 
         $("#submit").click(submitSheet);
