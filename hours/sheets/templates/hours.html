@@ -599,7 +599,7 @@
                 daysCount += 1;
         });
         minutesByProject.totalTime = total;
-        minutesByProject.meanTime = Math.floor(total / daysCount);
+        minutesByProject.meanTime = daysCount ? Math.floor(total / daysCount) : 0;
         return minutesByProject
     }
 
@@ -672,56 +672,89 @@
         const rawData = window.spreadTable.getJson();
         const tableData = convertTableData(rawData);
 
-        // automatically fill 100% if there is only one project in table
         const projects = getTableProjects(tableData);
-        const standardValue = TryStandartizeValue(value);
-        if (x == 2 && value !== standardValue) {
-            window.spreadTable.updateCell(2, y, standardValue);
-            return;
-        }
-        if (projects.length === 1 && worksheet) {
-            x = Number(x);
-            y = Number(y);
-            let cell = window.spreadTable.getCellFromCoords(x, y)?.textContent;
-            let percent = window.spreadTable.getCellFromCoords(5, y)?.textContent;
-            if (cell && percent === '') {
-                window.spreadTable.updateCell(5, y, "100"); // this will trigger onChange event again
-                return
+
+        // Auto-fill 100% when it's the only project
+        if (projects.length === 1) {
+            const projectColIndex = window.spreadTable.getHeaders(true).indexOf(projects[0]);
+
+            // Trigger on: Rest (col 3), Remote (col 4), or Auto Hours updated indirectly
+            const relevantChange = (x === 3 || x === 4) ||
+                (worksheet === null && value === undefined); // import case approximation
+
+            if (relevantChange || x === 2) {  // also catch direct Auto Hours edits if any
+                for (let row = 0; row < tableData.length; row++) {
+                    const auto = hhmm2minutes(tableData[row]["Auto Hours"] || "00:00");
+                    const remote = hhmm2minutes(tableData[row]["Remote"] || "00:00");
+                    const rest = hhmm2minutes(tableData[row]["Rest"] || "00:00");
+                    const totalM = auto + remote - rest;
+
+                    if (totalM > 0) {
+                        const currentPercent = tableData[row][projects[0]] || "";
+                        if (!currentPercent || currentPercent === "") {
+                            window.spreadTable.setValueFromCoords(projectColIndex, row, "100", false);
+                        }
+                    }
+                }
             }
         }
 
-        if (worksheet && (x == 3 || x == 4)) { // Rest or Remote changed
-            let autoVal = window.spreadTable.getValueFromCoords(2, y) || "00:00";
-            let restVal = window.spreadTable.getValueFromCoords(3, y) || "00:00";
-            let remVal = window.spreadTable.getValueFromCoords(4, y) || "00:00";
-            let autoM = hhmm2minutes(autoVal);
-            let restM = hhmm2minutes(restVal);
-            let remM = hhmm2minutes(remVal);
-            let totalM = autoM + remM - restM;
-            let totalStr = minutes2hhmm(totalM);
-            window.spreadTable.setValueFromCoords(5, y, totalStr, false);
+        // Standard flow
+        if (x !== undefined && value !== undefined) {
+            const standardValue = TryStandartizeValue(value);
+            if ((x === 2 || x === 3 || x === 4) && value !== standardValue) {
+                window.spreadTable.updateCell(x, y, standardValue);
+                return;
+            }
+        }
+
+        const isStartupOrImport = worksheet === null || worksheet === undefined || x === undefined || y === undefined;
+        if (x == 2 || x == 3 || x == 4) {
+            const startRow = isStartupOrImport ? 0 : +y;
+            const endRow = isStartupOrImport ? tableData.length - 1 : +y;
+            for (let row = startRow; row <= endRow; row++) {
+                const auto = hhmm2minutes(window.spreadTable.getValueFromCoords(2, row));
+                const rest = hhmm2minutes(window.spreadTable.getValueFromCoords(3, row));
+                const remote = hhmm2minutes(window.spreadTable.getValueFromCoords(4, row));
+                let totalM = auto + remote - rest;
+
+                if (totalM < 0) totalM = 0;
+
+                const currentTotal = window.spreadTable.getValueFromCoords(5, row);
+                const newTotalStr = minutes2hhmm(totalM);
+                if (currentTotal !== newTotalStr) {
+                    window.spreadTable.setValueFromCoords(5, row, newTotalStr, false);
+                }
+
+                // Update our tableData so validations and charts get the correct explicit Total
+                tableData[row]["Total"] = newTotalStr;
+
+                window.spreadTable.updateCell(5, row, newTotalStr);
+            }
         }
 
         const valid = validateSheet(tableData);
         if (!valid) {
-            const msg = `At least 1 project should be added to table, and sum of project proportions should be equal to 100%.`
             jSuites.notification({
                 error: 1,
                 name: 'Error',
                 title: "Invalid Data",
-                message: msg,
+                message: "At least 1 project required. Project % sum must be 100%.",
                 timeout: 8000,
             });
-            // return false
         }
+
         const minutesInfo = getMinutesByProject(tableData);
         let { totalTime, meanTime, ...minutesByProject } = minutesInfo;
         const workedDaysCount = tableData.filter(row => hhmm2minutes(row["Total"]) > 0).length;
+
         updateHoursInfo(totalTime, meanTime, workedDaysCount);
         updateChart(minutesByProject);
-        updatePaymentsValue()
+        updatePaymentsValue();
+
         if (worksheet) {
             saveSheet(tableData);
+            initTable()
         }
     }
 
@@ -955,11 +988,13 @@
                     showImportError(json.users_not_found)
                 }
 
-                initTable();          // ← add this line
                 //showImportSucces()            
             })
             .then(() => {
+                console.log("fr2wef24r23r23r");
+
                 excelImmportLoadingDone();
+                initTable();
             })
             .catch(error => console.error('Error:', error));
     }
@@ -1023,15 +1058,12 @@
 
             // Check conditions
             const currentProjects = getTableProjects(window.spreadTable.getJson());
-            const hasAnyAutoHours = window.spreadTable.getJson().some(row =>
-                hhmm2minutes(row["Auto Hours"] || "00:00") > 0
-            );
 
             // Add the column
             addProjectToTable(project);
 
-            // Auto-fill 100% if it's the first project and someone has hours
-            if (currentProjects.length === 0 && hasAnyAutoHours) {
+            // Auto-fill 100% if it's the first project
+            if (currentProjects.length === 0) {
                 // Give jspreadsheet one tick to create the new cells
                 setTimeout(() => {
                     const colIndex = window.spreadTable.getHeaders(true).length - 1;
@@ -1040,9 +1072,7 @@
                     for (let row = 0; row < numRows; row++) {
                         const autoStr = window.spreadTable.getValueFromCoords(2, row) || "00:00";
                         const auto = hhmm2minutes(autoStr);
-                        if (auto > 0) {
-                            window.spreadTable.setValueFromCoords(colIndex, row, "100", false);
-                        }
+                        window.spreadTable.setValueFromCoords(colIndex, row, "100", false);
                     }
                     onChangeHandler(); // refresh totals/chart/save
                 }, 0);

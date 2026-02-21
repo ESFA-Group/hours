@@ -107,5 +107,5 @@ class Command(BaseCommand):
 				current_sheet.normalize_sheet()
 			currentDayData = current_sheet.data[d-1]
 			currentDayData["Auto Hours"] = f"{hours.hour:02d}:{hours.minute:02d}"
-			current_sheet.save()
+			current_sheet.normalize_sheet()
 		self.stdout.write(self.style.SUCCESS(f"Import finished. Users not found: {not_founds}"))

@@ -81,8 +81,7 @@ class SheetApiView(APIView):
             data = request.data.get("data", [])
             data.sort(key=lambda row: int(row.get("Day", 0)))
             sheet.data = request.data["data"]
-            sheet.normalize_sheet_weekday_data()
-            sheet.save()
+            sheet.normalize_sheet()
             return Response({"success": True}, status=status.HTTP_200_OK)
         elif "editSheet" in request.data:
             data = request.data.get("row", {})
