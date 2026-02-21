@@ -84,6 +84,7 @@ class Command(BaseCommand):
 			df = pd.read_excel(file_path)
 			df.fillna(0, inplace=True)
 			not_founds = []
+			imported_any = False
 			current_sheet = None
 			for index, row in df.iterrows():
 				personnel_code = row.get("کد پرسنلي")
@@ -116,10 +117,15 @@ class Command(BaseCommand):
 				currentDayData = current_sheet.data[d-1]
 				currentDayData["Auto Hours"] = f"{hours.hour:02d}:{hours.minute:02d}"
 				current_sheet.normalize_sheet()
+				imported_any = True
 			
 			summary = f"Import finished. Users not found: {not_founds}"
+			status = 'completed' if imported_any else 'error'
+			if not imported_any:
+				summary = f"Import failed: No matching data found for {year}/{month}."
+
 			if task_id:
-				set_task_status(task_id, 'completed', summary, data={'users_not_found': not_founds})
+				set_task_status(task_id, status, summary, data={'users_not_found': not_founds})
 			self.stdout.write(self.style.SUCCESS(summary))
 		except Exception as e:
 			error_msg = f"Import failed: {str(e)}"
