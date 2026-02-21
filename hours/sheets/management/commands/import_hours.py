@@ -104,6 +104,9 @@ class Command(BaseCommand):
 				if user_id == -1:
 					continue
 				current_sheet, created = Sheet.objects.get_or_create(user_id=user_id, year=year, month=month)
+				if created:
+					current_sheet.setup_sheet()
+
 				current_sheet.normalize_sheet()
 			currentDayData = current_sheet.data[d-1]
 			currentDayData["Auto Hours"] = f"{hours.hour:02d}:{hours.minute:02d}"

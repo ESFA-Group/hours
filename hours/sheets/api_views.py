@@ -30,19 +30,6 @@ def camel_to_snake(s: str) -> str:
     return snake
 
 
-def _setup_sheet(sheet, user):
-    sheet.user_name = user.get_full_name()
-    sheet.wage = user.wage
-    sheet.base_payment = user.base_payment
-    sheet.reduction1 = user.reduction1
-    sheet.reduction2 = user.reduction2
-    sheet.reduction3 = user.reduction3
-    sheet.food_reduction = user.food_reduction
-    sheet.addition1 = user.addition1
-    sheet.addition2 = user.addition2
-    return sheet
-
-
 class ProjectListApiView(ListAPIView):
 
     queryset = Project.objects.all()
@@ -55,17 +42,11 @@ class SheetApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, year: str, month: str):
-        try:
-            sheet = Sheet.objects.get(user=self.request.user, year=year, month=month)
-        except Sheet.DoesNotExist:
-            empty_sheet_data = Sheet.empty_sheet_data(int(year), int(month))
-            res = {
-                "data": empty_sheet_data,
-                "month": month,
-                "year": year,
-                "submitted": False,
-            }
-            return Response(res, status=status.HTTP_200_OK)
+        sheet, created = Sheet.objects.get_or_create(
+            user=self.request.user, year=year, month=month
+        )
+        if created:
+            sheet.setup_sheet()
 
         serializer = SheetSerializer(sheet)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -77,7 +58,8 @@ class SheetApiView(APIView):
                 user=user, year=year, month=month
             )
             if created:
-                _setup_sheet()
+                sheet.setup_sheet()
+
             data = request.data.get("data", [])
             data.sort(key=lambda row: int(row.get("Day", 0)))
             sheet.data = request.data["data"]
@@ -314,8 +296,8 @@ class PaymentApiView(APIView):
                 user=user, year=year, month=month
             )
             if created:
-                sheet = _setup_sheet(sheet, user)
-                sheet.save()
+                sheet.setup_sheet()
+
             payment_info = sheet.get_payment_info()
             payment_info.update(
                 {
@@ -379,6 +361,9 @@ class OrderFoodApiView(APIView):
         sheet, created = Sheet.objects.get_or_create(
             user=self.request.user, year=year, month=month
         )
+        if created:
+                sheet.setup_sheet()
+
         return Response(sheet.food_data, status=status.HTTP_200_OK)
 
     def post(self, request, year: str, month: str):
@@ -419,9 +404,12 @@ class OrderFoodApiView(APIView):
             next_food_data, _ = Food_data.objects.get_or_create(
                 year=next_year, month=next_month
             )
-            next_sheet, _ = Sheet.objects.get_or_create(
+            next_sheet, created = Sheet.objects.get_or_create(
                 user_id=sheet.user_id, year=next_year, month=next_month
             )
+            if created:
+                next_sheet.setup_sheet()
+
             next_sheet.food_reduction = self.calculateSheetFoodPrice(
                 next_month_order_data, next_food_data
             )

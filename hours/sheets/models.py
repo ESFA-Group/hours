@@ -224,6 +224,18 @@ class Sheet(models.Model):
 		self.total = self.get_total(df)
 		super(Sheet, self).save(*args, **kwargs)
 
+	def setup_sheet(self):
+		self.user_name = self.user.get_full_name()
+		self.wage = self.user.wage
+		self.base_payment = self.user.base_payment
+		self.reduction1 = self.user.reduction1
+		self.reduction2 = self.user.reduction2
+		self.reduction3 = self.user.reduction3
+		self.food_reduction = self.user.food_reduction
+		self.addition1 = self.user.addition1
+		self.addition2 = self.user.addition2
+		self.save()
+
 	@classmethod
 	def empty_sheet_data(cls, year: int, month: int) -> list:
 		is_leap = jdt.date(year, month, 1).isleap()
