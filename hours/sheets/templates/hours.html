@@ -702,16 +702,18 @@
         // Standard flow
         if (x !== undefined && value !== undefined) {
             const standardValue = TryStandartizeValue(value);
-            if ((x === 2 || x === 3 || x === 4) && value !== standardValue) {
+            if ((x == 2 || x == 3 || x == 4) && value !== standardValue) {
                 window.spreadTable.updateCell(x, y, standardValue);
                 return;
             }
         }
 
         const isStartupOrImport = worksheet === null || worksheet === undefined || x === undefined || y === undefined;
-        if (x == 2 || x == 3 || x == 4) {
-            const startRow = isStartupOrImport ? 0 : +y;
-            const endRow = isStartupOrImport ? tableData.length - 1 : +y;
+
+        // We use loose equality (==) because jspreadsheet sometimes passes x / y as strings (e.g., "2").
+        if (isStartupOrImport || x == 2 || x == 3 || x == 4) {
+            const startRow = isStartupOrImport ? 0 : parseInt(y);
+            const endRow = isStartupOrImport ? tableData.length - 1 : parseInt(y);
             for (let row = startRow; row <= endRow; row++) {
                 const auto = hhmm2minutes(window.spreadTable.getValueFromCoords(2, row));
                 const rest = hhmm2minutes(window.spreadTable.getValueFromCoords(3, row));
@@ -726,10 +728,15 @@
                     window.spreadTable.setValueFromCoords(5, row, newTotalStr, false);
                 }
 
+                // Directly mutate the DOM cell visually to bypass recursive readOnly lock limitations
+                const cellName = "F" + (row + 1);
+                const cellElement = window.spreadTable.getCell(cellName);
+                if (cellElement) {
+                    cellElement.textContent = newTotalStr;
+                }
+
                 // Update our tableData so validations and charts get the correct explicit Total
                 tableData[row]["Total"] = newTotalStr;
-
-                window.spreadTable.updateCell(5, row, newTotalStr);
             }
         }
 
@@ -754,7 +761,6 @@
 
         if (worksheet) {
             saveSheet(tableData);
-            initTable()
         }
     }
 
