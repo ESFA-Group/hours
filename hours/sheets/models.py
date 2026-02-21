@@ -225,6 +225,8 @@ class Sheet(models.Model):
 		super(Sheet, self).save(*args, **kwargs)
 
 	def setup_sheet(self):
+		self.month = int(self.month)
+		self.year = int(self.year)
 		self.user_name = self.user.get_full_name()
 		self.wage = self.user.wage
 		self.base_payment = self.user.base_payment
