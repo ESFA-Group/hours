@@ -371,12 +371,12 @@ class Sheet(models.Model):
 	
 		if "Remote" not in all_data[0]:
 			for data in all_data:
-				if "Hours" in data:
-					# Replace "Hours" with "Remote"
-					hours_value = data.pop("Hours")
-					data["Remote"] = hours_value
-				else:		
-					data["Remote"] = "00:00"
+				# if "Hours" in data:
+				# 	# Replace "Hours" with "Remote"
+				# 	hours_value = data.pop("Hours")
+				# 	data["Remote"] = hours_value
+				# else:		
+				data["Remote"] = "00:00"
 				if "Auto Hours" not in data:
 					data["Auto Hours"] = "00:00"
 				data["Rest"] = "00:00"

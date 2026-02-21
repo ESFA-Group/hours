@@ -507,7 +507,7 @@
 
     function getTableProjects(tableData) {
         const allHeaders = new Set(Object.keys(tableData[0]));
-        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours']);
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours', 'Description']);
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
     }
@@ -788,6 +788,7 @@
             { type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Total', mask: 'hh:mm', width: 120, readOnly: true },
+            { type: 'text', title: 'Description', width: 200, readOnly: readOnlyAll },
         ];
 
         // old sheets had an extra "Hours" column which is now split into Auto Hours, Rest, and Remote
