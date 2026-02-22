@@ -50,6 +50,7 @@ class User(AbstractUser):
 	is_KavoshProductionManager_readonly = models.BooleanField("is_KavoshProductionManager_readonly", default=False)
 
 	# personal info
+	auto_hour_ID = models.IntegerField("auto_hour_ID", null=True, blank=True)
 	is_active = models.BooleanField("is_active", default=True)
 	national_ID = models.CharField("national_ID", max_length=10, blank=True, default="")
 	mobile1 = models.CharField("mobile1", max_length=11, blank=True, default="")
