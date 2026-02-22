@@ -94,7 +94,7 @@ class Command(BaseCommand):
 				elif device_code and device_code in USER_ID_MAP:
 					user_id = USER_ID_MAP[device_code]
 				else:
-					missing_info = f"{row['نام خانوادگي']} (codes: {personnel_code}, {device_code})"
+					missing_info = {"name": row['نام'] + " " + row['نام خانوادگي'], "device_code": device_code}
 					if missing_info not in not_founds:
 						not_founds.append(missing_info)
 					continue

@@ -1055,7 +1055,9 @@
         $('#missing-users-list').empty(); // Clear existing list
 
         $.each(missingUsersList, function (index, user) {
-            $('#missing-users-list').append(`<li>${user.name} (Id: ${user.user_id})</li>`);
+            console.log(user);
+            
+            $('#missing-users-list').append(`<li>${user.name} (device code: ${user.device_code})</li>`);
         });
     }
 
