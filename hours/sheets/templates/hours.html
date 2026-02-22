@@ -782,8 +782,8 @@
 
     async function constructTable(data, readOnlyAll = false) {
         const columns = [
-            { type: 'text', title: 'Day', width: 80, readOnly: true },
-            { type: 'text', title: 'WeekDay', width: 130, readOnly: true },
+            { type: 'text', title: 'Day', width: 50, readOnly: true },
+            { type: 'text', title: 'WeekDay', width: 80, readOnly: true },
             { type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true },
             { type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
