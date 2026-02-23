@@ -217,7 +217,7 @@ class MonthlyReportApiView(APIView):
 
     def get(self, request, year: str, month: str):
 
-        sheets = Sheet.objects.filter(year=year, month=month)
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
         submitted_sheets = sheets.filter(submitted=True)
         submitted_user_names = [
             sheet.user.get_full_name() for sheet in submitted_sheets
