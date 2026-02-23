@@ -24,24 +24,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
-
 def camel_to_snake(s: str) -> str:
     pattern = re.compile(r"(?<!^)(?=[A-Z])")
     snake = pattern.sub("_", s).lower()
     return snake
-
-
-def _setup_sheet(sheet, user):
-    sheet.user_name = user.get_full_name()
-    sheet.wage = user.wage
-    sheet.base_payment = user.base_payment
-    sheet.reduction1 = user.reduction1
-    sheet.reduction2 = user.reduction2
-    sheet.reduction3 = user.reduction3
-    sheet.food_reduction = user.food_reduction
-    sheet.addition1 = user.addition1
-    sheet.addition2 = user.addition2
-    return sheet
 
 
 class ProjectListApiView(ListAPIView):
@@ -56,17 +42,11 @@ class SheetApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, year: str, month: str):
-        try:
-            sheet = Sheet.objects.get(user=self.request.user, year=year, month=month)
-        except Sheet.DoesNotExist:
-            empty_sheet_data = Sheet.empty_sheet_data(int(year), int(month))
-            res = {
-                "data": empty_sheet_data,
-                "month": month,
-                "year": year,
-                "submitted": False,
-            }
-            return Response(res, status=status.HTTP_200_OK)
+        sheet, created = Sheet.objects.get_or_create(
+            user=self.request.user, year=year, month=month
+        )
+        if created:
+            sheet.setup_sheet()
 
         serializer = SheetSerializer(sheet)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -78,12 +58,12 @@ class SheetApiView(APIView):
                 user=user, year=year, month=month
             )
             if created:
-                _setup_sheet()
+                sheet.setup_sheet()
+
             data = request.data.get("data", [])
             data.sort(key=lambda row: int(row.get("Day", 0)))
             sheet.data = request.data["data"]
-            self.normalize_sheet_weekday_data(sheet)
-            sheet.save()
+            sheet.normalize_sheet()
             return Response({"success": True}, status=status.HTTP_200_OK)
         elif "editSheet" in request.data:
             data = request.data.get("row", {})
@@ -106,28 +86,6 @@ class SheetApiView(APIView):
             sheet.save()
             return Response({"success": True}, status=status.HTTP_200_OK)
         return Response({"flaw": True}, status=status.HTTP_200_OK)
-
-    def normalize_sheet_weekday_data(self, sheet):
-        correct_weekdays = Sheet.empty_sheet_data(sheet.year, sheet.month)
-        correct_weekdays_dict = {
-            entry["Day"]: entry["WeekDay"] for entry in correct_weekdays
-        }
-
-        # Sync the length of sheet.data with correct_weekdays
-        if len(sheet.data) > len(correct_weekdays):
-            sheet.data = sheet.data[: len(correct_weekdays)]  # Truncate excess entries
-        elif len(sheet.data) < len(correct_weekdays):
-            # Duplicate the last entry and increment the day value to fill in the missing data
-            for _ in range(len(sheet.data), len(correct_weekdays)):
-                last_entry = sheet.data[-1]
-                new_entry = last_entry.copy()
-                new_entry["Day"] += 1
-                new_entry["WeekDay"] = None  # We'll update WeekDay after this
-                sheet.data.append(new_entry)
-
-        for entry in sheet.data:
-            entry["WeekDay"] = correct_weekdays_dict[entry["Day"]]
-        sheet.save()
 
 
 class InfoApiView(APIView):
@@ -186,13 +144,13 @@ class InfoApiView(APIView):
 
     def get_hero(self, year: int, month: int) -> str:
         hero_name = "Anonymous Anonymousian"
-        hero = Sheet.objects.filter(year=year, month=month).order_by("-total").first()
+        hero = Sheet.objects.filter(year=year, month=month, user__is_active=True).order_by("-total").first()
         if hero:  # hero may be None
             hero_name = hero.user.get_full_name()
         return hero_name
 
     def get_month_mean(self, year: int, month: int, user=None) -> str:
-        sheets = Sheet.objects.filter(year=year, month=month)
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
         if user is not None:
             sheets = sheets.filter(user=user)
         if not sheets.count():
@@ -217,7 +175,7 @@ class PublicMonthlyReportApiView(APIView):
 
     def get(self, request, year: str, month: str):
 
-        sheets = Sheet.objects.filter(year=year, month=month)
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
         hours, activeUsers = PublicMonthlyReportApiView.get_sheet_sums(sheets)
         res = {
             "hours": hours,
@@ -259,12 +217,14 @@ class MonthlyReportApiView(APIView):
 
     def get(self, request, year: str, month: str):
 
-        sheets = Sheet.objects.filter(year=year, month=month)
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
         submitted_sheets = sheets.filter(submitted=True)
         submitted_user_names = [
             sheet.user.get_full_name() for sheet in submitted_sheets
         ]
-        sheetless_users = User.objects.select_related().exclude(
+        sheetless_users = User.objects.select_related().filter(
+            is_active=True
+        ).exclude(
             sheets__year=year, sheets__month=month
         )
         sheetless_user_names = [user.get_full_name() for user in sheetless_users]
@@ -285,6 +245,7 @@ class MonthlyReportApiView(APIView):
     def get_sheet_sums(cls, sheets: QuerySet, sheetless_users: QuerySet) -> dict:
         projects = [p["name"] for p in Project.objects.values("name")]
         projects.append("Total")
+        # projects.append("Total 2")
 
         # a pandas Series which contains all projects.
         # a user's sheet sum should be added to this Series in order to contain all projects even the value is 0
@@ -295,6 +256,7 @@ class MonthlyReportApiView(APIView):
         hours = dict()
         payments = dict()
         for sheet in sheets:
+            sheet.normalize_sheet()
             sheet_sum = cls.get_sum(sheet)
             sheet_sum = projects_empty.add(sheet_sum, fill_value=0)
             projects_sum = projects_sum.add(sheet_sum, fill_value=0)
@@ -315,7 +277,7 @@ class MonthlyReportApiView(APIView):
     def get_sum(self, sheet: Sheet) -> pd.Series:
         """returns sheet column sums"""
         df = sheet.transform()
-        df.drop(["Day", "WeekDay"], axis=1, inplace=True)
+        df.drop(["Day", "WeekDay", "Auto Hours", "Remote", "Rest", "Total"], axis=1, inplace=True)
         df.rename(columns={"Hours": "Total"}, inplace=True)
         return df.sum()
 
@@ -336,8 +298,8 @@ class PaymentApiView(APIView):
                 user=user, year=year, month=month
             )
             if created:
-                sheet = _setup_sheet(sheet, user)
-                sheet.save()
+                sheet.setup_sheet()
+
             payment_info = sheet.get_payment_info()
             payment_info.update(
                 {
@@ -366,7 +328,7 @@ class PaymentApiView(APIView):
         user.reduction2 = r2
         user.addition1 = add1
         user.save()
-        user_sheets = Sheet.objects.filter(user=id, year=1403)
+        user_sheets = Sheet.objects.filter(user=id, year=year)
         for sheet in user_sheets:
             if sheet.month >= int(month):
                 sheet.wage = wage
@@ -376,7 +338,7 @@ class PaymentApiView(APIView):
                 sheet.addition1 = add1
                 sheet.save()
 
-        currentSheet = Sheet.objects.get(user=id, year=1403, month=month)
+        currentSheet = Sheet.objects.get(user=id, year=year, month=month)
         currentSheet.reduction3 = int(editted_row["reduction3"])
         currentSheet.food_reduction = int(editted_row["food_reduction"])
         currentSheet.addition2 = int(editted_row["addition2"])
@@ -401,6 +363,9 @@ class OrderFoodApiView(APIView):
         sheet, created = Sheet.objects.get_or_create(
             user=self.request.user, year=year, month=month
         )
+        if created:
+                sheet.setup_sheet()
+
         return Response(sheet.food_data, status=status.HTTP_200_OK)
 
     def post(self, request, year: str, month: str):
@@ -441,9 +406,12 @@ class OrderFoodApiView(APIView):
             next_food_data, _ = Food_data.objects.get_or_create(
                 year=next_year, month=next_month
             )
-            next_sheet, _ = Sheet.objects.get_or_create(
+            next_sheet, created = Sheet.objects.get_or_create(
                 user_id=sheet.user_id, year=next_year, month=next_month
             )
+            if created:
+                next_sheet.setup_sheet()
+
             next_sheet.food_reduction = self.calculateSheetFoodPrice(
                 next_month_order_data, next_food_data
             )
@@ -639,7 +607,7 @@ class FoodManagementApiView(APIView):
     def update_all_foodReductions(self, year, month):
         OrderFoodApiObject = OrderFoodApiView()
 
-        sheets = Sheet.objects.filter(year=year, month=month)
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
 
         for sheet in sheets:
             sheet.food_reduction = 0
@@ -764,7 +732,7 @@ class DailyFoodsOrder(APIView):
     permission_classes = [customPermissions.IsFoodManager]
 
     def get(self, request, year: str, month: str, weekIndex: str, day: str):
-        sheets = Sheet.objects.filter(year=year, month=month).exclude(food_data=[])
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True).exclude(food_data=[])
         food_data = Food_data.objects.get(year=year, month=month)
         if len(food_data.data) == 0:
             return Response([], status=status.HTTP_200_OK)
@@ -788,7 +756,7 @@ class DailyFoodsOrder(APIView):
         return Response(d, status=status.HTTP_200_OK)
 
     def post(self, request, year: str, month: str, weekIndex: str, day: str):
-        sheets = Sheet.objects.filter(year=year, month=month).exclude(food_data=[])
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True).exclude(food_data=[])
         food_data_obj = Food_data.objects.filter(year=year, month=month).first()
         if not food_data_obj or not food_data_obj.data:
             return Response([], status=status.HTTP_200_OK)

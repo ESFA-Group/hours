@@ -43,6 +43,16 @@ urlpatterns = [
         views.PaymentExcelImportView.as_view(),
         name="payment_excel_import",
     ),
+    path(
+        "hours_excel_import/<str:year>/<str:month>",
+        views.HoursExcelImportView.as_view(),
+        name="hours_excel_import",
+    ),
+    path(
+        "import_status/<str:task_id>",
+        views.ImportStatusView.as_view(),
+        name="import_status",
+    ),
     path("api/info", api_views.InfoApiView.as_view(), name="api_info"),
     path("api/projects", api_views.ProjectListApiView.as_view(), name="api_projects"),
     path(
