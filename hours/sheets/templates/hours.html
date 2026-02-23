@@ -439,6 +439,20 @@
     }
 
     function submitSheet() {
+        const rawData = window.spreadTable.getJson();
+        const tableData = convertTableData(rawData);
+        const valid = validateSheet(tableData);
+        if (!valid) {
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Invalid Data",
+                message: "At least 1 project required. Project % sum must be 100%.",
+                timeout: 8000,
+            });
+            return    
+        }
+
         const year = $("#year").val();
         const month = $("#month").val();
         const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
