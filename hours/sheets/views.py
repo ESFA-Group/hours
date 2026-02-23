@@ -216,7 +216,7 @@ class DetailedReportView(View):
 
 		year = request.GET.get("year")
 		month = request.GET.get("month")
-		sheets = Sheet.objects.filter(year=year, month=month)
+		sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
 
 		buffer = io.BytesIO()
 		writer = pd.ExcelWriter(buffer, engine="xlsxwriter")
@@ -242,7 +242,7 @@ class MainReportView(View):
 
 		year = request.GET.get("year")
 		month = request.GET.get("month")
-		sheets = Sheet.objects.filter(year=year, month=month)
+		sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
 		sheetless_users = User.objects.select_related().exclude(
 			sheets__year=year, sheets__month=month
 		)
@@ -501,7 +501,7 @@ class PaymentExportView(View):
 class PaymentExcelExportView(View):
 
 	def post(self, request, year: str, month: str):
-		sheets = Sheet.objects.filter(year=year, month=month)
+		sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
 
 		payments_info = []
 		for sheet in sheets:

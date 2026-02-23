@@ -144,13 +144,13 @@ class InfoApiView(APIView):
 
     def get_hero(self, year: int, month: int) -> str:
         hero_name = "Anonymous Anonymousian"
-        hero = Sheet.objects.filter(year=year, month=month).order_by("-total").first()
+        hero = Sheet.objects.filter(year=year, month=month, user__is_active=True).order_by("-total").first()
         if hero:  # hero may be None
             hero_name = hero.user.get_full_name()
         return hero_name
 
     def get_month_mean(self, year: int, month: int, user=None) -> str:
-        sheets = Sheet.objects.filter(year=year, month=month)
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
         if user is not None:
             sheets = sheets.filter(user=user)
         if not sheets.count():
@@ -175,7 +175,7 @@ class PublicMonthlyReportApiView(APIView):
 
     def get(self, request, year: str, month: str):
 
-        sheets = Sheet.objects.filter(year=year, month=month)
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
         hours, activeUsers = PublicMonthlyReportApiView.get_sheet_sums(sheets)
         res = {
             "hours": hours,
@@ -607,7 +607,7 @@ class FoodManagementApiView(APIView):
     def update_all_foodReductions(self, year, month):
         OrderFoodApiObject = OrderFoodApiView()
 
-        sheets = Sheet.objects.filter(year=year, month=month)
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
 
         for sheet in sheets:
             sheet.food_reduction = 0
@@ -732,7 +732,7 @@ class DailyFoodsOrder(APIView):
     permission_classes = [customPermissions.IsFoodManager]
 
     def get(self, request, year: str, month: str, weekIndex: str, day: str):
-        sheets = Sheet.objects.filter(year=year, month=month).exclude(food_data=[])
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True).exclude(food_data=[])
         food_data = Food_data.objects.get(year=year, month=month)
         if len(food_data.data) == 0:
             return Response([], status=status.HTTP_200_OK)
@@ -756,7 +756,7 @@ class DailyFoodsOrder(APIView):
         return Response(d, status=status.HTTP_200_OK)
 
     def post(self, request, year: str, month: str, weekIndex: str, day: str):
-        sheets = Sheet.objects.filter(year=year, month=month).exclude(food_data=[])
+        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True).exclude(food_data=[])
         food_data_obj = Food_data.objects.filter(year=year, month=month).first()
         if not food_data_obj or not food_data_obj.data:
             return Response([], status=status.HTTP_200_OK)
