@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -486,7 +486,6 @@ async function initTables(data = null) {
 	if (data == null)
 		data = await getEyesData($("#year").val());
 
-	console.table(data)
 	document.getElementById('dashboard-container').innerHTML = '';
 
 	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official'], window.USER.is_FinancialManager);
@@ -508,6 +507,24 @@ async function initTables(data = null) {
 		includeKeys: ['deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'],
 	};
 	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'unproducable_shortage_kia_product', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'], window.USER.is_KiaProductionManager, false, false, kiaColumnSumConfig); // dont add || window.USER.is_KiaProductionManager
+	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_insured_non_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
+	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
+
+	setTimeout(() => {
+		const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+		const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+			return new bootstrap.Tooltip(tooltipTriggerEl);
+		});
+	}, 100);
+}
+
+async function initPrivateSalesTables(data = null) {
+	if (data == null)
+		data = await getEyesData($("#year").val());
+
+	console.log("data")
+	document.getElementById('pv-sales-dashboard-container').innerHTML = '';
+
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_insured_non_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
 
@@ -583,6 +600,7 @@ async function handleSubmit(button) {
 		let result = await postEyesData(year, payload);
 		if (result.success) {
 			await initTables(result.data);
+			await initPrivateSalesTables(result.data);
 		}
 	} catch (error) {
 		console.error('Failed to save data:', error);
@@ -645,12 +663,14 @@ $("document").ready(async function () {
 	$("#year").val(currentYear);
 
 	initTables();
+	initPrivateSalesTables();
 	initAllSheetLoaders(); // Initialize all sheet loader components
 	initDetailedSales();
-
+	
 	//events
 	$("#year, #month").change(function () {
 		initTables();
+		initPrivateSalesTables();
 	});
 
 	$('#dashboard-container').on('click', '.btn-submit', function () {
