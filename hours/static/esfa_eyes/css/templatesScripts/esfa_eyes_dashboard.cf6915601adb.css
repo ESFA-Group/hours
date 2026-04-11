@@ -108,3 +108,8 @@ body {
 	display: block;
 	opacity: 1;
 }
+
+tr.bg-light td {
+    opacity: 0.7;
+    color: #6c757d;
+}

@@ -228,13 +228,17 @@ function createNumericTable(data, title, itemKeys, editable = false, id = "dashb
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 
+		// Determine if this row is editable (global flag AND item.is_editable !== false)
+		const isRowEditable = editable && (item.is_editable !== false);
+		const rowExtraClass = (item.is_editable === false) ? ' bg-light' : '';
+
 		tableBody += `
-        <tr class="${bgColor}">
+        <tr class="${bgColor}${rowExtraClass}">
             <td>
                 ${titleMapping[key] || key}
                 ${createInfoIcon(item)}
             </td>
-            <td contenteditable="${editable}" data-key="${key}">${item._info.toLocaleString()}</td>
+            <td contenteditable="${isRowEditable}" data-key="${key}">${item._info.toLocaleString()}</td>
             <td>${formattedDate}</td>
         </tr>`;
 	});
@@ -303,6 +307,10 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 
+		// Editable logic for this row
+		const isRowEditable = editable && (item.is_editable !== false);
+		const rowExtraClass = (item.is_editable === false) ? ' bg-light' : '';
+
 		let rowSum = 0;
 		let dataCells = '';
 		subItemHeaders.forEach(header => {
@@ -313,11 +321,11 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 			if (rowsForColumnSum.includes(key) && isNumeric(value)) {
 				columnSums[header] += Number(value);
 			}
-			dataCells += `<td class="data-cell" contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
+			dataCells += `<td class="data-cell" contenteditable="${isRowEditable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
 
 		let row = `
-        <tr class="${bgColor}" data-row-key="${key}">
+        <tr class="${bgColor}${rowExtraClass}" data-row-key="${key}">
             <td>
                 ${titleMapping[key] || key}
                 ${createInfoIcon(item)}
@@ -556,10 +564,10 @@ async function initPrivateSalesTables(data = null) {
 		data = await getEyesData($("#year").val());
 
 	document.getElementById('pv-sales-dashboard-container').innerHTML = '';
-	
-	createObjectTable(data, 'فروش تفکیکی کاوش', ['kavosh_series_sales_1399', 'kavosh_series_sales_1400', 'kavosh_series_sales_1401', 'kavosh_series_sales_1402', 'kavosh_series_sales_1403', 'kavosh_series_sales_1404', 'kavosh_series_sales_international', 'kavosh_series_sales_international_not_deliverd' ], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
-	createObjectTable(data, 'فروش تفکیکی MCM', ['MCM_series_sales_1402', 'MCM_series_sales_1403', 'MCM_series_sales_1404', 'MCM_series_sales_international' ], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
-	createObjectTable(data, 'فروش تفکیکی کپتان', ['Captan_series_sales_1404', 'Captan_series_sales_international', 'Captan_series_sales_international_not_delivered' ], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+
+	createObjectTable(data, 'فروش تفکیکی کاوش', ['kavosh_series_sales_1399', 'kavosh_series_sales_1400', 'kavosh_series_sales_1401', 'kavosh_series_sales_1402', 'kavosh_series_sales_1403', 'kavosh_series_sales_1404', 'kavosh_series_sales_international', 'kavosh_series_sales_international_not_deliverd'], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+	createObjectTable(data, 'فروش تفکیکی MCM', ['MCM_series_sales_1402', 'MCM_series_sales_1403', 'MCM_series_sales_1404', 'MCM_series_sales_international'], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+	createObjectTable(data, 'فروش تفکیکی کپتان', ['Captan_series_sales_1404', 'Captan_series_sales_international', 'Captan_series_sales_international_not_delivered'], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
 
 	console.log(data);
 
