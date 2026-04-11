@@ -38,58 +38,78 @@ const titleMapping = {
 	total_insured_non_staffs: 'تعداد بیمه‌ای بدون حضور',
 	total_uninsured_staffs: 'تعداد کارکنان غیر بیمه',
 	total_salary_paid: 'مجموع کل حقوق (ریال)',
-	total_insurance_paid: 'مجموع بیمه پرداختی (ریال)'
+	total_insurance_paid: 'مجموع بیمه پرداختی (ریال)',
+	kavosh_series_sales_1399: "1399",
+	kavosh_series_sales_1399: "1399",
+	kavosh_series_sales_1400: "1400",
+	kavosh_series_sales_1401: "1401",
+	kavosh_series_sales_1402: "1402",
+	kavosh_series_sales_1403: "1403",
+	kavosh_series_sales_1404: "1404",
+	kavosh_series_sales_international: "خارج",
+	kavosh_series_sales_international_not_deliverd: "خارج تحویل داده نشده",
 };
 
 const keyToModelFieldMap = {
 	// financial_info
-	'balance_rials_official': 'financial_info',
-	'balance_rials': 'financial_info',
-	'montly_checks_received': 'financial_info',
-	'montly_checks_issued': 'financial_info',
-	'montly_installment': 'financial_info',
-	'montly_total_sales': 'financial_info',
-	'individual_sales': 'financial_info',
-	'individual_sales_quantities': 'financial_info',
-	'individual_sales_total_received': 'financial_info',
-	'individual_sales_check_received': 'financial_info',
-	'individual_sales_unknown': 'financial_info',
-	'total_insured_staffs': 'financial_info',
-	'total_insured_non_staffs': 'financial_info',
-	'total_uninsured_staffs': 'financial_info',
-	'total_salary_paid': 'financial_info',
-	'total_insurance_paid': 'financial_info',
+	balance_rials_official: 'financial_info',
+	balance_rials: 'financial_info',
+	montly_checks_received: 'financial_info',
+	montly_checks_issued: 'financial_info',
+	montly_installment: 'financial_info',
+	montly_total_sales: 'financial_info',
+	individual_sales: 'financial_info',
+	individual_sales_quantities: 'financial_info',
+	individual_sales_total_received: 'financial_info',
+	individual_sales_check_received: 'financial_info',
+	individual_sales_unknown: 'financial_info',
+	total_insured_staffs: 'financial_info',
+	total_insured_non_staffs: 'financial_info',
+	total_uninsured_staffs: 'financial_info',
+	total_salary_paid: 'financial_info',
+	total_insurance_paid: 'financial_info',
 
 	// international_finance_info
-	'balance_dollars': 'international_finance_info',
-	'china_production_orders': 'international_finance_info',
+	balance_dollars: 'international_finance_info',
+	china_production_orders: 'international_finance_info',
 
 	// international_sales_info
-	'montly_international_total_sales': 'international_sales_info',
-	'international_individual_sales': 'international_sales_info',
-	'international_individual_sales_quantities': 'international_sales_info',
-	'turkiye_inventory': 'international_sales_info',
+	montly_international_total_sales: 'international_sales_info',
+	international_individual_sales: 'international_sales_info',
+	international_individual_sales_quantities: 'international_sales_info',
+	turkiye_inventory: 'international_sales_info',
 
 	// products_info
-	'unproduced_workshop_inventory': 'products_info',
-	'ready_products': 'products_info',
-	"unproducable_shortage_product": 'products_info',
+	unproduced_workshop_inventory: 'products_info',
+	ready_products: 'products_info',
+	unproducable_shortage_product: 'products_info',
 
 	// kavosh products_info
-	'unproduced_kavosh_workshop_inventory': 'kavosh_products_info',
-	'ready_kavosh_products': 'kavosh_products_info',
-	"unproducable_shortage_kavosh_product": 'kavosh_products_info',
+	unproduced_kavosh_workshop_inventory: 'kavosh_products_info',
+	ready_kavosh_products: 'kavosh_products_info',
+	unproducable_shortage_kavosh_product: 'kavosh_products_info',
 
 	// kia products_info
-	'ready_kia_products': 'kia_products_info',
-	'unproduced_kia_workshop_inventory': 'kia_products_info',
-	"unproducable_shortage_kia_product": 'kia_products_info',
-	'deliverd_1404': 'kia_products_info',
-	'deliverd_1403': 'kia_products_info',
-	'deliverd_1402': 'kia_products_info',
-	'deliverd_1401': 'kia_products_info',
-	'deliverd_1400': 'kia_products_info',
-	'deliverd_1399': 'kia_products_info',
+	ready_kia_products: 'kia_products_info',
+	unproduced_kia_workshop_inventory: 'kia_products_info',
+	unproducable_shortage_kia_product: 'kia_products_info',
+	deliverd_1404: 'kia_products_info',
+	deliverd_1403: 'kia_products_info',
+	deliverd_1402: 'kia_products_info',
+	deliverd_1401: 'kia_products_info',
+	deliverd_1400: 'kia_products_info',
+	deliverd_1399: 'kia_products_info',
+
+	// kavosh_series_sales_info
+	kavosh_series_sales_1399: 'kavosh_series_sales_info',
+	kavosh_series_sales_1399: 'kavosh_series_sales_info',
+	kavosh_series_sales_1400: 'kavosh_series_sales_info',
+	kavosh_series_sales_1401: 'kavosh_series_sales_info',
+	kavosh_series_sales_1402: 'kavosh_series_sales_info',
+	kavosh_series_sales_1403: 'kavosh_series_sales_info',
+	kavosh_series_sales_1404: 'kavosh_series_sales_info',
+	kavosh_series_sales_international: 'kavosh_series_sales_info',
+	kavosh_series_sales_international_not_deliverd: 'kavosh_series_sales_info',
 };
 
 // data backend connection ========================
@@ -178,7 +198,7 @@ function parseJalaliDateTime(dateTimeString) {
 	return gregorianDate;
 }
 
-function createNumericTable(data, title, itemKeys, editable = false, id="dashboard-container") {
+function createNumericTable(data, title, itemKeys, editable = false, id = "dashboard-container") {
 	const availableItems = itemKeys.filter(key => data[key]);
 	if (availableItems.length === 0) return;
 
@@ -236,7 +256,7 @@ function createNumericTable(data, title, itemKeys, editable = false, id="dashboa
 	document.getElementById(id).appendChild(card);
 }
 
-function createObjectTable(data, title, itemKeys, editable = false, add_sum = false, percentageConfig = null, columnSumConfig = null, id="dashboard-container") {
+function createObjectTable(data, title, itemKeys, editable = false, add_sum = false, percentageConfig = null, columnSumConfig = null, id = "dashboard-container") {
 	const availableItems = itemKeys.filter(key => data[key] && typeof data[key]._info === 'object');
 	if (availableItems.length === 0) return;
 
@@ -523,8 +543,11 @@ async function initPrivateSalesTables(data = null) {
 		data = await getEyesData($("#year").val());
 
 	document.getElementById('pv-sales-dashboard-container').innerHTML = '';
-
 	
+	createObjectTable(data, 'فروش تفکیکی کاوش', ['kavosh_series_sales_1399', 'kavosh_series_sales_1400', 'kavosh_series_sales_1401', 'kavosh_series_sales_1402', 'kavosh_series_sales_1403', 'kavosh_series_sales_1404', 'kavosh_series_sales_international', 'kavosh_series_sales_international_not_deliverd' ], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+
+	console.log(data);
+
 
 	setTimeout(() => {
 		const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -664,7 +687,7 @@ $("document").ready(async function () {
 	initPrivateSalesTables();
 	initAllSheetLoaders(); // Initialize all sheet loader components
 	initDetailedSales();
-	
+
 	//events
 	$("#year, #month").change(function () {
 		initTables();
