@@ -52,6 +52,9 @@ const titleMapping = {
 	MCM_series_sales_1403: "1403",
 	MCM_series_sales_1404: "1404",
 	MCM_series_sales_international: "خارج",
+	Captan_series_sales_1404: "1404",
+	Captan_series_sales_international: "خارج",
+	Captan_series_sales_international_not_delivered: "خارج تحویل داده نشده"
 };
 
 const keyToModelFieldMap = {
