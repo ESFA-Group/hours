@@ -48,6 +48,10 @@ const titleMapping = {
 	kavosh_series_sales_1404: "1404",
 	kavosh_series_sales_international: "خارج",
 	kavosh_series_sales_international_not_deliverd: "خارج تحویل داده نشده",
+	MCM_series_sales_1402: "1402",
+	MCM_series_sales_1403: "1403",
+	MCM_series_sales_1404: "1404",
+	MCM_series_sales_international: "خارج",
 };
 
 const keyToModelFieldMap = {
@@ -110,6 +114,12 @@ const keyToModelFieldMap = {
 	kavosh_series_sales_1404: 'kavosh_series_sales_info',
 	kavosh_series_sales_international: 'kavosh_series_sales_info',
 	kavosh_series_sales_international_not_deliverd: 'kavosh_series_sales_info',
+
+	// MCM_series_sales_info
+	MCM_series_sales_1402: "MCM_series_sales_info",
+	MCM_series_sales_1403: "MCM_series_sales_info",
+	MCM_series_sales_1404: "MCM_series_sales_info",
+	MCM_series_sales_international: "MCM_series_sales_info",
 };
 
 // data backend connection ========================
@@ -545,6 +555,8 @@ async function initPrivateSalesTables(data = null) {
 	document.getElementById('pv-sales-dashboard-container').innerHTML = '';
 	
 	createObjectTable(data, 'فروش تفکیکی کاوش', ['kavosh_series_sales_1399', 'kavosh_series_sales_1400', 'kavosh_series_sales_1401', 'kavosh_series_sales_1402', 'kavosh_series_sales_1403', 'kavosh_series_sales_1404', 'kavosh_series_sales_international', 'kavosh_series_sales_international_not_deliverd' ], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+	createObjectTable(data, 'فروش تفکیکی MCM', ['MCM_series_sales_1402', 'MCM_series_sales_1403', 'MCM_series_sales_1404', 'MCM_series_sales_international' ], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+	createObjectTable(data, 'فروش تفکیکی کپتان', ['Captan_series_sales_1404', 'Captan_series_sales_international', 'Captan_series_sales_international_not_delivered' ], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
 
 	console.log(data);
 
