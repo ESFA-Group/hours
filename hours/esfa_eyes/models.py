@@ -180,16 +180,16 @@ def default_kavosh_products_info():
 def default_Captan_series_sales_info():
 	return {
 		"Captan_series_sales_1404": EsfaEyesProductInfo({
-				"Capptan12": 21,
-				"inductan": 0,
+				"Captan12": 21,
+				"Inductan": 0,
 			},update_interval_days=180, who_can_see=access_mappings["Captan_series_sales_info"]).__dict__,
 		"Captan_series_sales_international": EsfaEyesProductInfo({
-				"Capptan12": 13,
-				"inductance": 0,
+				"Captan12": 13,
+				"Inductan": 0,
 			},update_interval_days=180, who_can_see=access_mappings["Captan_series_sales_info"]).__dict__,
-		"Captan_series_sales_international": EsfaEyesProductInfo({
-				"Capptan12": 12,
-				"inductance": 0,
+		"Captan_series_sales_international_not_delivered": EsfaEyesProductInfo({
+				"Captan12": 12,
+				"Inductan": 0,
 			},update_interval_days=180, who_can_see=access_mappings["Captan_series_sales_info"]).__dict__,
 	}
 
@@ -257,19 +257,19 @@ def default_MCM_series_sales_info():
 	return {
 		"MCM_series_sales_1402": EsfaEyesProductInfo({
 				"MCM1": 1,
-				"not_sale": 0,
+				"غیر فروش": 0,
 			},update_interval_days=180, who_can_see=access_mappings["MCM_series_sales_info"]).__dict__,
 		"MCM_series_sales_1403": EsfaEyesProductInfo({
 				"MCM1": 6,
-				"not_sale": 3,
+				"غیر فروش": 3,
 			},update_interval_days=180, who_can_see=access_mappings["MCM_series_sales_info"]).__dict__,
 		"MCM_series_sales_1404": EsfaEyesProductInfo({
 				"MCM1": 9,
-				"not_sale": 0,
+				"غیر فروش": 0,
 			},update_interval_days=180, who_can_see=access_mappings["MCM_series_sales_info"]).__dict__,
 		"MCM_series_sales_international": EsfaEyesProductInfo({
 				"MCM1": 3,
-				"not_sale": 1,
+				"غیر فروش": 1,
 			},update_interval_days=180, who_can_see=access_mappings["MCM_series_sales_info"]).__dict__,
 	}
 
