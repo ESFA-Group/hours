@@ -1,11 +1,12 @@
 import jdatetime as jdt
 
 class EsfaEyesInfo:
-    def __init__(self, info={}, update_interval_days=2, who_can_see=[]):
+    def __init__(self, info={}, update_interval_days=2, who_can_see=[], is_editable=True):
         self.UPDATE_INTERVAL_DAYS =  update_interval_days
         self.last_modify_time = jdt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._info = info if info is not None else {}
         self.who_can_see = who_can_see
+        self.is_editable = is_editable
     
     @property
     def info(self):
@@ -13,8 +14,9 @@ class EsfaEyesInfo:
 
     @info.setter
     def info(self, value={}):
-        self._info = value if value is not None else {}
-        self.last_modify_time = jdt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if self.is_editable:
+            self._info = value if value is not None else {}
+            self.last_modify_time = jdt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 class EsfaEyesMonltyInfo(EsfaEyesInfo):
     def __init__(self, info={
@@ -30,8 +32,8 @@ class EsfaEyesMonltyInfo(EsfaEyesInfo):
                 "دی": 0,
                 "بهمن": 0,
                 "اسفند": 0,
-            }, update_interval_days=31, who_can_see=[]):
-        super().__init__(info, update_interval_days, who_can_see)
+            }, update_interval_days=31, who_can_see=[], is_editable=True):
+        super().__init__(info, update_interval_days, who_can_see, is_editable)
 
 class EsfaEyesProductInfo(EsfaEyesInfo):
     def __init__(self, info={
@@ -50,5 +52,5 @@ class EsfaEyesProductInfo(EsfaEyesInfo):
                 "Nira48-600": 0,
                 "Nira110-600": 0,
                 "Other": 0,
-            }, update_interval_days=31, who_can_see=[]):
-        super().__init__(info, update_interval_days, who_can_see)
+            }, update_interval_days=31, who_can_see=[], is_editable=True):
+        super().__init__(info, update_interval_days, who_can_see, is_editable)
