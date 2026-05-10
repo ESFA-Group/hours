@@ -1,5 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group
+from import_export import resources, fields
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from import_export.admin import ImportExportModelAdmin
 from sheets.models import *
 
 admin.site.site_url = "/hours"
@@ -15,11 +18,31 @@ class SheetAdmin(admin.ModelAdmin):
     list_display = ['user_name', 'month', 'year']
 
 
+class UserResource(resources.ModelResource):
+    class Meta:
+        model = User
+        # Explicitly exclude 'id' from import/export
+        exclude = ('id',)
+        fields = ('username', 'first_name_p', 'last_name_p', 'staff_group_tag')
+        export_order = ('username', 'first_name_p', 'last_name_p', 'staff_group_tag')
+        import_id_fields = ('username',)
+
+
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    # Your existing configurations
     ordering = ["last_name", "first_name"]
     filter_horizontal = ('groups', 'user_permissions')
-    search_fields = ['last_name', 'first_name', 'username', 'first_name_p', 'last_name_p']  
+    search_fields = ['last_name', 'first_name', 'username', 'first_name_p', 'last_name_p']
+    
+    # Add these for better import/export experience
+    list_display = ('username', 'last_name_p', 'first_name_p', 'staff_group_tag')
+    list_filter = ('is_staff', 'is_superuser', 'is_active')
+    
+    # Import-export resource
+    resource_class = UserResource
+    
+    # Your existing restricted fields
     RESTRICTED_FIELDS = [
         'is_superuser',
         'is_staff',

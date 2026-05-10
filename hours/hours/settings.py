@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "sheets",
     "esfa_eyes",
     "sheets.templatetags",
+    "import_export",
 ]
 
 
