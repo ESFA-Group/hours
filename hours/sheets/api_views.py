@@ -1158,3 +1158,7 @@ class DailyReportSettingManager(APIView):
             {"message": "Report setting updated successfully"},
             status=status.HTTP_200_OK,
         )
+
+
+class HourVerifierAPIView(APIView):
+    permission_classes = [customPermissions.IsHoursVerifier]

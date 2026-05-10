@@ -29,6 +29,7 @@ class User(AbstractUser):
 	is_ProjectReportManager = models.BooleanField("is_ProjectReportManager", default=False)
 	is_SubReportManager = models.BooleanField("is_SubReportManager", default=False)
 	is_MainReportManager = models.BooleanField("is_MainReportManager", default=False)
+	is_HourVerifier = models.BooleanField("is_HourVerifier", default=False)
 	is_FoodManager = models.BooleanField("is_FoodManager", default=False)
 	is_PaymentManager = models.BooleanField("is_PaymentManager", default=False)
 	# access to esfa eyes sheets

@@ -12,6 +12,7 @@ urlpatterns = [
     path("change_password", login_views.change_password, name="change_password"),
     path("logout", login_views.logout, name="logout"),
     path("hours", views.HoursView.as_view(), name="hours"),
+    path("verify_hours", views.VerifyHoursView.as_view(), name="verify_hours"),
     path("hours_info", views.HoursInfoView.as_view(), name="hours_info"),
     path("personal_info", views.PersonalInfoView.as_view(), name="personal_info"),
     path("daily_report", views.DailyReport.as_view(), name="daily_report"),
