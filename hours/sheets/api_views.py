@@ -1162,3 +1162,65 @@ class DailyReportSettingManager(APIView):
 
 class HourVerifierAPIView(APIView):
     permission_classes = [customPermissions.IsHoursVerifier]
+
+    def get(self, request, year: str, month: str):
+        verifier = request.user
+        
+        # Parse assigned tags (assuming comma-separated)
+        raw_tags = verifier.verifier_group_tags
+        try:
+            assigned_tags = [int(tag.strip()) for tag in raw_tags.split(",") if tag.strip()]
+        except ValueError:
+            # Fallback for non-integer tags if any exist (though theoretically they shouldn't now)
+            assigned_tags = []
+
+        if not assigned_tags:
+            return Response([], status=status.HTTP_200_OK)
+
+        # Get users that have one of the assigned tags
+        staff_users = User.objects.filter(staff_group_tag__in=assigned_tags, is_active=True).prefetch_related('sheets')
+        
+        data = []
+        for staff in staff_users:
+            # Get sheet for this year/month
+            sheet = staff.sheets.filter(year=year, month=month).first()
+            if not sheet:
+                continue
+
+            # Check warning logic
+            auto_hours = 0
+            total_hours = 0
+            
+            for row in sheet.data:
+                a_m = sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
+                t_m = sheet.hhmm2minutes(row.get("Total", "00:00"))
+                auto_hours += a_m
+                total_hours += t_m
+                
+            is_warning = total_hours >= 1.1 * auto_hours
+
+            data.append({
+                "userId": staff.id,
+                "userName": staff.get_full_name(),
+                "staffGroup": staff.staff_group_tag,
+                "deviceCode": staff.auto_hour_ID,
+                "autoHours": auto_hours,
+                "totalHours": total_hours,
+                "isWarning": is_warning,
+                "isVerified": sheet.is_verified,
+                "sheetData": sheet.data  # Send sheet data for read-only view
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
+        
+    def post(self, request, year: str, month: str):
+        user_id = request.data.get("userId")
+        is_verified = request.data.get("isVerified", True)
+        
+        try:
+            sheet = Sheet.objects.get(user_id=user_id, year=year, month=month)
+            sheet.is_verified = is_verified
+            sheet.save()
+            return Response({"success": True}, status=status.HTTP_200_OK)
+        except Sheet.DoesNotExist:
+            return Response({"error": "Sheet not found"}, status=status.HTTP_404_NOT_FOUND)

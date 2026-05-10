@@ -49,6 +49,10 @@ class User(AbstractUser):
 	is_KiaProductionManager_readonly = models.BooleanField("is_KiaProductionManager_readonly", default=False)
 	is_KavoshProductionManager = models.BooleanField("is_KavoshProductionManager", default=False)
 	is_KavoshProductionManager_readonly = models.BooleanField("is_KavoshProductionManager_readonly", default=False)
+	
+	# group tags for verification
+	staff_group_tag = models.PositiveSmallIntegerField("staff_group_tag", default=1)
+	verifier_group_tags = models.CharField("verifier_group_tags", max_length=255, blank=True, default="", help_text="Comma-separated tags this verifier can see")
 
 	# personal info
 	auto_hour_ID = models.IntegerField("auto_hour_ID", null=True, blank=True)
@@ -199,6 +203,7 @@ class Sheet(models.Model):
 	mean = models.PositiveIntegerField("mean", default=0)  # in minutes
 	total = models.PositiveIntegerField("total", default=0)  # in minutes
 	submitted = models.BooleanField("submitted", default=False)
+	is_verified = models.BooleanField("is_verified", default=False)
 	payment_status = models.IntegerField(
 		"payment_status", choices=payment_status_choices, default=0
 	)

@@ -126,4 +126,9 @@ urlpatterns = [
         api_views.DailyReportSettingManager.as_view(),
         name="daily_report_setting_management",
     ),
+    path(
+        "api/verify_hours/<str:year>/<str:month>",
+        api_views.HourVerifierAPIView.as_view(),
+        name="api_verify_hours",
+    ),
 ]

@@ -6,21 +6,20 @@
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
+
 {% endblock extra_css %}
 {% block body %}
 
 <div class="px-4">
     <div class="row">
-
-        <div class="col col-12 col-lg-4 mt-2">
-
+        <!-- Sidebar for User List -->
+        <div class="col col-12 col-lg-3 mt-2">
             <div style="position: sticky; top: 10px;">
-                <div class="d-flex justify-content-between" style="gap: 10px;">
+                <div class="d-flex justify-content-between mb-3" style="gap: 10px;">
                     <div class="flex-grow-1 text-center">
                         <strong>Year</strong>
                         <div class="mt-1">
-                            <select name="year" id="year" class="form-select">
-                            </select>
+                            <select name="year" id="year" class="form-select"></select>
                         </div>
                     </div>
                     <div class="flex-grow-1 text-center">
@@ -35,10 +34,48 @@
                         <strong>Staff Group</strong>
                         <div class="mt-1">
                             <select name="staff_group" id="staff_group" class="form-select">
+                                <option value="all">All</option>
                             </select>
                         </div>
                     </div>
                 </div>
+
+                <div class="card mb-3">
+                    <div class="card-header bg-danger text-white">
+                        <h6 class="mb-0">Unverified Users (<span id="unverified-count">0</span>)</h6>
+                    </div>
+                    <ul class="list-group list-group-flush" id="unverified-list"
+                        style="max-height: 40vh; overflow-y: auto;">
+                        <li class="list-group-item text-muted text-center">No users</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0">Verified Users (<span id="verified-count">0</span>)</h6>
+                    </div>
+                    <ul class="list-group list-group-flush" id="verified-list"
+                        style="max-height: 40vh; overflow-y: auto;">
+                        <li class="list-group-item text-muted text-center">No users</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content for Spreadsheet -->
+        <div class="col col-12 col-lg-9 mt-2">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h4 id="selected-user-name">Select a user</h4>
+                <div>
+                    <button id="verify-btn" class="btn btn-success" disabled>Verify Sheet</button>
+                    <button id="unverify-btn" class="btn btn-warning" style="display: none;">Unverify Sheet</button>
+                </div>
+            </div>
+
+            <div id="spreadsheet" style="width: 100%;"></div>
+
+            <div id="no-user-selected" class="alert alert-info text-center mt-5">
+                Please select a user from the sidebar to view their hours.
             </div>
         </div>
     </div>
