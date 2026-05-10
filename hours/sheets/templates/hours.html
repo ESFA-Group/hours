@@ -943,14 +943,13 @@
     }
 
     function handleExcelImport(event) {
-
         excelImmportLoadingStart()
         var file = event.target.files[0];
         var formData = new FormData();
 
-        console.log("handleExcelImport");
         // Append the file to the form data
         formData.append('file', file);
+        event.target.value = '';
 
         // Send the file to the backend
         const year = $("#year").val();
