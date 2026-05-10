@@ -6,30 +6,8 @@
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
+<link rel="stylesheet" href="{% static 'sheets/css/spreadsheet_custom.css' %}">
 <style>
-    :root {
-        --jexcel_header_color: #000;
-        --jexcel_header_color_highlighted: #000;
-        --jexcel_header_background: #f3f3f3;
-        --jexcel_header_background_highlighted: #dcdcdc;
-        --jexcel_content_color: #000;
-        --jexcel_content_color_highlighted: #000;
-        --jexcel_content_background: #fff;
-        --jexcel_content_background_highlighted: rgba(0, 0, 0, 0.05);
-        --jexcel_menu_background: #fff;
-        --jexcel_menu_background_highlighted: #ebebeb;
-        --jexcel_menu_color: #555;
-        --jexcel_menu_color_highlighted: #555;
-        --jexcel_menu_box_shadow: 2px 2px 2px 0px rgba(143, 144, 145, 1);
-        --jexcel_border_color: #ccc;
-        --jexcel_border_color_highlighted: #000;
-        --jexcel_cursor: #eee;
-        --active_color: #007aff;
-    }
-
-    /* .jexcel tbody tr td{
-            background-color: rgba(200, 0, 0, 0.2);
-        } */
     .redFont {
         color: red;
     }
@@ -450,7 +428,7 @@
                 message: "At least 1 project required. Project % sum must be 100%.",
                 timeout: 8000,
             });
-            return    
+            return
         }
 
         const year = $("#year").val();
@@ -1070,7 +1048,7 @@
 
         $.each(missingUsersList, function (index, user) {
             console.log(user);
-            
+
             $('#missing-users-list').append(`<li>${user.name} (device code: ${user.device_code})</li>`);
         });
     }

@@ -1197,7 +1197,7 @@ class HourVerifierAPIView(APIView):
                 auto_hours += a_m
                 total_hours += t_m
                 
-            is_warning = total_hours >= 1.1 * auto_hours
+            is_warning = total_hours > 1.1 * auto_hours
 
             data.append({
                 "userId": staff.id,
