@@ -9,6 +9,7 @@ from collections import OrderedDict
 from django.db.models import Q
 from datetime import date
 from itertools import groupby
+from django.db.models import Count, Q, Sum
 
 
 import jdatetime as jdt
@@ -216,27 +217,58 @@ class MonthlyReportApiView(APIView):
     permission_classes = [customPermissions.IsProjectReportManager]
 
     def get(self, request, year: str, month: str):
+        # 1. Base queryset: only active users, single join for user
+        base_sheets = (
+            Sheet.objects
+            .filter(year=year, month=month, user__is_active=True)
+            .select_related('user')
+        )
 
-        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
-        submitted_sheets = sheets.filter(submitted=True)
-        submitted_user_names = [
-            sheet.user.get_full_name() for sheet in submitted_sheets
+        # 2. Single aggregation for counts (no hours/payments fields)
+        agg = base_sheets.aggregate(
+            total_sheets=Count('id'),
+            submitted=Count('id', filter=Q(submitted=True)),
+            verified=Count('id', filter=Q(is_verified=True)),
+            supreme_verified=Count('id', filter=Q(is_supreme_verified=True)),
+        )
+
+        # 3. Force evaluation – one query, then Python filtering
+        sheets_list = list(base_sheets)
+
+        submitted_names = [
+            s.user.get_full_name() for s in sheets_list if s.submitted
         ]
-        sheetless_users = User.objects.select_related().filter(
-            is_active=True
-        ).exclude(
+        verified_names = [
+            s.user.get_full_name() for s in sheets_list if s.is_verified
+        ]
+        supreme_verified_names = [
+            s.user.get_full_name() for s in sheets_list if s.is_supreme_verified
+        ]
+
+        # 4. Active users without a sheet this month
+        sheetless_users = User.objects.filter(is_active=True).exclude(
             sheets__year=year, sheets__month=month
         )
-        sheetless_user_names = [user.get_full_name() for user in sheetless_users]
-        hours, payments = MonthlyReportApiView.get_sheet_sums(sheets, sheetless_users)
+        sheetless_names = [u.get_full_name() for u in sheetless_users]
+
+        # 5. Active user count (instead of all users)
+        active_user_count = User.objects.filter(is_active=True).count()
+
+        # 6. Use the original method, but pass the already-fetched sheets list
+        hours, payments = MonthlyReportApiView.get_sheet_sums(
+            sheets_list, sheetless_users
+        )
+
         res = {
             "hours": hours,
             # "payments": payments,
-            "usersNum": User.objects.count(),
-            "sheetsNum": sheets.count(),
-            "submittedSheetsNum": submitted_sheets.count(),
-            "sheetlessUsers": sheetless_user_names,
-            "submittedUsers": submitted_user_names,
+            "usersNum": active_user_count,
+            "sheetsNum": agg['total_sheets'],
+            "submittedSheetsNum": agg['submitted'],
+            "sheetlessUsers": sheetless_names,
+            "submittedUsers": submitted_names,
+            "verifiedUsers": verified_names,
+            "suprimeVerifiedUsers": supreme_verified_names,
         }
 
         return Response(res, status=status.HTTP_200_OK)
