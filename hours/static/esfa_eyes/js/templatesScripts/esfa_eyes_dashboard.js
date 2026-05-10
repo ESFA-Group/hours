@@ -229,6 +229,7 @@ function createNumericTable(data, title, itemKeys, editable = false, id = "dashb
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 
 		// Determine if this row is editable (global flag AND item.is_editable !== false)
+		
 		const isRowEditable = editable && (item.is_editable !== false);
 		const rowExtraClass = (item.is_editable === false) ? ' bg-light' : '';
 
