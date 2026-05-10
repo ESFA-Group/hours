@@ -124,11 +124,11 @@
                                     href="{% url 'sheets:payment' %}">Payments</a>
                                 </li>
                             {% endif %}
-                            {% if request.user.is_HourVerifier %}
+                            {% if request.user.is_HourVerifier or request.user.is_SupremeHourVerifier %}
                                 <li class="nav-item">
                                     {% url 'sheets:verify_hours' as temp_url %}
                                     <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
-                                    href="{% url 'sheets:payment' %}">Verify Hours</a>
+                                        href="{% url 'sheets:verify_hours' %}">Verify Hours</a>
                                 </li>
                             {% endif %}
                             {% if request.user.is_staff %}
@@ -186,6 +186,8 @@
             is_MainReportManager: "{{ request.user.is_MainReportManager|lower }}" === "true",
             is_FoodManager: "{{ request.user.is_FoodManager|lower }}" === "true",
             is_PaymentManager: "{{ request.user.is_PaymentManager|lower }}" === "true",
+            is_HourVerifier: "{{ request.user.is_HourVerifier|lower }}" === "true",
+            is_SupremeHourVerifier: "{{ request.user.is_SupremeHourVerifier|lower }}" === "true",
             // access to esfa eyes sheets
             is_global_sales_viewer: "{{ request.user.is_global_sales_viewer|lower }}" === "true",
             is_detailed_sales_viewer: "{{ request.user.is_detailed_sales_viewer|lower }}" === "true",

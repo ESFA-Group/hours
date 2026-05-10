@@ -67,9 +67,15 @@
         <div class="col col-12 col-lg-9 mt-2">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h4 id="selected-user-name">Select a user</h4>
-                <div>
-                    <button id="verify-btn" class="btn btn-success" disabled>Verify Sheet</button>
-                    <button id="unverify-btn" class="btn btn-warning" style="display: none;">Unverify Sheet</button>
+                <div class="d-flex gap-2">
+                    <div id="standard-actions">
+                        <button id="verify-btn" class="btn btn-success" disabled>Verify Sheet</button>
+                        <button id="unverify-btn" class="btn btn-warning" style="display: none;">Unverify Sheet</button>
+                    </div>
+                    <div id="supreme-actions">
+                        <button id="supreme-verify-btn" class="btn btn-primary" style="display: none;">Supreme Verify</button>
+                        <button id="supreme-unverify-btn" class="btn btn-secondary" style="display: none;">Supreme Unverify</button>
+                    </div>
                 </div>
             </div>
 

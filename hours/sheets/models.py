@@ -30,6 +30,7 @@ class User(AbstractUser):
 	is_SubReportManager = models.BooleanField("is_SubReportManager", default=False)
 	is_MainReportManager = models.BooleanField("is_MainReportManager", default=False)
 	is_HourVerifier = models.BooleanField("is_HourVerifier", default=False)
+	is_SupremeHourVerifier = models.BooleanField("is_SupremeHourVerifier", default=False)
 	is_FoodManager = models.BooleanField("is_FoodManager", default=False)
 	is_PaymentManager = models.BooleanField("is_PaymentManager", default=False)
 	# access to esfa eyes sheets
@@ -204,6 +205,7 @@ class Sheet(models.Model):
 	total = models.PositiveIntegerField("total", default=0)  # in minutes
 	submitted = models.BooleanField("submitted", default=False)
 	is_verified = models.BooleanField("is_verified", default=False)
+	is_supreme_verified = models.BooleanField("is_supreme_verified", default=False)
 	payment_status = models.IntegerField(
 		"payment_status", choices=payment_status_choices, default=0
 	)

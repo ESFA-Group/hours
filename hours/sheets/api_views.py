@@ -1174,11 +1174,13 @@ class HourVerifierAPIView(APIView):
             # Fallback for non-integer tags if any exist (though theoretically they shouldn't now)
             assigned_tags = []
 
-        if not assigned_tags:
-            return Response([], status=status.HTTP_200_OK)
-
         # Get users that have one of the assigned tags
-        staff_users = User.objects.filter(staff_group_tag__in=assigned_tags, is_active=True).prefetch_related('sheets')
+        if verifier.is_SupremeHourVerifier:
+            staff_users = User.objects.filter(is_active=True).prefetch_related('sheets')
+        else:
+            if not assigned_tags:
+                return Response([], status=status.HTTP_200_OK)
+            staff_users = User.objects.filter(staff_group_tag__in=assigned_tags, is_active=True).prefetch_related('sheets')
         
         data = []
         for staff in staff_users:
@@ -1208,6 +1210,7 @@ class HourVerifierAPIView(APIView):
                 "totalHours": total_hours,
                 "isWarning": is_warning,
                 "isVerified": sheet.is_verified,
+                "isSupremeVerified": sheet.is_supreme_verified,
                 "sheetData": sheet.data  # Send sheet data for read-only view
             })
 
@@ -1216,10 +1219,14 @@ class HourVerifierAPIView(APIView):
     def post(self, request, year: str, month: str):
         user_id = request.data.get("userId")
         is_verified = request.data.get("isVerified", True)
+        verify_type = request.data.get("verifyType", "standard") # "standard" or "supreme"
         
         try:
             sheet = Sheet.objects.get(user_id=user_id, year=year, month=month)
-            sheet.is_verified = is_verified
+            if verify_type == "supreme":
+                sheet.is_supreme_verified = is_verified
+            else:
+                sheet.is_verified = is_verified
             sheet.save()
             return Response({"success": True}, status=status.HTTP_200_OK)
         except Sheet.DoesNotExist:

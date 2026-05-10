@@ -147,7 +147,7 @@
                     href="{% url 'sheets:payment' %}"
                     style="width: 150px">Payments</a>
                 {% endif %}
-                {% if request.user.is_HourVerifier %}           
+                {% if request.user.is_HourVerifier or request.user.is_SupremeHourVerifier %}
                     <a class="btn mx-1"
                     href="{% url 'sheets:verify_hours' %}"
                     style="width: 150px; background-color: #ff7b25; border-color: #ff7b25; color: white;"

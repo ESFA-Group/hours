@@ -38,6 +38,8 @@ async function loadData() {
 		$("#selected-user-name").text("Select a user");
 		$("#verify-btn").prop("disabled", true).show();
 		$("#unverify-btn").hide();
+		$("#supreme-verify-btn").hide();
+		$("#supreme-unverify-btn").hide();
 		selectedUserId = null;
 
 	} catch (error) {
@@ -46,14 +48,14 @@ async function loadData() {
 }
 
 function updateStaffGroupDropdown() {
-	const groups = new Set(allUsersData.map(u => u.staffGroup).filter(g => g));
+	const groups = new Set(allUsersData.map(u => u.staffGroup).filter(g => g !== undefined && g !== null));
 	const currentSelection = $("#staff_group").val() || "all";
 
 	const $dropdown = $("#staff_group");
 	$dropdown.empty();
 	$dropdown.append(`<option value="all">All</option>`);
 
-	[...groups].sort().forEach(group => {
+	[...groups].sort((a, b) => a - b).forEach(group => {
 		$dropdown.append($("<option>").val(group).text(group));
 	});
 
@@ -173,14 +175,33 @@ function selectUser(userId) {
 	$("#no-user-selected").hide();
 
 	let warningIcon = userData.isWarning ? ' <span title="Total hours >= 1.1 * Auto hours">⚠️</span>' : '';
-	$("#selected-user-name").html(`${userData.userName} (${userData.staffGroup || 'No Group'})${warningIcon}`);
+	let verificationIcons = '';
+	if (userData.isVerified) verificationIcons += ' ✅';
+	if (userData.isSupremeVerified) verificationIcons += ' 👑';
 
+	$("#selected-user-name").html(`${userData.userName} (#${userData.staffGroup || 'No Group'})${warningIcon}${verificationIcons}`);
+
+	// Standard buttons
 	if (userData.isVerified) {
 		$("#verify-btn").hide();
 		$("#unverify-btn").prop("disabled", false).show();
 	} else {
 		$("#unverify-btn").hide();
 		$("#verify-btn").prop("disabled", false).show();
+	}
+
+	// Supreme buttons
+	if (window.USER.is_SupremeHourVerifier) {
+		if (userData.isSupremeVerified) {
+			$("#supreme-verify-btn").hide();
+			$("#supreme-unverify-btn").prop("disabled", false).show();
+		} else {
+			$("#supreme-unverify-btn").hide();
+			$("#supreme-verify-btn").prop("disabled", false).show();
+		}
+	} else {
+		$("#supreme-verify-btn").hide();
+		$("#supreme-unverify-btn").hide();
 	}
 
 	constructTable(userData.sheetData);
@@ -194,8 +215,8 @@ function renderUserLists() {
 		filteredUsers = allUsersData.filter(u => String(u.staffGroup) === String(selectedGroup));
 	}
 
-	const unverifiedUsers = filteredUsers.filter(u => !u.isVerified);
-	const verifiedUsers = filteredUsers.filter(u => u.isVerified);
+	const unverifiedUsers = filteredUsers.filter(u => !u.isVerified && !u.isSupremeVerified);
+	const verifiedUsers = filteredUsers.filter(u => u.isVerified || u.isSupremeVerified);
 
 	$("#unverified-count").text(unverifiedUsers.length);
 	$("#verified-count").text(verifiedUsers.length);
@@ -211,9 +232,6 @@ function renderUserLists() {
 
 		users.sort((a, b) => a.userName.localeCompare(b.userName)).forEach(user => {
 			let bgClass = "";
-			let textClass = "";
-			let warningText = "";
-
 			if (user.isWarning) {
 				bgClass = "list-group-item-warning";
 			}
@@ -226,11 +244,16 @@ function renderUserLists() {
 
 			const hoursInfo = `<small class="d-block">Auto: ${minsToHm(user.autoHours)} | Total: ${minsToHm(user.totalHours)}</small>`;
 
+			let statusIcons = '';
+			if (user.isVerified) statusIcons += ' <span title="Verified">✅</span>';
+			if (user.isSupremeVerified) statusIcons += ' <span title="Supreme Verified">👑</span>';
+			if (user.isWarning) statusIcons += ' <span title="Total hours >= 1.1 * Auto hours">⚠️</span>';
+
 			const $item = $(`
                 <li class="list-group-item list-group-item-action user-item ${bgClass}" data-id="${user.userId}" style="cursor: pointer;">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-bold">${user.userName}</span>
-                        ${user.isWarning ? '<span title="Total hours >= 1.1 * Auto hours">⚠️</span>' : ''}
+                        <div>${statusIcons}</div>
                     </div>
                     ${hoursInfo}
                 </li>
@@ -250,7 +273,7 @@ function renderUserLists() {
 	}
 }
 
-async function verifySheet(isVerified) {
+async function verifySheet(isVerified, verifyType = "standard") {
 	if (!selectedUserId) return;
 
 	const year = $("#year").val();
@@ -260,7 +283,8 @@ async function verifySheet(isVerified) {
 	try {
 		const response = await apiService.post(path, {
 			userId: selectedUserId,
-			isVerified: isVerified
+			isVerified: isVerified,
+			verifyType: verifyType
 		}, {}, "Updating Verification Status");
 
 		if (!response.ok) return;
@@ -302,7 +326,9 @@ $("document").ready(async function () {
 		renderUserLists();
 	});
 
-	$("#verify-btn").click(() => verifySheet(true));
-	$("#unverify-btn").click(() => verifySheet(false));
+	$("#verify-btn").click(() => verifySheet(true, "standard"));
+	$("#unverify-btn").click(() => verifySheet(false, "standard"));
+	$("#supreme-verify-btn").click(() => verifySheet(true, "supreme"));
+	$("#supreme-unverify-btn").click(() => verifySheet(false, "supreme"));
 
 });
