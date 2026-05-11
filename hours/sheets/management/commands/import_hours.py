@@ -39,6 +39,15 @@ class Command(BaseCommand):
 				user_id = user.id
 				date = str(row["تاريخ"])
 				hours = row["مدت حضور"]
+				parts = []
+				for i in range(1, 6):  # i = 1..5
+					entry = row[f'ورود {i}']
+					exit = row[f'خروج {i}']
+					if entry == 0 or exit ==0:
+						break
+					part = f"{entry.hour}:{entry.minute}-{exit.hour}:{exit.minute}"
+					parts.append(part)
+				attendance = '__'.join(parts)
 				y = date.split('/')[0]
 				m = date.split('/')[1]
 				if int(month) != int(m) or year != y:
@@ -55,6 +64,7 @@ class Command(BaseCommand):
 					current_sheet.normalize_sheet()
 				currentDayData = current_sheet.data[d-1]
 				currentDayData["Auto Hours"] = f"{hours.hour:02d}:{hours.minute:02d}"
+				currentDayData["Attendance"] = attendance
 				current_sheet.normalize_sheet()
 				imported_any = True
 			
