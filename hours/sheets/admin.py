@@ -13,7 +13,7 @@ admin.site.register(ProjectFamily)
 @admin.register(Sheet)
 class SheetAdmin(admin.ModelAdmin):
     ordering = ["-year", "-month", "user_name"]
-    list_filter = ['user_name', 'year', 'month']
+    list_filter = ['year', 'month', 'user_name']
     search_fields = ['user_name', 'user__first_name_p', 'user__last_name_p'] 
     list_display = ['user_name', 'month', 'year']
 
