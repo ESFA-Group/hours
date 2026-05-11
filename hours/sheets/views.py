@@ -603,42 +603,6 @@ class PaymentExcelImportView(View):
 
 @method_decorator([payment_manager_required], name="dispatch")
 class HoursExcelImportView(View):
-	USER_ID_MAP = {
-		1: 2,       # hassan, zahedi 
-		2: 12,      # Soheil, Safavi
-		3: 17,      # Vahid, Hajihasani
-		4: 22,      # ali reza, amiri
-		5: 31,      # Morteza, Mansoori
-		6: 19,      # Pooria, Allahkarami
-		7: 9,       # Abbas, Torkamani
-		8: 5,       # Hossein, Dadashi Ilkhechi
-		9: 10,      # Ahmadreza, Darabi
-		10: 11,     # Mohammadmahdi, Rajabi
-		11: 4,      # MohammadHadi, Attarieh
-		12: 6,      # Alireza, Mohammadi
-		13: 3,      # Hamed, Morsali
-		14: 1,      # Mohammad Rasoul, Noori
-		15: 28,     #Mohsen, Ghasemi
-		16: 15,     #Mohammad, Hajzaman
-		17: 51,     #MASOUMEH, BAYAT
-		18: 56,     #MirKazem, KhalifehZadeh
-		19: 37,     #Hamid, Aslani
-		20: 40,     #Gholam Reza, Moradi
-		21: 42,     #Seyed Jalal, Asef Al hosseini
-		22: 43,     #mohammad amin, sanei
-		23: 48,     #Samira, Foroughi
-		24: 68,     #Sina, Mohamadi
-		25: 57,     #saeed, jaloo
-		26: 49,     #samaneh, moslemi
-		27: -1,     #ali, maghsoudi 
-		28: 50,     #Payam, Arabpour
-		29: -1,     #Seyed Amir,    Hosseini
-		30: 83,     #Mehdi, Zebarjadi Zirak
-		31: 81,     #Sajad, Banooie
-		32: 84,     #Amir, EBADI
-		33: 85,     #Mohammad, Malekan
-	}
-	
 	def post(self, request, year: str, month: str):
 		if is_any_task_running():
 			return JsonResponse({"status": "error", "message": "Another import is already in progress. Please wait."}, status=HTTP_409_CONFLICT)
