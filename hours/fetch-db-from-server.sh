@@ -2,6 +2,7 @@
 
 # Simple SQLite Database Download Script
 SERVER_IP="185.211.58.47"
+SERVER_PASSWORD="Mrn.2277"
 SERVER_USER="mrn"
 DB_PATH="/home/mrn/hours/hours/db.sqlite3"
 
@@ -9,14 +10,10 @@ DB_PATH="/home/mrn/hours/hours/db.sqlite3"
 timestamp=$(date +%Y%m%d_%H%M%S)
 backup_file="db_backup_${timestamp}.sqlite3"
 
-echo -n "Enter SSH password: "
-read -s SERVER_PASSWORD
-echo
-
 echo "Downloading database..."
 
 # Download the SQLite database directly
-sshpass -p "$SERVER_PASSWORD" scp -o StrictHostKeyChecking=no \
+sshpass -p "${SERVER_PASSWORD}" scp -o StrictHostKeyChecking=no \
     "${SERVER_USER}@${SERVER_IP}:${DB_PATH}" \
     "./${backup_file}"
 

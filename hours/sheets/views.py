@@ -86,6 +86,11 @@ class HoursView(BaseView):
 	template_name = "hours.html"
 
 
+@method_decorator([hours_verifier_required], name="dispatch")
+class VerifyHoursView(BaseView):
+	template_name = "verify_hours_panel.html"
+
+
 class PersonalInfoView(BaseView):
 	template_name = "personal_info.html"
 

@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -38,58 +38,91 @@ const titleMapping = {
 	total_insured_non_staffs: 'تعداد بیمه‌ای بدون حضور',
 	total_uninsured_staffs: 'تعداد کارکنان غیر بیمه',
 	total_salary_paid: 'مجموع کل حقوق (ریال)',
-	total_insurance_paid: 'مجموع بیمه پرداختی (ریال)'
+	total_insurance_paid: 'مجموع بیمه پرداختی (ریال)',
+	kavosh_series_sales_1399: "1399",
+	kavosh_series_sales_1399: "1399",
+	kavosh_series_sales_1400: "1400",
+	kavosh_series_sales_1401: "1401",
+	kavosh_series_sales_1402: "1402",
+	kavosh_series_sales_1403: "1403",
+	kavosh_series_sales_1404: "1404",
+	kavosh_series_sales_international: "خارج",
+	kavosh_series_sales_international_not_deliverd: "خارج تحویل داده نشده",
+	MCM_series_sales_1402: "1402",
+	MCM_series_sales_1403: "1403",
+	MCM_series_sales_1404: "1404",
+	MCM_series_sales_international: "خارج",
+	Captan_series_sales_1404: "1404",
+	Captan_series_sales_international: "خارج",
+	Captan_series_sales_international_not_delivered: "خارج تحویل داده نشده"
 };
 
 const keyToModelFieldMap = {
 	// financial_info
-	'balance_rials_official': 'financial_info',
-	'balance_rials': 'financial_info',
-	'montly_checks_received': 'financial_info',
-	'montly_checks_issued': 'financial_info',
-	'montly_installment': 'financial_info',
-	'montly_total_sales': 'financial_info',
-	'individual_sales': 'financial_info',
-	'individual_sales_quantities': 'financial_info',
-	'individual_sales_total_received': 'financial_info',
-	'individual_sales_check_received': 'financial_info',
-	'individual_sales_unknown': 'financial_info',
-	'total_insured_staffs': 'financial_info',
-	'total_insured_non_staffs': 'financial_info',
-	'total_uninsured_staffs': 'financial_info',
-	'total_salary_paid': 'financial_info',
-	'total_insurance_paid': 'financial_info',
+	balance_rials_official: 'financial_info',
+	balance_rials: 'financial_info',
+	montly_checks_received: 'financial_info',
+	montly_checks_issued: 'financial_info',
+	montly_installment: 'financial_info',
+	montly_total_sales: 'financial_info',
+	individual_sales: 'financial_info',
+	individual_sales_quantities: 'financial_info',
+	individual_sales_total_received: 'financial_info',
+	individual_sales_check_received: 'financial_info',
+	individual_sales_unknown: 'financial_info',
+	total_insured_staffs: 'financial_info',
+	total_insured_non_staffs: 'financial_info',
+	total_uninsured_staffs: 'financial_info',
+	total_salary_paid: 'financial_info',
+	total_insurance_paid: 'financial_info',
 
 	// international_finance_info
-	'balance_dollars': 'international_finance_info',
-	'china_production_orders': 'international_finance_info',
+	balance_dollars: 'international_finance_info',
+	china_production_orders: 'international_finance_info',
 
 	// international_sales_info
-	'montly_international_total_sales': 'international_sales_info',
-	'international_individual_sales': 'international_sales_info',
-	'international_individual_sales_quantities': 'international_sales_info',
-	'turkiye_inventory': 'international_sales_info',
+	montly_international_total_sales: 'international_sales_info',
+	international_individual_sales: 'international_sales_info',
+	international_individual_sales_quantities: 'international_sales_info',
+	turkiye_inventory: 'international_sales_info',
 
 	// products_info
-	'unproduced_workshop_inventory': 'products_info',
-	'ready_products': 'products_info',
-	"unproducable_shortage_product": 'products_info',
+	unproduced_workshop_inventory: 'products_info',
+	ready_products: 'products_info',
+	unproducable_shortage_product: 'products_info',
 
 	// kavosh products_info
-	'unproduced_kavosh_workshop_inventory': 'kavosh_products_info',
-	'ready_kavosh_products': 'kavosh_products_info',
-	"unproducable_shortage_kavosh_product": 'kavosh_products_info',
+	unproduced_kavosh_workshop_inventory: 'kavosh_products_info',
+	ready_kavosh_products: 'kavosh_products_info',
+	unproducable_shortage_kavosh_product: 'kavosh_products_info',
 
 	// kia products_info
-	'ready_kia_products': 'kia_products_info',
-	'unproduced_kia_workshop_inventory': 'kia_products_info',
-	"unproducable_shortage_kia_product": 'kia_products_info',
-	'deliverd_1404': 'kia_products_info',
-	'deliverd_1403': 'kia_products_info',
-	'deliverd_1402': 'kia_products_info',
-	'deliverd_1401': 'kia_products_info',
-	'deliverd_1400': 'kia_products_info',
-	'deliverd_1399': 'kia_products_info',
+	ready_kia_products: 'kia_products_info',
+	unproduced_kia_workshop_inventory: 'kia_products_info',
+	unproducable_shortage_kia_product: 'kia_products_info',
+	deliverd_1404: 'kia_products_info',
+	deliverd_1403: 'kia_products_info',
+	deliverd_1402: 'kia_products_info',
+	deliverd_1401: 'kia_products_info',
+	deliverd_1400: 'kia_products_info',
+	deliverd_1399: 'kia_products_info',
+
+	// kavosh_series_sales_info
+	kavosh_series_sales_1399: 'kavosh_series_sales_info',
+	kavosh_series_sales_1399: 'kavosh_series_sales_info',
+	kavosh_series_sales_1400: 'kavosh_series_sales_info',
+	kavosh_series_sales_1401: 'kavosh_series_sales_info',
+	kavosh_series_sales_1402: 'kavosh_series_sales_info',
+	kavosh_series_sales_1403: 'kavosh_series_sales_info',
+	kavosh_series_sales_1404: 'kavosh_series_sales_info',
+	kavosh_series_sales_international: 'kavosh_series_sales_info',
+	kavosh_series_sales_international_not_deliverd: 'kavosh_series_sales_info',
+
+	// MCM_series_sales_info
+	MCM_series_sales_1402: "MCM_series_sales_info",
+	MCM_series_sales_1403: "MCM_series_sales_info",
+	MCM_series_sales_1404: "MCM_series_sales_info",
+	MCM_series_sales_international: "MCM_series_sales_info",
 };
 
 // data backend connection ========================
@@ -178,7 +211,7 @@ function parseJalaliDateTime(dateTimeString) {
 	return gregorianDate;
 }
 
-function createNumericTable(data, title, itemKeys, editable = false) {
+function createNumericTable(data, title, itemKeys, editable = false, id = "dashboard-container") {
 	const availableItems = itemKeys.filter(key => data[key]);
 	if (availableItems.length === 0) return;
 
@@ -195,13 +228,18 @@ function createNumericTable(data, title, itemKeys, editable = false) {
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 
+		// Determine if this row is editable (global flag AND item.is_editable !== false)
+		
+		const isRowEditable = editable && (item.is_editable !== false);
+		const rowExtraClass = (item.is_editable === false) ? ' bg-light' : '';
+
 		tableBody += `
-        <tr class="${bgColor}">
+        <tr class="${bgColor}${rowExtraClass}">
             <td>
                 ${titleMapping[key] || key}
                 ${createInfoIcon(item)}
             </td>
-            <td contenteditable="${editable}" data-key="${key}">${item._info.toLocaleString()}</td>
+            <td contenteditable="${isRowEditable}" data-key="${key}">${item._info.toLocaleString()}</td>
             <td>${formattedDate}</td>
         </tr>`;
 	});
@@ -233,10 +271,10 @@ function createNumericTable(data, title, itemKeys, editable = false) {
 			</div>
 			${cardFooter}
 		</div>`;
-	document.getElementById('dashboard-container').appendChild(card);
+	document.getElementById(id).appendChild(card);
 }
 
-function createObjectTable(data, title, itemKeys, editable = false, add_sum = false, percentageConfig = null, columnSumConfig = null) {
+function createObjectTable(data, title, itemKeys, editable = false, add_sum = false, percentageConfig = null, columnSumConfig = null, id = "dashboard-container") {
 	const availableItems = itemKeys.filter(key => data[key] && typeof data[key]._info === 'object');
 	if (availableItems.length === 0) return;
 
@@ -270,6 +308,10 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 		const jdate = new JDate(datePart.split('-').map(Number));
 		const formattedDate = jdate.format('YYYY-MM-DD') + ' ' + timePart.substring(0, 5);
 
+		// Editable logic for this row
+		const isRowEditable = editable && (item.is_editable !== false);
+		const rowExtraClass = (item.is_editable === false) ? ' bg-light' : '';
+
 		let rowSum = 0;
 		let dataCells = '';
 		subItemHeaders.forEach(header => {
@@ -280,11 +322,11 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 			if (rowsForColumnSum.includes(key) && isNumeric(value)) {
 				columnSums[header] += Number(value);
 			}
-			dataCells += `<td class="data-cell" contenteditable="${editable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
+			dataCells += `<td class="data-cell" contenteditable="${isRowEditable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
 
 		let row = `
-        <tr class="${bgColor}" data-row-key="${key}">
+        <tr class="${bgColor}${rowExtraClass}" data-row-key="${key}">
             <td>
                 ${titleMapping[key] || key}
                 ${createInfoIcon(item)}
@@ -374,7 +416,7 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
             </div>
             ${cardFooter}
         </div>`;
-	document.getElementById('dashboard-container').appendChild(card);
+	document.getElementById(id).appendChild(card);
 
 	if (editable) {
 		const table = card.querySelector('table');
@@ -486,7 +528,6 @@ async function initTables(data = null) {
 	if (data == null)
 		data = await getEyesData($("#year").val());
 
-	console.table(data)
 	document.getElementById('dashboard-container').innerHTML = '';
 
 	createNumericTable(data, 'موجودی‌ها', ['balance_rials', 'balance_rials_official'], window.USER.is_FinancialManager);
@@ -510,6 +551,27 @@ async function initTables(data = null) {
 	createObjectTable(data, 'موجودی دستگاه‌های کیا الکترونیک', ['ready_kia_products', 'unproduced_kia_workshop_inventory', 'unproducable_shortage_kia_product', 'deliverd_1404', 'deliverd_1403', 'deliverd_1402', 'deliverd_1401', 'deliverd_1400', 'deliverd_1399'], window.USER.is_KiaProductionManager, false, false, kiaColumnSumConfig); // dont add || window.USER.is_KiaProductionManager
 	createNumericTable(data, 'بیمه کارکنان', ['total_insured_staffs', 'total_insured_non_staffs', 'total_uninsured_staffs'], window.USER.is_FinancialManager);
 	createObjectTable(data, 'پرداختی کارکنان', ['total_salary_paid', 'total_insurance_paid'], window.USER.is_FinancialManager, true);
+
+	setTimeout(() => {
+		const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+		const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+			return new bootstrap.Tooltip(tooltipTriggerEl);
+		});
+	}, 100);
+}
+
+async function initPrivateSalesTables(data = null) {
+	if (data == null)
+		data = await getEyesData($("#year").val());
+
+	document.getElementById('pv-sales-dashboard-container').innerHTML = '';
+
+	createObjectTable(data, 'فروش تفکیکی کاوش', ['kavosh_series_sales_1399', 'kavosh_series_sales_1400', 'kavosh_series_sales_1401', 'kavosh_series_sales_1402', 'kavosh_series_sales_1403', 'kavosh_series_sales_1404', 'kavosh_series_sales_international', 'kavosh_series_sales_international_not_deliverd'], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+	createObjectTable(data, 'فروش تفکیکی MCM', ['MCM_series_sales_1402', 'MCM_series_sales_1403', 'MCM_series_sales_1404', 'MCM_series_sales_international'], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+	createObjectTable(data, 'فروش تفکیکی کپتان', ['Captan_series_sales_1404', 'Captan_series_sales_international', 'Captan_series_sales_international_not_delivered'], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+
+	console.log(data);
+
 
 	setTimeout(() => {
 		const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -583,6 +645,7 @@ async function handleSubmit(button) {
 		let result = await postEyesData(year, payload);
 		if (result.success) {
 			await initTables(result.data);
+			await initPrivateSalesTables(result.data);
 		}
 	} catch (error) {
 		console.error('Failed to save data:', error);
@@ -645,12 +708,14 @@ $("document").ready(async function () {
 	$("#year").val(currentYear);
 
 	initTables();
+	initPrivateSalesTables();
 	initAllSheetLoaders(); // Initialize all sheet loader components
 	initDetailedSales();
 
 	//events
 	$("#year, #month").change(function () {
 		initTables();
+		initPrivateSalesTables();
 	});
 
 	$('#dashboard-container').on('click', '.btn-submit', function () {

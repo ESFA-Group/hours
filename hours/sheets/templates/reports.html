@@ -202,13 +202,14 @@
 
         const table = $("#monthly-table");
         let tr = $("<tr>");
-        ["Name", ...ths].forEach((val, idx) => {
+        ["Name", "verified Hours", ...ths].forEach((val, idx) => {
             tr.append($("<th>").text(val));
         });
         table.find("thead").append(tr);
         for(let [name, val] of Object.entries(data.hours)){
             tr = $("<tr>");
             $(tr).append($("<th>").text(`${name}${data.submittedUsers.includes(name)? ' ☑️': ''}`));
+            $(tr).append($("<th>").text(`${data.verifiedUsers.includes(name)? '✅': ''}${data.suprimeVerifiedUsers.includes(name)? '👑': ''}`));
             ths.forEach((prj, idx) => {
                 $(tr).append($("<td>").text(data.hours[name][prj]));
             });
