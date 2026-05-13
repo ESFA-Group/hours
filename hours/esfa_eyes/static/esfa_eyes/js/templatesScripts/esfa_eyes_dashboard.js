@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = true;
+let Debug = false;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
