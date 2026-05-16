@@ -679,7 +679,7 @@
                     if (totalM > 0) {
                         const currentPercent = tableData[row][projects[0]] || "";
                         if (!currentPercent || currentPercent === "") {
-                            window.spreadTable.setValueFromCoords(projectColIndex, row, "100", false);
+                            window.spreadTable.setValueFromCoords(projectColIndex, row, "100", true);
                             tableData[row][projects[0]] = "100";
                         }
                     }
@@ -713,7 +713,7 @@
                 const currentTotal = window.spreadTable.getValueFromCoords(TotalCol, row);
                 const newTotalStr = minutes2hhmm(totalM);
                 if (currentTotal !== newTotalStr) {
-                    window.spreadTable.setValueFromCoords(TotalCol, row, newTotalStr, false);
+                    window.spreadTable.setValueFromCoords(TotalCol, row, newTotalStr, true);
                 }
 
                 // Directly mutate the DOM cell visually to bypass recursive readOnly lock limitations
