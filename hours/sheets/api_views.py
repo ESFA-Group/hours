@@ -165,7 +165,8 @@ class InfoApiView(APIView):
         df_all = pd.DataFrame()
         for sheet in queryset:
             df = sheet.transform()
-            df.drop(["Day", "WeekDay"], axis=1, inplace=True)
+            df.drop(["Day", "WeekDay", "Attendance", "Description"], axis=1, inplace=True)
+            df = df.select_dtypes(include="number")
             df_all = df_all.add(df, fill_value=0)
         return df_all.sum()
 
