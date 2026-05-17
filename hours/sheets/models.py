@@ -302,7 +302,14 @@ class Sheet(models.Model):
 		for col in required:
 			df[col] = df[col].apply(self.hhmm2minutes)
 
-		df["Hours"] = df["Auto Hours"] + df["Remote"] - df["Rest"]
+		sum_three = df["Auto Hours"] + df["Remote"] + df["Rest"]
+		
+		if self.submitted and "Hours" in df:
+			original_hours_converted = df["Hours"].apply(self.hhmm2minutes)
+			computed_hours = df["Auto Hours"] + df["Remote"] - df["Rest"]
+			df["Hours"] = original_hours_converted.where(sum_three == 0, computed_hours)
+		else:
+			df["Hours"] = df["Auto Hours"] + df["Remote"] - df["Rest"]
 
 		df[projects] = (
 			df[projects]

@@ -165,7 +165,11 @@ class InfoApiView(APIView):
         df_all = pd.DataFrame()
         for sheet in queryset:
             df = sheet.transform()
-            df.drop(["Day", "WeekDay", "Attendance", "Description"], axis=1, inplace=True)
+            df.drop(
+                columns=["Day", "WeekDay", "Attendance", "Description", "Auto Hours", "Rest", "Remote"],
+                errors='ignore',
+                inplace=True
+            )
             df = df.select_dtypes(include="number")
             df_all = df_all.add(df, fill_value=0)
         return df_all.sum()
@@ -204,7 +208,11 @@ class PublicMonthlyReportApiView(APIView):
     def get_sum(self, sheet: Sheet) -> pd.Series:
         """returns sheet column sums"""
         df = sheet.transform()
-        df.drop(["Day", "WeekDay"], axis=1, inplace=True)
+        df.drop(
+            columns=["Day", "WeekDay", "Attendance", "Description", "Auto Hours", "Rest", "Remote"],
+            errors='ignore',
+            inplace=True
+        )
         df.rename(columns={"Hours": "Total"}, inplace=True)
         return df.sum()
 
