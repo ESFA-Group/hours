@@ -43,9 +43,13 @@ class Command(BaseCommand):
 				for i in range(1, 6):  # i = 1..5
 					entry = row[f'ورود {i}']
 					exit = row[f'خروج {i}']
-					if entry == 0 or exit ==0:
+					if entry == 0:
 						break
-					part = f"{entry.hour}:{entry.minute}-{exit.hour}:{exit.minute}"
+					if exit ==0:
+						part = f"{entry.hour}:{entry.minute}"
+					else:
+						part = f"{entry.hour}:{entry.minute}-{exit.hour}:{exit.minute}"
+
 					parts.append(part)
 				attendance = '__'.join(parts)
 				y = date.split('/')[0]
