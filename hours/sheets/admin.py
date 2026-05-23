@@ -23,8 +23,8 @@ class UserResource(resources.ModelResource):
         model = User
         # Explicitly exclude 'id' from import/export
         exclude = ('id',)
-        fields = ('username', 'first_name_p', 'last_name_p', 'staff_group_tag')
-        export_order = ('username', 'first_name_p', 'last_name_p', 'staff_group_tag')
+        fields = ('username', 'first_name_p', 'last_name_p', 'staff_group_tag', 'auto_hour_ID')
+        export_order = ('username', 'first_name_p', 'last_name_p', 'staff_group_tag', 'auto_hour_ID')
         import_id_fields = ('username',)
 
 
@@ -67,6 +67,15 @@ class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
         if not request.user.is_superuser:
             return exclude + self.RESTRICTED_FIELDS
         return exclude
+    
+    def changelist_view(self, request, extra_context=None):
+        if "is_active__exact" not in request.GET:
+            q = request.GET.copy()
+            q["is_active__exact"] = "1"
+            request.GET = q
+            request.META["QUERY_STRING"] = request.GET.urlencode()
+
+        return super().changelist_view(request, extra_context)
 
 
 @admin.register(Project)
