@@ -422,19 +422,20 @@
         }, 500);
     }
 
-    function submitSheet() {
+    async function submitSheet() {
         const rawData = window.spreadTable.getJson();
         const tableData = convertTableData(rawData);
         const valid = validateSheet(tableData);
+
         if (!valid) {
             jSuites.notification({
                 error: 1,
-                name: 'Error',
+                name: "Error",
                 title: "Invalid Data",
                 message: "At least 1 project required. Project % sum must be 100%.",
                 timeout: 8000,
             });
-            return
+            return;
         }
 
         const year = $("#year").val();
@@ -442,45 +443,53 @@
         const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
             .replace("yearHolder", year)
             .replace("monthHolder", month);
-        fetch(url, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{csrf_token}}',
-            },
-            body: JSON.stringify({ "submit": true }),
-        })
-            .then(res => res.json())
-            .then(data => {
+
+        try {
+            await GlobalLoader.wrap(async () => {
+                const res = await fetch(url, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": "{{csrf_token}}",
+                    },
+                    body: JSON.stringify({ submit: true }),
+                });
+
+                const data = await res.json();
+
                 if (data.success) {
                     handleSubmit(true);
-                    initTable()
-                    return
+                    await initTable();
+                    return;
                 }
-                else if (data.flaw) {
+
+                if (data.flaw) {
                     jSuites.notification({
                         error: 1,
-                        name: 'Error',
+                        name: "Error",
                         title: "Submitting Sheet",
                         message: "Please first complete your personal information.",
                     });
-                    return
+                    return;
                 }
+
                 jSuites.notification({
                     error: 1,
-                    name: 'Error',
+                    name: "Error",
                     title: "Submitting Sheet",
                     message: "No sheet has been defined for selected month",
                 });
-            })
-            .catch(err => {
-                jSuites.notification({
-                    error: 1,
-                    name: 'Error',
-                    title: "Submitting Sheet",
-                    message: err,
-                });
+
+            }, "Submitting sheet...");
+
+        } catch (err) {
+            jSuites.notification({
+                error: 1,
+                name: "Error",
+                title: "Submitting Sheet",
+                message: err.message || err,
             });
+        }
     }
 
     function hhmm2minutes(str) {
@@ -580,7 +589,7 @@
             if (idx === today - 1 && month == $("#month").val())
                 $(`.jexcel tbody tr`).eq(idx).find("td").css({ "background-color": "rgba(20, 150, 255, 0.1)" });
 
-            if (hhmm2minutes(row["Total"]) == 0)
+            if (hhmm2minutes(row["Total"]) <= 0)
                 return
 
             let percent = 0;
@@ -913,19 +922,63 @@
         addColumnToTable(config);
     }
 
+    let isInitializingTable = false;
+    let latestInitTableRequestId = 0;
+
     async function initTable() {
+        if (isInitializingTable) {
+            return;
+        }
+
+        isInitializingTable = true;
+        const requestId = ++latestInitTableRequestId;
+
         const year = $("#year").val();
         const month = $("#month").val();
-        let sheet = await getSheet(year, month);
 
+        try {
+            await GlobalLoader.wrap(async () => {
+                let sheet = await getSheet(year, month);
 
-        if (typeof window.spreadTable === 'object')
-            window.spreadTable.destroy();
+            if (!sheet) {
+                return;
+            }
 
-        handleSubmit(sheet.submitted);
-        toggleSubmit();
-        constructTable(sheet.data, sheet.submitted);
-        onChangeHandler();
+            // Ignore old response if a newer request somehow started
+            if (requestId !== latestInitTableRequestId) {
+                return;
+            }
+
+            if (typeof window.spreadTable === "object" && window.spreadTable) {
+                window.spreadTable.destroy();
+                window.spreadTable = null;
+            }
+
+            $("#spreadsheet").empty();
+
+            handleSubmit(sheet.submitted);
+            toggleSubmit();
+
+            await constructTable(sheet.data, sheet.submitted);
+
+            onChangeHandler();
+
+        }, "Loading your hours sheet...");
+
+        } catch (error) {
+            console.error("Error initializing table:", error);
+
+            jSuites.notification({
+                error: 1,
+                name: "Error",
+                title: "Loading Sheet",
+                message: error.message || error,
+                timeout: 6000,
+            });
+
+        } finally {
+            isInitializingTable = false;
+        }
     }
 
     function toggleSubmit() {
@@ -1083,11 +1136,10 @@
         $("#month").val(currentMonth);
         $("#year").val(currentYear);
 
-        initTable();
-        toggleSubmit();
-        $("#year, #month").change(function () {
-            initTable();
-            toggleSubmit();
+        await initTable();
+
+        $("#year, #month").change(async function () {
+            await initTable();
         });
 
         $("#add-project").click(function () {
