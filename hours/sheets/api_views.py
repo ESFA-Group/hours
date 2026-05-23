@@ -1258,6 +1258,7 @@ class HourVerifierAPIView(APIView):
                 "totalHours": total_hours,
                 "isWarning": is_warning,
                 "isVerified": sheet.is_verified,
+                "isSubmitted": sheet.submitted,
                 "isSupremeVerified": sheet.is_supreme_verified,
                 "sheetData": sheet.data  # Send sheet data for read-only view
             })

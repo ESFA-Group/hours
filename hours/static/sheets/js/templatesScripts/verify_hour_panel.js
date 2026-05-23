@@ -277,6 +277,7 @@ function renderUserLists() {
 			const hoursInfo = `<small class="d-block">Auto: ${minsToHm(user.autoHours)} | Total: ${minsToHm(user.totalHours)}</small>`;
 
 			let statusIcons = '';
+			if (user.isSubmitted) statusIcons += ' <span title="submitted">☑️</span>';
 			if (user.isVerified) statusIcons += ' <span title="Verified">✅</span>';
 			if (user.isSupremeVerified) statusIcons += ' <span title="Supreme Verified">👑</span>';
 			if (user.isWarning) statusIcons += ' <span title="Total hours >= 1.1 * Auto hours">⚠️</span>';
