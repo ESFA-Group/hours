@@ -5,6 +5,11 @@ const currentYear = today.getFullYear();
 const currentMonth = today.getMonth();
 let allUsersData = [];
 let selectedUserId = null;
+
+const AutoHourCol = 3;
+const RestCol = 4;
+const RemoteCol = 5;
+const TotalCol = 6;
 // ********************************************************
 
 
@@ -106,6 +111,63 @@ function hhmm2minutes(str) {
 	return Number(h) * 60 + Number(m)
 }
 
+function minutes2hhmm(mins) {
+	if (mins < 0) mins = 0;
+	const h = Math.floor(mins / 60);
+	const m = mins % 60;
+	return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
+}
+
+function calculateRowTotalMinutes(row) {
+	const auto = hhmm2minutes(row["Auto Hours"] || "00:00");
+	const rest = hhmm2minutes(row["Rest"] || "00:00");
+	const remote = hhmm2minutes(row["Remote"] || "00:00");
+	let totalM = auto + remote - rest;
+
+	if (totalM < 0) totalM = 0;
+	return totalM;
+}
+
+function recalculateTableTotals(tableData, updateSpreadsheet = true) {
+	if (!Array.isArray(tableData)) return { totalTime: 0, autoTime: 0, workedDaysCount: 0 };
+
+	let totalTime = 0;
+	let autoTime = 0;
+	let workedDaysCount = 0;
+
+	tableData.forEach((row, rowIndex) => {
+		const totalM = calculateRowTotalMinutes(row);
+		const newTotalStr = minutes2hhmm(totalM);
+
+		row["Total"] = newTotalStr;
+		totalTime += totalM;
+		autoTime += hhmm2minutes(row["Auto Hours"] || "00:00");
+		if (totalM) workedDaysCount += 1;
+
+		if (updateSpreadsheet && window.spreadTable) {
+			const currentTotal = window.spreadTable.getValueFromCoords(TotalCol, rowIndex);
+			if (currentTotal !== newTotalStr) {
+				window.spreadTable.setValueFromCoords(TotalCol, rowIndex, newTotalStr, true);
+			}
+
+			// Same as the working Django page: bypass the numeric hh:mm mask for the visible cell,
+			// because jspreadsheet can display values above 23:59 like a clock even when the raw value is correct.
+			const cellElement = window.spreadTable.getCell("G" + (rowIndex + 1));
+			if (cellElement) {
+				cellElement.textContent = newTotalStr;
+			}
+		}
+	});
+
+	return { totalTime, autoTime, workedDaysCount };
+}
+
+function getSheetHoursInfo(sheetData) {
+	// Clone rows before calculating, so rendering the sidebar never mutates the API response.
+	const clonedData = Array.isArray(sheetData) ? sheetData.map(row => ({ ...row })) : [];
+	return recalculateTableTotals(clonedData, false);
+}
+
 function getTableProjects(tableData) {
 	if (!tableData || tableData.length === 0) return [];
 	const allHeaders = new Set(Object.keys(tableData[0]));
@@ -174,6 +236,10 @@ function constructTable(data) {
 		}
 	});
 	window.spreadTable.hideIndex();
+
+	// Keep verification page logic identical to the working sheet page:
+	// Total = Auto Hours + Remote - Rest, and display values above 23:59 without wrapping.
+	recalculateTableTotals(orderedData);
 
 	// Check for holidays
 	const year = $("#year").val();
@@ -268,13 +334,11 @@ function renderUserLists() {
 				bgClass = "list-group-item-warning";
 			}
 
-			const minsToHm = (mins) => {
-				const h = Math.floor(mins / 60);
-				const m = mins % 60;
-				return `${h}:${m < 10 ? '0' : ''}${m}`;
-			};
-
-			const hoursInfo = `<small class="d-block">Auto: ${minsToHm(user.autoHours)} | Total: ${minsToHm(user.totalHours)}</small>`;
+			const hasSheetData = Array.isArray(user.sheetData) && user.sheetData.length > 0;
+			const sheetHoursInfo = getSheetHoursInfo(user.sheetData);
+			const autoHours = hasSheetData ? sheetHoursInfo.autoTime : (user.autoHours || 0);
+			const totalHours = hasSheetData ? sheetHoursInfo.totalTime : (user.totalHours || 0);
+			const hoursInfo = `<small class="d-block">Auto: ${minutes2hhmm(autoHours)} | Total: ${minutes2hhmm(totalHours)}</small>`;
 
 			let statusIcons = '';
 			if (user.isSubmitted) statusIcons += ' <span title="submitted">☑️</span>';
