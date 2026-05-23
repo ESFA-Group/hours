@@ -78,7 +78,7 @@ function hhmm2minutes(str) {
 function getTableProjects(tableData) {
 	if (!tableData || tableData.length === 0) return [];
 	const allHeaders = new Set(Object.keys(tableData[0]));
-	const defaultHeaders = new Set(['Day', 'WeekDay', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours', 'Description']);
+	const defaultHeaders = new Set(['Day', 'WeekDay', 'Attendance', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours', 'Description']);
 	const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
 	return [...tableProjects]
 }
@@ -87,6 +87,7 @@ function constructTable(data) {
 	const columns = [
 		{ type: 'text', title: 'Day', width: 50, readOnly: true },
 		{ type: 'text', title: 'WeekDay', width: 80, readOnly: true },
+		{ type: 'text', title: 'Attendance', width: 80, readOnly: true },
 		{ type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true },
 		{ type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: true },
 		{ type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: true },
