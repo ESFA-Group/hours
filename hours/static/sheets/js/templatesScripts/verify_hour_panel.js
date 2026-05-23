@@ -14,36 +14,67 @@ function fillYears(year) {
 	}
 }
 
+let isLoadingVerificationData = false;
+let latestLoadRequestId = 0;
+
 async function loadData() {
+	if (isLoadingVerificationData) {
+		return;
+	}
+
+	isLoadingVerificationData = true;
+	const requestId = ++latestLoadRequestId;
+
 	const year = $("#year").val();
 	const month = $("#month").val();
 	const path = `verify_hours/${year}/${month}`;
 
 	try {
-		const response = await apiService.get(path, {}, {}, "Fetching Verification Data");
-		if (!response.ok) return; // APIService handles error notifications
+		await GlobalLoader.wrap(async () => {
+			const response = await apiService.get(
+				path,
+				{},
+				{},
+				"Fetching Verification Data"
+			);
 
-		allUsersData = response.data;
+			if (!response.ok) return;
 
-		updateStaffGroupDropdown();
-		renderUserLists();
+			/*
+			  Safety check:
+			  If a newer loadData request somehow started, ignore this older result.
+			*/
+			if (requestId !== latestLoadRequestId) {
+				return;
+			}
 
-		// Clear spreadsheet
-		if (typeof window.spreadTable === 'object' && window.spreadTable) {
-			window.spreadTable.destroy();
-			window.spreadTable = null;
-		}
-		$("#spreadsheet").empty();
-		$("#no-user-selected").show();
-		$("#selected-user-name").text("Select a user");
-		$("#verify-btn").prop("disabled", true).show();
-		$("#unverify-btn").hide();
-		$("#supreme-verify-btn").hide();
-		$("#supreme-unverify-btn").hide();
-		selectedUserId = null;
+			allUsersData = response.data;
+
+			updateStaffGroupDropdown();
+			renderUserLists();
+
+			if (typeof window.spreadTable === "object" && window.spreadTable) {
+				window.spreadTable.destroy();
+				window.spreadTable = null;
+			}
+
+			$("#spreadsheet").empty();
+			$("#no-user-selected").show();
+			$("#selected-user-name").text("Select a user");
+
+			$("#verify-btn").prop("disabled", true).show();
+			$("#unverify-btn").hide();
+			$("#supreme-verify-btn").hide();
+			$("#supreme-unverify-btn").hide();
+
+			selectedUserId = null;
+		}, "Loading verification data...");
 
 	} catch (error) {
 		console.error("Error loading verification data:", error);
+
+	} finally {
+		isLoadingVerificationData = false;
 	}
 }
 
@@ -274,39 +305,47 @@ function renderUserLists() {
 	}
 }
 
-async function verifySheet(isVerified, verifyType = "standard") {
-	if (!selectedUserId) return;
+let isUpdatingVerification = false;
 
+async function verifySheet(isVerified, verifyType = "standard") {
+	if (!selectedUserId || isUpdatingVerification) return;
+
+	isUpdatingVerification = true;
+
+	const userIdBeforeRefresh = selectedUserId;
 	const year = $("#year").val();
 	const month = $("#month").val();
 	const path = `verify_hours/${year}/${month}`;
 
 	try {
-		const response = await apiService.post(path, {
-			userId: selectedUserId,
-			isVerified: isVerified,
-			verifyType: verifyType
-		}, {}, "Updating Verification Status");
+		await GlobalLoader.wrap(async () => {
+			const response = await apiService.post(path, {
+				userId: selectedUserId,
+				isVerified: isVerified,
+				verifyType: verifyType
+			}, {}, "Updating Verification Status");
 
-		if (!response.ok) return;
+			if (!response.ok) return;
 
-		jSuites.notification({
-			name: 'Success',
-			title: isVerified ? "Sheet Verified" : "Sheet Unverified",
-			message: `Successfully updated status.`,
-			timeout: 3000,
-		});
+			jSuites.notification({
+				name: "Success",
+				title: isVerified ? "Sheet Verified" : "Sheet Unverified",
+				message: "Successfully updated status.",
+				timeout: 3000,
+			});
 
-		// Refresh data
-		await loadData();
+			await loadData();
 
-		// Reselect the user to show their updated state
-		if (selectedUserId) {
-			selectUser(selectedUserId);
-		}
+			if (userIdBeforeRefresh) {
+				selectUser(userIdBeforeRefresh);
+			}
+		}, "Updating verification status...");
 
 	} catch (error) {
 		console.error("Error setting verification status:", error);
+
+	} finally {
+		isUpdatingVerification = false;
 	}
 }
 
@@ -317,14 +356,32 @@ $("document").ready(async function () {
 	$("#month").val(currentMonth);
 	$("#year").val(currentYear);
 
-	loadData();
+	await loadData();
 
-	$("#year, #month").change(function () {
-		loadData();
+	$("#year, #month").on("change", async function () {
+		await loadData();
 	});
 
-	$("#staff_group").change(function () {
-		renderUserLists();
+	$("#staff_group").on("change", async function () {
+		await GlobalLoader.wrap(async () => {
+			renderUserLists();
+
+			if (typeof window.spreadTable === "object" && window.spreadTable) {
+				window.spreadTable.destroy();
+				window.spreadTable = null;
+			}
+
+			$("#spreadsheet").empty();
+			$("#no-user-selected").show();
+			$("#selected-user-name").text("Select a user");
+
+			$("#verify-btn").prop("disabled", true).show();
+			$("#unverify-btn").hide();
+			$("#supreme-verify-btn").hide();
+			$("#supreme-unverify-btn").hide();
+
+			selectedUserId = null;
+		}, "Updating staff group...");
 	});
 
 	$("#verify-btn").click(() => verifySheet(true, "standard"));

@@ -54,8 +54,65 @@
             -moz-appearance: textfield;
             appearance: auto;
         }
-        </style>
 
+        .global-page-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            /*
+            This is the important part:
+            the overlay catches all mouse/touch events and blocks the page.
+            */
+            pointer-events: all;
+        }
+
+        .global-page-loader.d-none {
+            display: none !important;
+        }
+
+        .global-page-loader__box {
+            min-width: 220px;
+            padding: 24px 28px;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
+            text-align: center;
+        }
+
+        .global-page-loader__spinner {
+            width: 42px;
+            height: 42px;
+            margin: 0 auto 14px auto;
+            border: 4px solid #e9ecef;
+            border-top-color: #0d6efd;
+            border-radius: 50%;
+            animation: globalLoaderSpin 0.8s linear infinite;
+        }
+
+        .global-page-loader__text {
+            font-weight: 600;
+            color: #333;
+        }
+
+        body.global-page-loading {
+            overflow: hidden;
+            cursor: wait;
+        }
+
+        @keyframes globalLoaderSpin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        </style>
+        <script src="{% static 'sheets/js/common/global_loader.js' %}"></script>
         <script src="{% static 'sheets/js/JQuery-3.6.0.min.js' %}"></script>
         <script src="{% static 'sheets/js/bootstrap.bundle.min.js' %}"></script>
         <script src="{% static 'sheets/js/jdate.min.js' %}"></script>
@@ -65,6 +122,15 @@
     </head>
 
     <body class="d-flex flex-column vh-100" style="letter-spacing: 0.5px;">
+        <div id="global-page-loader" class="global-page-loader d-none" aria-hidden="true">
+            <div class="global-page-loader__box">
+                <div class="global-page-loader__spinner"></div>
+                <div class="global-page-loader__text" id="global-page-loader-text">
+                    Loading...
+                </div>
+            </div>
+        </div>
+
         {% block navbar %}
             <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
                 <div class="container-fluid">
@@ -175,45 +241,45 @@
         {% endblock navbar %}
 
         <script>
-        window.START_YEAR = 1401;
-        window.CSRF_TOKEN = "{{ csrf_token }}";
-        window.USER = {
-            username: "{{ request.user.username|escapejs }}",
-            is_superuser: "{{ request.user.is_superuser|lower }}" === "true",
-            //acess info
-            is_ProjectReportManager: "{{ request.user.is_ProjectReportManager|lower }}" === "true",
-            is_SubReportManager: "{{ request.user.is_SubReportManager|lower }}" === "true",
-            is_MainReportManager: "{{ request.user.is_MainReportManager|lower }}" === "true",
-            is_FoodManager: "{{ request.user.is_FoodManager|lower }}" === "true",
-            is_PaymentManager: "{{ request.user.is_PaymentManager|lower }}" === "true",
-            is_HourVerifier: "{{ request.user.is_HourVerifier|lower }}" === "true",
-            is_SupremeHourVerifier: "{{ request.user.is_SupremeHourVerifier|lower }}" === "true",
-            // access to esfa eyes sheets
-            is_global_sales_viewer: "{{ request.user.is_global_sales_viewer|lower }}" === "true",
-            is_detailed_sales_viewer: "{{ request.user.is_detailed_sales_viewer|lower }}" === "true",
-            is_staff_info_viewer: "{{ request.user.is_staff_info_viewer|lower }}" === "true",
-            //esfa eyes
-            is_FinancialManager: "{{ request.user.is_FinancialManager|lower }}" === "true",
-            is_InternationalFinanceManager: "{{ request.user.is_InternationalFinanceManager|lower }}" === "true",
-            is_InternationalSalesManager: "{{ request.user.is_InternationalSalesManager|lower }}" === "true",
-            is_ProductionManager: "{{ request.user.is_ProductionManager|lower }}" === "true",
-            is_KavoshProductionManager: "{{ request.user.is_KavoshProductionManager|lower }}" === "true",
-            is_KiaProductionManager: "{{ request.user.is_KiaProductionManager|lower }}" === "true",
-        };
-        function getToday(){
-            const today = new JDate();
-            const y = today.getFullYear();
-            const m = today.getMonth();
-            const d = today.getDate();
-            return [y, m, d]
-        }
+            window.START_YEAR = 1401;
+            window.CSRF_TOKEN = "{{ csrf_token }}";
+            window.USER = {
+                username: "{{ request.user.username|escapejs }}",
+                is_superuser: "{{ request.user.is_superuser|lower }}" === "true",
+                //acess info
+                is_ProjectReportManager: "{{ request.user.is_ProjectReportManager|lower }}" === "true",
+                is_SubReportManager: "{{ request.user.is_SubReportManager|lower }}" === "true",
+                is_MainReportManager: "{{ request.user.is_MainReportManager|lower }}" === "true",
+                is_FoodManager: "{{ request.user.is_FoodManager|lower }}" === "true",
+                is_PaymentManager: "{{ request.user.is_PaymentManager|lower }}" === "true",
+                is_HourVerifier: "{{ request.user.is_HourVerifier|lower }}" === "true",
+                is_SupremeHourVerifier: "{{ request.user.is_SupremeHourVerifier|lower }}" === "true",
+                // access to esfa eyes sheets
+                is_global_sales_viewer: "{{ request.user.is_global_sales_viewer|lower }}" === "true",
+                is_detailed_sales_viewer: "{{ request.user.is_detailed_sales_viewer|lower }}" === "true",
+                is_staff_info_viewer: "{{ request.user.is_staff_info_viewer|lower }}" === "true",
+                //esfa eyes
+                is_FinancialManager: "{{ request.user.is_FinancialManager|lower }}" === "true",
+                is_InternationalFinanceManager: "{{ request.user.is_InternationalFinanceManager|lower }}" === "true",
+                is_InternationalSalesManager: "{{ request.user.is_InternationalSalesManager|lower }}" === "true",
+                is_ProductionManager: "{{ request.user.is_ProductionManager|lower }}" === "true",
+                is_KavoshProductionManager: "{{ request.user.is_KavoshProductionManager|lower }}" === "true",
+                is_KiaProductionManager: "{{ request.user.is_KiaProductionManager|lower }}" === "true",
+            };
+            function getToday(){
+                const today = new JDate();
+                const y = today.getFullYear();
+                const m = today.getMonth();
+                const d = today.getDate();
+                return [y, m, d]
+            }
 
-        function writeDate(){
-            const [y, m, d] = getToday();
-            const weekday = new Date().toLocaleString('en-us', {weekday: 'short'});
-            $("#nav-date").text(`${weekday}.\u00A0\u00A0|\u00A0\u00A0${y}/${m}/${d}`);
-        }
-        writeDate();
+            function writeDate(){
+                const [y, m, d] = getToday();
+                const weekday = new Date().toLocaleString('en-us', {weekday: 'short'});
+                $("#nav-date").text(`${weekday}.\u00A0\u00A0|\u00A0\u00A0${y}/${m}/${d}`);
+            }
+            writeDate();
         </script>
 
         {% block body %}
