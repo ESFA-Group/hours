@@ -183,40 +183,105 @@
         return `${Math.floor(num / 60)}:${Math.round(num % 60)}`
     }
 
-    async function showReport(year, month){
-        const data = await getMonthlyData(year, month);
-        
-        $("#usersNum").text(data.usersNum);
-        $("#sheetsNum").text(data.sheetsNum);
-        $("#submittedSheetsNum").text(data.submittedSheetsNum);
-        $("#sheetless-users li").remove();
-        data.sheetlessUsers.forEach(name => $("#sheetless-users").append($("<li>").text(name)));
+    let isShowingReport = false;
+    let latestShowReportRequestId = 0;
 
-        $("#monthly-table tbody tr").remove();
-        $("#monthly-table thead tr").remove();
-        let ths = Object.keys(Object.values(data.hours)[0]);
+    async function showReport(year, month) {
+        if (isShowingReport) {
+            return;
+        }
 
-        // total column should be the last column
-        ths = ths.filter(i => i.toLowerCase() != 'total');
-        ths.push("Total");
+        isShowingReport = true;
+        const requestId = ++latestShowReportRequestId;
 
-        const table = $("#monthly-table");
-        let tr = $("<tr>");
-        ["Name", "verified Hours", ...ths].forEach((val, idx) => {
-            tr.append($("<th>").text(val));
-        });
-        table.find("thead").append(tr);
-        for(let [name, val] of Object.entries(data.hours)){
-            tr = $("<tr>");
-            $(tr).append($("<th>").text(`${name}${data.submittedUsers.includes(name)? ' ☑️': ''}`));
-            $(tr).append($("<th>").text(`${data.verifiedUsers.includes(name)? '✅': ''}${data.suprimeVerifiedUsers.includes(name)? '👑': ''}`));
-            ths.forEach((prj, idx) => {
-                $(tr).append($("<td>").text(data.hours[name][prj]));
+        try {
+            await GlobalLoader.wrap(async () => {
+                const data = await getMonthlyData(year, month);
+
+                if (!data) {
+                    return;
+                }
+
+                // Ignore old response if a newer request started somehow
+                if (requestId !== latestShowReportRequestId) {
+                    return;
+                }
+
+                $("#usersNum").text(data.usersNum);
+                $("#sheetsNum").text(data.sheetsNum);
+                $("#submittedSheetsNum").text(data.submittedSheetsNum);
+
+                $("#sheetless-users").empty();
+                data.sheetlessUsers.forEach(name => {
+                    $("#sheetless-users").append($("<li>").text(name));
+                });
+
+                $("#monthly-table tbody").empty();
+                $("#monthly-table thead").empty();
+
+                const firstHoursRow = Object.values(data.hours)[0];
+
+                if (!firstHoursRow) {
+                    $("#monthly-table thead").append(
+                        $("<tr>").append($("<th>").text("No data"))
+                    );
+                    return;
+                }
+
+                let ths = Object.keys(firstHoursRow);
+
+                // Total column should be the last column
+                ths = ths.filter(i => i.toLowerCase() !== "total");
+                ths.push("Total");
+
+                const table = $("#monthly-table");
+
+                let headerRow = $("<tr>");
+                ["Name", "Verified Hours", ...ths].forEach(val => {
+                    headerRow.append($("<th>").text(val));
+                });
+
+                table.find("thead").append(headerRow);
+
+                for (let [name, val] of Object.entries(data.hours)) {
+                    let tr = $("<tr>");
+
+                    tr.append(
+                        $("<th>").text(`${name}${data.submittedUsers.includes(name) ? " ☑️" : ""}`)
+                    );
+
+                    tr.append(
+                        $("<th>").text(
+                            `${data.verifiedUsers.includes(name) ? "✅" : ""}${data.suprimeVerifiedUsers.includes(name) ? "👑" : ""}`
+                        )
+                    );
+
+                    ths.forEach(prj => {
+                        tr.append($("<td>").text(data.hours[name][prj]));
+                    });
+
+                    if (name.toLowerCase() === "total") {
+                        table.find("tbody").prepend(tr);
+                    } else {
+                        table.find("tbody").append(tr);
+                    }
+                }
+
+            }, "Loading monthly report...");
+
+        } catch (error) {
+            console.error("Error showing report:", error);
+
+            jSuites.notification({
+                error: 1,
+                name: "Error",
+                title: "Showing Report",
+                message: error.message || error,
+                timeout: 6000,
             });
-            if(name.toLocaleLowerCase() === 'total')
-                table.find("tbody").prepend(tr);
-            else
-                table.find("tbody").append(tr);
+
+        } finally {
+            isShowingReport = false;
         }
     }
 
@@ -235,12 +300,13 @@
         $("#year").val(currentYear);
         $("#month").val(currentMonth);
 
-        showReport(currentYear, currentMonth);
+        await showReport(currentYear, currentMonth);
 
-        $("#year, #month").change(function(){
+        $("#year, #month").change(async function () {
             const year = $("#year").val();
             const month = $("#month").val();
-            showReport(year, month);
+
+            await showReport(year, month);
         });
 
         $("#get-detailed-report").click(function(){
