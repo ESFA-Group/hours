@@ -11,6 +11,11 @@
     .redFont {
         color: red;
     }
+    .approval-status-card .status-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+    }
 </style>
 {% endblock extra_css %}
 {% block body %}
@@ -58,6 +63,16 @@
                 </div>
 
                 <hr>
+
+                <div class="card approval-status-card mb-3" dir="rtl">
+                    <div class="card-header">وضعیت تایید ساعات</div>
+                    <div class="card-body">
+                        <p class="status-line"><strong>ارسال کاربر:</strong><span id="submitted-status">-</span></p>
+                        <p class="status-line"><strong>تایید مدیر اول:</strong><span id="manager1-status">-</span></p>
+                        <p class="status-line"><strong>تایید مدیر دوم:</strong><span id="manager2-status">-</span></p>
+                        <p class="status-line text-danger d-none" id="rejected-status-row"><strong>وضعیت رد:</strong><span id="rejected-status">-</span></p>
+                    </div>
+                </div>
 
                 <strong>Add Projects</strong>
                 <div class="mt-2 d-flex justify-content-between">
@@ -117,7 +132,7 @@
                     </div>
 
                     <!-- Payment 1 -->
-                    <div class="accordion-item">
+                    <div class="accordion-item d-none">
                         <h4 class="accordion-header" id="headingThree">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
@@ -409,7 +424,13 @@
                 },
                 body: JSON.stringify({ "data": dataToSave, "saveSheet": true }),
             })
-                .then(res => res.json())
+                .then(async res => {
+                    if (res.status === 409) {
+                        const data = await res.json();
+                        throw new Error(data.error || "Submitted sheet cannot be edited.");
+                    }
+                    return res.json();
+                })
                 .then(() => updatePaymentsValue())
                 .catch(err => {
                     jSuites.notification({
@@ -456,6 +477,16 @@
                 });
 
                 const data = await res.json();
+
+                if (res.status === 409) {
+                    jSuites.notification({
+                        error: 1,
+                        name: "Error",
+                        title: "Submitting Sheet",
+                        message: data.error || "Sheet is already submitted.",
+                    });
+                    return;
+                }
 
                 if (data.success) {
                     handleSubmit(true);
@@ -514,7 +545,7 @@
 
     function getTableProjects(tableData) {
         const allHeaders = new Set(Object.keys(tableData[0]));
-        const defaultHeaders = new Set(['Day', 'WeekDay', 'Attendance', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours', 'Description']);
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Attendance', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours', 'Description', 'Note Hours']);
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
     }
@@ -792,11 +823,12 @@
             { type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Total', mask: 'hh:mm', width: 80, readOnly: true },
+            { type: 'textarea', title: 'Note Hours', width: 160, readOnly: readOnlyAll },
             { type: 'textarea', title: 'Description', width: 150, readOnly: readOnlyAll },
         ];
 
         // old sheets had an extra "Hours" column which is now split into Auto Hours, Rest, and Remote
-        if ("Hours" in data[0]) {
+        if (data[0] && "Hours" in data[0]) {
             columns.push(
                 { type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: true },
             )
@@ -922,6 +954,22 @@
         addColumnToTable(config);
     }
 
+    function updateApprovalStatus(sheet) {
+        const icon = value => value ? "✅" : "⏳";
+        $("#submitted-status").text(sheet.submitted ? "✅ ارسال شده" : "⏳ ارسال نشده");
+        $("#manager1-status").text(`${icon(sheet.manager_level_1_verified)} تایید مدیر اول`);
+        $("#manager2-status").text(`${icon(sheet.manager_level_2_verified)} تایید مدیر دوم`);
+
+        if (!sheet.submitted && (sheet.rejection_reason || sheet.last_rejected_at)) {
+            const reason = sheet.rejection_reason ? ` - ${sheet.rejection_reason}` : "";
+            $("#rejected-status-row").removeClass("d-none");
+            $("#rejected-status").text(`نیازمند اصلاح و ارسال مجدد${reason}`);
+        } else {
+            $("#rejected-status-row").addClass("d-none");
+            $("#rejected-status").text("-");
+        }
+    }
+
     let isInitializingTable = false;
     let latestInitTableRequestId = 0;
 
@@ -957,6 +1005,7 @@
             $("#spreadsheet").empty();
 
             handleSubmit(sheet.submitted);
+            updateApprovalStatus(sheet);
             toggleSubmit();
 
             await constructTable(sheet.data, sheet.submitted);

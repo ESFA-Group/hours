@@ -7,24 +7,31 @@
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/spreadsheet_custom.css' %}">
-
+<style>
+    .approval-section-list {
+        max-height: 30vh;
+        overflow-y: auto;
+    }
+    .approval-status-line span {
+        margin-inline-start: 6px;
+    }
+</style>
 {% endblock extra_css %}
 {% block body %}
 
-<div class="px-4">
+<div class="px-4" dir="rtl">
     <div class="row">
-        <!-- Sidebar for User List -->
         <div class="col col-12 col-lg-3 mt-2">
             <div style="position: sticky; top: 10px;">
                 <div class="d-flex justify-content-between mb-3" style="gap: 10px;">
                     <div class="flex-grow-1 text-center">
-                        <strong>Year</strong>
+                        <strong>سال</strong>
                         <div class="mt-1">
                             <select name="year" id="year" class="form-select"></select>
                         </div>
                     </div>
                     <div class="flex-grow-1 text-center">
-                        <strong>Month</strong>
+                        <strong>ماه</strong>
                         <div class="mt-1">
                             <select name="month" id="month" class="form-select">
                                 {{ 1|render_month_options }}
@@ -32,10 +39,10 @@
                         </div>
                     </div>
                     <div class="flex-grow-1 text-center">
-                        <strong>Staff Group</strong>
+                        <strong>گروه</strong>
                         <div class="mt-1">
                             <select name="staff_group" id="staff_group" class="form-select">
-                                <option value="all">All</option>
+                                <option value="all">همه</option>
                             </select>
                         </div>
                     </div>
@@ -43,95 +50,66 @@
 
                 <div class="card mb-3">
                     <div class="card-header bg-danger text-white">
-                        <h6 class="mb-0">Unverified Users (<span id="unverified-count">0</span>)</h6>
+                        <h6 class="mb-0"><span id="current-queue-title">نیازمند تایید شما</span> (<span id="current-queue-count">0</span>)</h6>
                     </div>
-                    <ul class="list-group list-group-flush" id="unverified-list"
-                        style="max-height: 40vh; overflow-y: auto;">
-                        <li class="list-group-item text-muted text-center">No users</li>
+                    <ul class="list-group list-group-flush approval-section-list" id="current-queue-list">
+                        <li class="list-group-item text-muted text-center">موردی وجود ندارد</li>
+                    </ul>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h6 class="mb-0"><span id="other-title">سایر موارد / آماده نیست</span> (<span id="other-count">0</span>)</h6>
+                    </div>
+                    <ul class="list-group list-group-flush approval-section-list" id="other-list">
+                        <li class="list-group-item text-muted text-center">موردی وجود ندارد</li>
                     </ul>
                 </div>
 
                 <div class="card">
                     <div class="card-header bg-success text-white">
-                        <h6 class="mb-0">Verified Users (<span id="verified-count">0</span>)</h6>
+                        <h6 class="mb-0"><span id="approved-title">تایید شده توسط شما</span> (<span id="approved-count">0</span>)</h6>
                     </div>
-                    <ul class="list-group list-group-flush" id="verified-list"
-                        style="max-height: 40vh; overflow-y: auto;">
-                        <li class="list-group-item text-muted text-center">No users</li>
+                    <ul class="list-group list-group-flush approval-section-list" id="approved-list">
+                        <li class="list-group-item text-muted text-center">موردی وجود ندارد</li>
                     </ul>
                 </div>
             </div>
         </div>
 
-        <!-- Main Content for Spreadsheet -->
         <div class="col col-12 col-lg-9 mt-2">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h4 id="selected-user-name">Select a user</h4>
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap" style="gap: 10px;">
+                <div>
+                    <h4 id="selected-user-name">یک نفر را انتخاب کنید</h4>
+                    <div id="selected-user-status" class="approval-status-line text-muted small"></div>
+                </div>
                 <div class="d-flex gap-2">
-                    <div id="standard-actions">
-                        <button id="verify-btn" class="btn btn-success" disabled>Verify Sheet</button>
-                        <button id="unverify-btn" class="btn btn-warning" style="display: none;">Unverify Sheet</button>
+                    <button id="verify-btn" class="btn btn-success" disabled>تایید</button>
+                    <button id="reject-btn" class="btn btn-danger" disabled>رد</button>
+                </div>
+            </div>
+
+            <div id="comments-card" class="card mb-3 d-none">
+                <div class="card-header">یادداشت‌های داخلی مدیران</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col col-12 col-lg-6 mb-2">
+                            <label class="form-label" for="manager-level-1-comment">نظر مدیر اول</label>
+                            <textarea id="manager-level-1-comment" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col col-12 col-lg-6 mb-2">
+                            <label class="form-label" for="manager-level-2-comment">نظر مدیر دوم</label>
+                            <textarea id="manager-level-2-comment" class="form-control" rows="3"></textarea>
+                        </div>
                     </div>
-                    <div id="supreme-actions">
-                        <button id="supreme-verify-btn" class="btn btn-primary" style="display: none;">Supreme Verify</button>
-                        <button id="supreme-unverify-btn" class="btn btn-warning" style="display: none;">Supreme Unverify</button>
-                    </div>
+                    <button id="save-comments-btn" class="btn btn-outline-primary">ذخیره یادداشت‌ها</button>
                 </div>
             </div>
 
             <div id="spreadsheet" style="width: 100%;"></div>
 
             <div id="no-user-selected" class="alert alert-info text-center mt-5">
-                Please select a user from the sidebar to view their hours.
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Success Modal -->
-<div class="modal fade" id="successModal" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    Import Data Result
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
-                </button>
-            </div>
-            <div class="modal-body">
-                <p class="text-success">succesfully updated</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="submit">
-                    Ok
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Warrning Modal -->
-<div class="modal fade" id="warningModal" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    Import Data Result
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
-                </button>
-            </div>
-            <div class="modal-body">
-                <p class="text-warning">partially updated ‼️</p>
-                <p>Users not found:</p>
-                <ul id="missing-users-list"></ul>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="submit">
-                    Ok
-                </button>
+                لطفا از فهرست سمت راست یک نفر را انتخاب کنید.
             </div>
         </div>
     </div>
