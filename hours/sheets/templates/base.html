@@ -190,7 +190,7 @@
                                     href="{% url 'sheets:payment' %}">Payments</a>
                                 </li>
                             {% endif %}
-                            {% if request.user.is_HourVerifier or request.user.is_SupremeHourVerifier %}
+                            {% if request.user.is_HourVerifier or request.user.is_SupremeHourVerifier or request.user.managed_as_level_1.exists or request.user.managed_as_level_2.exists %}
                                 <li class="nav-item">
                                     {% url 'sheets:verify_hours' as temp_url %}
                                     <a class="nav-link {% if request.path == temp_url %}active{% endif %}"

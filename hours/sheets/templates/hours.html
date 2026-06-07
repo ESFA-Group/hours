@@ -11,6 +11,11 @@
     .redFont {
         color: red;
     }
+    .approval-status-card .status-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+    }
 </style>
 {% endblock extra_css %}
 {% block body %}
@@ -98,7 +103,37 @@
                         </div>
                     </div>
 
-                    <!-- Foods cost -->
+                    <!-- Verification hour stats -->
+                    <div class="accordion-item">
+                        <h4 class="accordion-header" id="headingVerification">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseVerification" aria-expanded="false" aria-controls="collapseVerification">
+                                Verification hour stats
+                            </button>
+                        </h4>
+                        <div id="collapseVerification" class="accordion-collapse collapse" aria-labelledby="headingVerification">
+                            <div class="accordion-body approval-status-card">
+                                <p class="d-flex justify-content-between status-line">
+                                    <strong>User submission:</strong>
+                                    <strong id="submitted-status">-</strong>
+                                </p>
+                                <p class="d-flex justify-content-between status-line">
+                                    <strong>Manager level 1 approval:</strong>
+                                    <strong id="manager1-status">-</strong>
+                                </p>
+                                <p class="d-flex justify-content-between status-line">
+                                    <strong>Manager level 2 approval:</strong>
+                                    <strong id="manager2-status">-</strong>
+                                </p>
+                                <p class="d-flex justify-content-between status-line text-danger d-none" id="rejected-status-row">
+                                    <strong>Rejected:</strong>
+                                    <strong id="rejected-status">-</strong>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% comment %} <!-- Foods cost -->
                     <div class="accordion-item">
                         <h4 class="accordion-header" id="headingTwo">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
@@ -114,10 +149,10 @@
                                 </p>
                             </div>
                         </div>
-                    </div>
+                    </div> {% endcomment %}
 
                     <!-- Payment 1 -->
-                    <div class="accordion-item">
+                    <div class="accordion-item d-none">
                         <h4 class="accordion-header" id="headingThree">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
@@ -389,34 +424,58 @@
 
     let saveSheetTimeout = null;
     let latestTableData = null;
+    let isSubmittingSheet = false;
+
+    function getSheetApiUrl() {
+        const year = $("#year").val();
+        const month = $("#month").val();
+        return `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
+            .replace("yearHolder", year)
+            .replace("monthHolder", month);
+    }
+
+    async function saveSheetNow(data, showConflictError = true) {
+        const res = await fetch(getSheetApiUrl(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{csrf_token}}',
+            },
+            body: JSON.stringify({ "data": data, "saveSheet": true }),
+        });
+
+        if (res.status === 409) {
+            const responseData = await res.json();
+            if (showConflictError && !isSubmittingSheet) {
+                throw new Error(responseData.error || "Submitted sheet cannot be edited.");
+            }
+            return false;
+        }
+
+        if (!res.ok) {
+            const responseData = await res.json().catch(() => ({}));
+            throw new Error(responseData.error || "Sheet could not be saved.");
+        }
+
+        await res.json().catch(() => ({}));
+        updatePaymentsValue();
+        return true;
+    }
 
     function saveSheet(data) {
         latestTableData = data;
         if (saveSheetTimeout) clearTimeout(saveSheetTimeout);
 
         saveSheetTimeout = setTimeout(() => {
+            saveSheetTimeout = null;
             const dataToSave = latestTableData;
-            const year = $("#year").val();
-            const month = $("#month").val();
-            const url = `{% url "sheets:api_sheets" year='yearHolder' month='monthHolder' %}`
-                .replace("yearHolder", year)
-                .replace("monthHolder", month);
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{csrf_token}}',
-                },
-                body: JSON.stringify({ "data": dataToSave, "saveSheet": true }),
-            })
-                .then(res => res.json())
-                .then(() => updatePaymentsValue())
+            saveSheetNow(dataToSave)
                 .catch(err => {
                     jSuites.notification({
                         error: 1,
                         name: 'Error',
                         title: "Updating Sheet",
-                        message: err,
+                        message: err.message || err,
                     });
                 });
         }, 500);
@@ -424,7 +483,7 @@
 
     async function submitSheet() {
         const rawData = window.spreadTable.getJson();
-        const tableData = convertTableData(rawData);
+        const tableData = convertTableData(rawData, false);
         const valid = validateSheet(tableData);
 
         if (!valid) {
@@ -445,7 +504,18 @@
             .replace("monthHolder", month);
 
         try {
+            isSubmittingSheet = true;
+            if (saveSheetTimeout) {
+                clearTimeout(saveSheetTimeout);
+                saveSheetTimeout = null;
+            }
+
             await GlobalLoader.wrap(async () => {
+                const saved = await saveSheetNow(tableData);
+                if (!saved) {
+                    return;
+                }
+
                 const res = await fetch(url, {
                     method: "PUT",
                     headers: {
@@ -456,6 +526,16 @@
                 });
 
                 const data = await res.json();
+
+                if (res.status === 409) {
+                    jSuites.notification({
+                        error: 1,
+                        name: "Error",
+                        title: "Submitting Sheet",
+                        message: data.error || "Sheet is already submitted.",
+                    });
+                    return;
+                }
 
                 if (data.success) {
                     handleSubmit(true);
@@ -489,6 +569,8 @@
                 title: "Submitting Sheet",
                 message: err.message || err,
             });
+        } finally {
+            isSubmittingSheet = false;
         }
     }
 
@@ -514,7 +596,7 @@
 
     function getTableProjects(tableData) {
         const allHeaders = new Set(Object.keys(tableData[0]));
-        const defaultHeaders = new Set(['Day', 'WeekDay', 'Attendance', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours', 'Description']);
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Attendance', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours', 'Description', 'Note Hours']);
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
     }
@@ -608,7 +690,7 @@
         return valid
     }
 
-    function convertTableData(rawData) {
+    function convertTableData(rawData, saveOrderedData = true) {
         /*  table's getJson method won't return table data correctly, some headers (mostly created ones in project adding) 
             are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
         */
@@ -660,7 +742,9 @@
             orderedData.push(orderedRow);
         }
 
-        saveSheet(orderedData);
+        if (saveOrderedData) {
+            saveSheet(orderedData);
+        }
 
         return orderedData
     }
@@ -792,11 +876,12 @@
             { type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Total', mask: 'hh:mm', width: 80, readOnly: true },
+            { type: 'textarea', title: 'Note Hours', width: 160, readOnly: readOnlyAll },
             { type: 'textarea', title: 'Description', width: 150, readOnly: readOnlyAll },
         ];
 
         // old sheets had an extra "Hours" column which is now split into Auto Hours, Rest, and Remote
-        if ("Hours" in data[0]) {
+        if (data[0] && "Hours" in data[0]) {
             columns.push(
                 { type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: true },
             )
@@ -922,6 +1007,22 @@
         addColumnToTable(config);
     }
 
+    function updateApprovalStatus(sheet) {
+        const icon = value => value ? "✅" : "⏳";
+        $("#submitted-status").text(sheet.submitted ? "✅ Submitted" : "⏳ Not submitted");
+        $("#manager1-status").text(`${icon(sheet.manager_level_1_verified)} Manager level 1`);
+        $("#manager2-status").text(`${icon(sheet.manager_level_2_verified)} Manager level 2`);
+
+        if (!sheet.submitted && (sheet.rejection_reason || sheet.last_rejected_at)) {
+            const reason = sheet.rejection_reason ? ` - ${sheet.rejection_reason}` : "";
+            $("#rejected-status-row").removeClass("d-none");
+            $("#rejected-status").text(`Needs correction and resubmission${reason}`);
+        } else {
+            $("#rejected-status-row").addClass("d-none");
+            $("#rejected-status").text("-");
+        }
+    }
+
     let isInitializingTable = false;
     let latestInitTableRequestId = 0;
 
@@ -957,6 +1058,7 @@
             $("#spreadsheet").empty();
 
             handleSubmit(sheet.submitted);
+            updateApprovalStatus(sheet);
             toggleSubmit();
 
             await constructTable(sheet.data, sheet.submitted);

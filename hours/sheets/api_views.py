@@ -10,6 +10,7 @@ from django.db.models import Q
 from datetime import date
 from itertools import groupby
 from django.db.models import Count, Q, Sum
+from django.utils import timezone
 
 
 import jdatetime as jdt
@@ -50,7 +51,12 @@ class SheetApiView(APIView):
             sheet.setup_sheet()
 
         serializer = SheetSerializer(sheet)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = dict(serializer.data)
+        # Manager comments are internal verifier notes and should not be exposed on
+        # the employee-facing hours page.
+        data.pop("manager_level_1_comment", None)
+        data.pop("manager_level_2_comment", None)
+        return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request, year: str, month: str):
         if "saveSheet" in request.data:
@@ -61,9 +67,15 @@ class SheetApiView(APIView):
             if created:
                 sheet.setup_sheet()
 
+            if sheet.submitted:
+                return Response(
+                    {"error": "Submitted sheets cannot be edited unless they are rejected first."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
             data = request.data.get("data", [])
             data.sort(key=lambda row: int(row.get("Day", 0)))
-            sheet.data = request.data["data"]
+            sheet.data = data
             sheet.normalize_sheet()
             return Response({"success": True}, status=status.HTTP_200_OK)
         elif "editSheet" in request.data:
@@ -80,10 +92,30 @@ class SheetApiView(APIView):
             sheet = Sheet.objects.get(user=self.request.user, year=year, month=month)
         except Sheet.DoesNotExist:
             return Response({"notFound": True}, status=status.HTTP_404_NOT_FOUND)
+        if sheet.submitted:
+            return Response(
+                {"error": "Sheet is already submitted and cannot be unsubmitted by the user."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         if (
             request.user.check_info()
         ):  # if the user has entered needed personal information
             sheet.submitted = True
+            # A fresh submission/re-submission starts the approval chain again.
+            sheet.manager_level_1_verified = False
+            sheet.manager_level_2_verified = False
+            sheet.supreme_verified = False
+            sheet.manager_level_1_verified_at = None
+            sheet.manager_level_2_verified_at = None
+            sheet.supreme_verified_at = None
+            sheet.manager_level_1_verified_by = None
+            sheet.manager_level_2_verified_by = None
+            sheet.supreme_verified_by = None
+            sheet.last_rejected_by = None
+            sheet.last_rejected_at = None
+            sheet.rejection_reason = ""
+            sheet.sync_legacy_verification_fields()
             sheet.save()
             return Response({"success": True}, status=status.HTTP_200_OK)
         return Response({"flaw": True}, status=status.HTTP_200_OK)
@@ -166,7 +198,7 @@ class InfoApiView(APIView):
         for sheet in queryset:
             df = sheet.transform()
             df.drop(
-                columns=["Day", "WeekDay", "Attendance", "Description", "Auto Hours", "Rest", "Remote"],
+                columns=["Day", "WeekDay", "Attendance", "Description", "Note Hours", "Auto Hours", "Rest", "Remote"],
                 errors='ignore',
                 inplace=True
             )
@@ -209,7 +241,7 @@ class PublicMonthlyReportApiView(APIView):
         """returns sheet column sums"""
         df = sheet.transform()
         df.drop(
-            columns=["Day", "WeekDay", "Attendance", "Description", "Auto Hours", "Rest", "Remote"],
+            columns=["Day", "WeekDay", "Attendance", "Description", "Note Hours", "Auto Hours", "Rest", "Remote"],
             errors='ignore',
             inplace=True
         )
@@ -237,8 +269,10 @@ class MonthlyReportApiView(APIView):
         agg = base_sheets.aggregate(
             total_sheets=Count('id'),
             submitted=Count('id', filter=Q(submitted=True)),
-            verified=Count('id', filter=Q(is_verified=True)),
-            supreme_verified=Count('id', filter=Q(is_supreme_verified=True)),
+            manager_level_1_verified=Count('id', filter=Q(manager_level_1_verified=True)),
+            manager_level_2_verified=Count('id', filter=Q(manager_level_2_verified=True)),
+            verified=Count('id', filter=Q(manager_level_1_verified=True, manager_level_2_verified=True)),
+            supreme_verified=Count('id', filter=Q(supreme_verified=True)),
         )
 
         # 3. Force evaluation – one query, then Python filtering
@@ -248,10 +282,10 @@ class MonthlyReportApiView(APIView):
             s.user.get_full_name() for s in sheets_list if s.submitted
         ]
         verified_names = [
-            s.user.get_full_name() for s in sheets_list if s.is_verified
+            s.user.get_full_name() for s in sheets_list if s.manager_level_1_verified and s.manager_level_2_verified
         ]
         supreme_verified_names = [
-            s.user.get_full_name() for s in sheets_list if s.is_supreme_verified
+            s.user.get_full_name() for s in sheets_list if s.supreme_verified
         ]
 
         # 4. Active users without a sheet this month
@@ -1208,75 +1242,345 @@ class DailyReportSettingManager(APIView):
         )
 
 
+def _parse_verifier_group_tags(user):
+    raw_tags = user.verifier_group_tags or ""
+    try:
+        return [int(tag.strip()) for tag in raw_tags.split(",") if tag.strip()]
+    except ValueError:
+        return []
+
+
+def _has_legacy_group_access(verifier, staff):
+    if verifier.is_SupremeHourVerifier:
+        return True
+    if not verifier.is_HourVerifier:
+        return False
+    return staff.staff_group_tag in _parse_verifier_group_tags(verifier)
+
+
+def _is_manager_level_1(sheet, verifier):
+    if not sheet.user:
+        return False
+    if sheet.user.manager_level_1_id == verifier.id:
+        return True
+    # Backward compatibility: old group/tag verifiers act as manager level 1
+    # only where no direct manager_level_1 has been assigned yet.
+    return sheet.user.manager_level_1_id is None and _has_legacy_group_access(verifier, sheet.user)
+
+
+def _is_manager_level_2(sheet, verifier):
+    return bool(sheet.user and sheet.user.manager_level_2_id == verifier.id)
+
+
+def _can_view_sheet(sheet, verifier):
+    return (
+        verifier.is_SupremeHourVerifier
+        or _is_manager_level_1(sheet, verifier)
+        or _is_manager_level_2(sheet, verifier)
+        or _has_legacy_group_access(verifier, sheet.user)
+    )
+
+
+def _can_verify_manager_level_1(sheet, verifier):
+    return sheet.submitted and not sheet.manager_level_1_verified and _is_manager_level_1(sheet, verifier)
+
+
+def _can_reject_manager_level_1(sheet, verifier):
+    return (
+        sheet.submitted
+        and _is_manager_level_1(sheet, verifier)
+        and not sheet.manager_level_2_verified
+        and not sheet.supreme_verified
+    )
+
+
+def _can_verify_manager_level_2(sheet, verifier):
+    # Sequential approval assumption: manager level 2 acts after manager level 1.
+    return (
+        sheet.submitted
+        and sheet.manager_level_1_verified
+        and not sheet.manager_level_2_verified
+        and _is_manager_level_2(sheet, verifier)
+    )
+
+
+def _can_reject_manager_level_2(sheet, verifier):
+    return sheet.submitted and _is_manager_level_2(sheet, verifier) and not sheet.supreme_verified
+
+
+def _can_verify_supreme(sheet, verifier):
+    return sheet.submitted and verifier.is_SupremeHourVerifier and not sheet.supreme_verified
+
+
+def _can_reject_supreme(sheet, verifier):
+    return sheet.submitted and verifier.is_SupremeHourVerifier
+
+
+def _sheet_summary(sheet, role):
+    user = sheet.user
+    return {
+        "userId": user.id,
+        "userName": user.get_full_name(),
+        "username": user.username,
+        "staffGroup": user.staff_group_tag,
+        "deviceCode": user.auto_hour_ID,
+        "year": sheet.year,
+        "month": sheet.month,
+        "role": role,
+        "isSubmitted": sheet.submitted,
+        "managerLevel1Verified": sheet.manager_level_1_verified,
+        "managerLevel2Verified": sheet.manager_level_2_verified,
+        "supremeVerified": sheet.supreme_verified,
+        "isVerified": sheet.manager_level_1_verified and sheet.manager_level_2_verified,
+        "isSupremeVerified": sheet.supreme_verified,
+        "isFullyApproved": sheet.is_fully_approved,
+        "totalHours": sheet.total,
+        "managerLevel1Name": user.manager_level_1.get_full_name() if user.manager_level_1 else "",
+        "managerLevel2Name": user.manager_level_2.get_full_name() if user.manager_level_2 else "",
+        "lastRejectedAt": sheet.last_rejected_at.isoformat() if sheet.last_rejected_at else None,
+        "rejectionReason": sheet.rejection_reason,
+    }
+
+
+def _apply_rejection(sheet, verifier, reason):
+    sheet.reset_approval_state()
+    sheet.last_rejected_by = verifier
+    sheet.last_rejected_at = timezone.now()
+    sheet.rejection_reason = reason or ""
+    sheet.save()
+
+
 class HourVerifierAPIView(APIView):
-    permission_classes = [customPermissions.IsHoursVerifier]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _has_any_hour_access(self, verifier):
+        if verifier.is_HourVerifier or verifier.is_SupremeHourVerifier:
+            return True
+        return User.objects.filter(
+            Q(manager_level_1=verifier) | Q(manager_level_2=verifier),
+            is_active=True,
+        ).exists()
+
+    def _base_sheets(self, year, month):
+        return Sheet.objects.filter(
+            year=year,
+            month=month,
+            user__is_active=True,
+        ).select_related(
+            "user",
+            "user__manager_level_1",
+            "user__manager_level_2",
+            "manager_level_1_verified_by",
+            "manager_level_2_verified_by",
+            "supreme_verified_by",
+            "last_rejected_by",
+        )
+
+    def _manager_sections(self, verifier, year, month):
+        sheets = self._base_sheets(year, month)
+
+        direct_filter = Q(user__manager_level_1=verifier) | Q(user__manager_level_2=verifier)
+        legacy_tags = _parse_verifier_group_tags(verifier)
+        if verifier.is_HourVerifier and legacy_tags:
+            direct_filter |= Q(user__manager_level_1__isnull=True, user__staff_group_tag__in=legacy_tags)
+
+        sheets = sheets.filter(direct_filter).order_by("user__last_name_p", "user__first_name_p", "user__username")
+        sections = {"currentQueue": [], "other": [], "approved": []}
+
+        for sheet in sheets:
+            roles = []
+            if _is_manager_level_1(sheet, verifier):
+                roles.append("manager_level_1")
+            if _is_manager_level_2(sheet, verifier):
+                roles.append("manager_level_2")
+
+            for role in roles:
+                item = _sheet_summary(sheet, role)
+                if role == "manager_level_1":
+                    if sheet.submitted and not sheet.manager_level_1_verified:
+                        sections["currentQueue"].append(item)
+                    elif sheet.manager_level_1_verified:
+                        sections["approved"].append(item)
+                    else:
+                        sections["other"].append(item)
+                elif role == "manager_level_2":
+                    # Sequential approval assumption.
+                    if sheet.submitted and sheet.manager_level_1_verified and not sheet.manager_level_2_verified:
+                        sections["currentQueue"].append(item)
+                    elif sheet.manager_level_2_verified:
+                        sections["approved"].append(item)
+                    else:
+                        sections["other"].append(item)
+
+        return {
+            "mode": "manager",
+            "sections": sections,
+            "labels": {
+                "currentQueue": "Needs your approval",
+                "other": "Other / not ready",
+                "approved": "Approved by you",
+            },
+            "sequentialManagerLevel2": True,
+        }
+
+    def _supreme_sections(self, year, month):
+        sections = {"currentQueue": [], "other": [], "approved": []}
+        sheets = self._base_sheets(year, month).filter(submitted=True).order_by(
+            "user__last_name_p", "user__first_name_p", "user__username"
+        )
+        for sheet in sheets:
+            item = _sheet_summary(sheet, "supreme")
+            if sheet.is_fully_approved:
+                sections["approved"].append(item)
+            else:
+                sections["currentQueue"].append(item)
+
+        return {
+            "mode": "supreme",
+            "sections": sections,
+            "labels": {
+                "currentQueue": "Submitted but not fully approved",
+                "other": "Other",
+                "approved": "Fully approved / ready for payment",
+            },
+            "sequentialManagerLevel2": True,
+        }
 
     def get(self, request, year: str, month: str):
         verifier = request.user
-        
-        # Parse assigned tags (assuming comma-separated)
-        raw_tags = verifier.verifier_group_tags
-        try:
-            assigned_tags = [int(tag.strip()) for tag in raw_tags.split(",") if tag.strip()]
-        except ValueError:
-            # Fallback for non-integer tags if any exist (though theoretically they shouldn't now)
-            assigned_tags = []
+        if not self._has_any_hour_access(verifier):
+            return Response({"error": "You do not have hour verification access."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Get users that have one of the assigned tags
-        if verifier.is_SupremeHourVerifier:
-            staff_users = User.objects.filter(is_active=True).prefetch_related('sheets')
-        else:
-            if not assigned_tags:
-                return Response([], status=status.HTTP_200_OK)
-            staff_users = User.objects.filter(staff_group_tag__in=assigned_tags, is_active=True).prefetch_related('sheets')
-        
-        data = []
-        for staff in staff_users:
-            # Get sheet for this year/month
-            sheet = staff.sheets.filter(year=year, month=month).first()
-            if not sheet:
-                continue
+        user_id = request.query_params.get("userId")
+        if user_id:
+            try:
+                sheet = self._base_sheets(year, month).get(user_id=user_id)
+            except Sheet.DoesNotExist:
+                return Response({"error": "Sheet not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            # Check warning logic
+            if not _can_view_sheet(sheet, verifier):
+                return Response({"error": "You cannot view this sheet."}, status=status.HTTP_403_FORBIDDEN)
+
             auto_hours = 0
             total_hours = 0
-            
             for row in sheet.data:
-                a_m = sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
-                t_m = sheet.hhmm2minutes(row.get("Total", "00:00"))
-                auto_hours += a_m
-                total_hours += t_m
-                
-            is_warning = total_hours > 1.1 * auto_hours
+                auto_hours += sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
+                total_hours += sheet.hhmm2minutes(row.get("Total", "00:00"))
+            is_warning = auto_hours > 0 and total_hours > 1.1 * auto_hours
 
-            data.append({
-                "userId": staff.id,
-                "userName": staff.get_full_name(),
-                "staffGroup": staff.staff_group_tag,
-                "deviceCode": staff.auto_hour_ID,
+            can_edit_manager_1_comment = verifier.is_SupremeHourVerifier or _is_manager_level_1(sheet, verifier)
+            can_edit_manager_2_comment = verifier.is_SupremeHourVerifier or _is_manager_level_2(sheet, verifier)
+
+            data = _sheet_summary(sheet, request.query_params.get("role", ""))
+            data.update({
+                "sheetData": sheet.data,
                 "autoHours": auto_hours,
                 "totalHours": total_hours,
                 "isWarning": is_warning,
-                "isVerified": sheet.is_verified,
-                "isSubmitted": sheet.submitted,
-                "isSupremeVerified": sheet.is_supreme_verified,
-                "sheetData": sheet.data  # Send sheet data for read-only view
+                "managerLevel1Comment": sheet.manager_level_1_comment,
+                "managerLevel2Comment": sheet.manager_level_2_comment,
+                "rejectionReason": sheet.rejection_reason,
+                "permissions": {
+                    "canVerifyManagerLevel1": _can_verify_manager_level_1(sheet, verifier),
+                    "canRejectManagerLevel1": _can_reject_manager_level_1(sheet, verifier),
+                    "canVerifyManagerLevel2": _can_verify_manager_level_2(sheet, verifier),
+                    "canRejectManagerLevel2": _can_reject_manager_level_2(sheet, verifier),
+                    "canVerifySupreme": _can_verify_supreme(sheet, verifier),
+                    "canRejectSupreme": _can_reject_supreme(sheet, verifier),
+                    "canEditManagerLevel1Comment": can_edit_manager_1_comment,
+                    "canEditManagerLevel2Comment": can_edit_manager_2_comment,
+                },
             })
+            return Response(data, status=status.HTTP_200_OK)
 
-        return Response(data, status=status.HTTP_200_OK)
-        
+        if verifier.is_SupremeHourVerifier:
+            return Response(self._supreme_sections(year, month), status=status.HTTP_200_OK)
+
+        return Response(self._manager_sections(verifier, year, month), status=status.HTTP_200_OK)
+
     def post(self, request, year: str, month: str):
+        verifier = request.user
         user_id = request.data.get("userId")
-        is_verified = request.data.get("isVerified", True)
-        verify_type = request.data.get("verifyType", "standard") # "standard" or "supreme"
-        
+        action = request.data.get("action")
+        reason = request.data.get("reason", "")
+
+        if not user_id:
+            return Response({"error": "userId is required"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            sheet = Sheet.objects.get(user_id=user_id, year=year, month=month)
-            if verify_type == "supreme":
-                sheet.is_supreme_verified = is_verified
-            else:
-                sheet.is_verified = is_verified
-            sheet.save()
-            return Response({"success": True}, status=status.HTTP_200_OK)
+            sheet = self._base_sheets(year, month).get(user_id=user_id)
         except Sheet.DoesNotExist:
             return Response({"error": "Sheet not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if not _can_view_sheet(sheet, verifier):
+            return Response({"error": "You cannot manage this sheet."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Allow comment edits to be bundled with verify/reject actions or saved alone.
+        if "managerLevel1Comment" in request.data:
+            if not (verifier.is_SupremeHourVerifier or _is_manager_level_1(sheet, verifier)):
+                return Response({"error": "You cannot edit manager level 1 comment."}, status=status.HTTP_403_FORBIDDEN)
+            sheet.manager_level_1_comment = request.data.get("managerLevel1Comment", "")
+
+        if "managerLevel2Comment" in request.data:
+            if not (verifier.is_SupremeHourVerifier or _is_manager_level_2(sheet, verifier)):
+                return Response({"error": "You cannot edit manager level 2 comment."}, status=status.HTTP_403_FORBIDDEN)
+            sheet.manager_level_2_comment = request.data.get("managerLevel2Comment", "")
+
+        if action == "save_comments":
+            sheet.save(update_fields=["manager_level_1_comment", "manager_level_2_comment"])
+            return Response({"success": True}, status=status.HTTP_200_OK)
+
+        if not sheet.submitted:
+            return Response({"error": "Unsubmitted sheets cannot be verified or rejected."}, status=status.HTTP_400_BAD_REQUEST)
+
+        now = timezone.now()
+
+        if action == "verify_manager_level_1":
+            if not _can_verify_manager_level_1(sheet, verifier):
+                return Response({"error": "You cannot verify this sheet as manager level 1."}, status=status.HTTP_403_FORBIDDEN)
+            sheet.manager_level_1_verified = True
+            sheet.manager_level_1_verified_at = now
+            sheet.manager_level_1_verified_by = verifier
+            sheet.sync_legacy_verification_fields()
+            sheet.save()
+            return Response({"success": True}, status=status.HTTP_200_OK)
+
+        if action == "reject_manager_level_1":
+            if not _can_reject_manager_level_1(sheet, verifier):
+                return Response({"error": "You cannot reject this sheet as manager level 1."}, status=status.HTTP_403_FORBIDDEN)
+            _apply_rejection(sheet, verifier, reason)
+            return Response({"success": True}, status=status.HTTP_200_OK)
+
+        if action == "verify_manager_level_2":
+            if not _can_verify_manager_level_2(sheet, verifier):
+                return Response({"error": "You cannot verify this sheet as manager level 2."}, status=status.HTTP_403_FORBIDDEN)
+            sheet.manager_level_2_verified = True
+            sheet.manager_level_2_verified_at = now
+            sheet.manager_level_2_verified_by = verifier
+            sheet.sync_legacy_verification_fields()
+            sheet.save()
+            return Response({"success": True}, status=status.HTTP_200_OK)
+
+        if action == "reject_manager_level_2":
+            if not _can_reject_manager_level_2(sheet, verifier):
+                return Response({"error": "You cannot reject this sheet as manager level 2."}, status=status.HTTP_403_FORBIDDEN)
+            _apply_rejection(sheet, verifier, reason)
+            return Response({"success": True}, status=status.HTTP_200_OK)
+
+        if action == "verify_supreme":
+            if not _can_verify_supreme(sheet, verifier):
+                return Response({"error": "You cannot supreme-verify this sheet."}, status=status.HTTP_403_FORBIDDEN)
+            sheet.supreme_verified = True
+            sheet.supreme_verified_at = now
+            sheet.supreme_verified_by = verifier
+            sheet.sync_legacy_verification_fields()
+            sheet.save()
+            return Response({"success": True}, status=status.HTTP_200_OK)
+
+        if action == "reject_supreme":
+            if not _can_reject_supreme(sheet, verifier):
+                return Response({"error": "You cannot reject this sheet as supreme verifier."}, status=status.HTTP_403_FORBIDDEN)
+            _apply_rejection(sheet, verifier, reason)
+            return Response({"success": True}, status=status.HTTP_200_OK)
+
+        return Response({"error": "Unknown action"}, status=status.HTTP_400_BAD_REQUEST)

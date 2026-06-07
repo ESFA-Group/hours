@@ -22,8 +22,35 @@ class User(AbstractUser):
 	reduction3 = models.IntegerField("reduction3", default=0)
 	food_reduction = models.IntegerField("food_reduction", default=0)
 	addition1 = models.IntegerField("addition", default=0)
-	addition2 = models.IntegerField("addition2", default=0)
+	addition2 = models.IntegerField("addition2", default=0)	
 	comment = models.TextField("comment", default="", blank=True)
+	payment_type_choices = [
+		("const", "ثابت"),
+		("por", "پورسانت"),
+		("hours", "ساعتی"),
+		("work", "وزارت کار"),
+	]
+	payment_type = models.CharField(
+		"payment_type",
+		max_length=10,
+		choices=payment_type_choices,
+		default="hours",
+	)
+
+	manager_level_1 = models.ForeignKey(
+		"self",
+		null=True,
+		blank=True,
+		on_delete=models.SET_NULL,
+		related_name="managed_as_level_1",
+	)
+	manager_level_2 = models.ForeignKey(
+		"self",
+		null=True,
+		blank=True,
+		on_delete=models.SET_NULL,
+		related_name="managed_as_level_2",
+	)
 	
 	# access info
 	is_ProjectReportManager = models.BooleanField("is_ProjectReportManager", default=False)
@@ -140,6 +167,7 @@ class User(AbstractUser):
 			"food_reduction": self.food_reduction,
 			"addition1": self.addition1,
 			"addition2": self.addition2,
+			"paymentType": self.payment_type,
 		}
 		return info
 
@@ -206,6 +234,59 @@ class Sheet(models.Model):
 	submitted = models.BooleanField("submitted", default=False)
 	is_verified = models.BooleanField("is_verified", default=False)
 	is_supreme_verified = models.BooleanField("is_supreme_verified", default=False)
+
+	# New multi-level approval workflow. Legacy fields above are intentionally kept
+	# for backward compatibility and are synchronized by the API actions.
+	manager_level_1_verified = models.BooleanField("manager_level_1_verified", default=False)
+	manager_level_2_verified = models.BooleanField("manager_level_2_verified", default=False)
+	supreme_verified = models.BooleanField("supreme_verified", default=False)
+	manager_level_1_verified_at = models.DateTimeField("manager_level_1_verified_at", null=True, blank=True)
+	manager_level_2_verified_at = models.DateTimeField("manager_level_2_verified_at", null=True, blank=True)
+	supreme_verified_at = models.DateTimeField("supreme_verified_at", null=True, blank=True)
+	manager_level_1_verified_by = models.ForeignKey(
+		User,
+		verbose_name="manager_level_1_verified_by",
+		related_name="manager_level_1_verified_sheets",
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+	)
+	manager_level_2_verified_by = models.ForeignKey(
+		User,
+		verbose_name="manager_level_2_verified_by",
+		related_name="manager_level_2_verified_sheets",
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+	)
+	supreme_verified_by = models.ForeignKey(
+		User,
+		verbose_name="supreme_verified_by",
+		related_name="supreme_verified_sheets",
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+	)
+	last_rejected_by = models.ForeignKey(
+		User,
+		verbose_name="last_rejected_by",
+		related_name="rejected_sheets",
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+	)
+	last_rejected_at = models.DateTimeField("last_rejected_at", null=True, blank=True)
+	rejection_reason = models.TextField("rejection_reason", default="", blank=True)
+	manager_level_1_comment = models.TextField("manager_level_1_comment", default="", blank=True)
+	manager_level_2_comment = models.TextField("manager_level_2_comment", default="", blank=True)
+	note_hours = models.TextField("note_hours", default="", blank=True)
+	payment_type = models.CharField(
+		"payment_type",
+		max_length=10,
+		choices=User.payment_type_choices,
+		default="hours",
+	)
+
 	payment_status = models.IntegerField(
 		"payment_status", choices=payment_status_choices, default=0
 	)
@@ -245,6 +326,7 @@ class Sheet(models.Model):
 		self.food_reduction = self.user.food_reduction
 		self.addition1 = self.user.addition1
 		self.addition2 = self.user.addition2
+		self.payment_type = self.user.payment_type
 		self.save()
 
 	@classmethod
@@ -257,6 +339,7 @@ class Sheet(models.Model):
 				"WeekDay": jdt.date.j_weekdays_short_en[
 					jdt.date(year, month, day + 1).weekday()
 				],
+				"Note Hours": "",
 			}
 			for day in range(days_num)
 		]
@@ -284,7 +367,18 @@ class Sheet(models.Model):
 			return 0
 
 	def get_sheet_projects(self, df: pd.DataFrame) -> list:
-		defaults = ["Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest", "Total"]
+		defaults = [
+			"Day",
+			"WeekDay",
+			"Hours",
+			"Auto Hours",
+			"Remote",
+			"Rest",
+			"Total",
+			"Attendance",
+			"Description",
+			"Note Hours",
+		]
 		projects = df.columns.difference(defaults)
 		return list(projects)
 
@@ -398,6 +492,8 @@ class Sheet(models.Model):
 				data["Rest"] = "00:00"
 		
 		for data in all_data:
+			if "Note Hours" not in data:
+				data["Note Hours"] = ""
 			auto_m = self.hhmm2minutes(data.get("Auto Hours", "00:00"))
 			rem_m = self.hhmm2minutes(data.get("Remote", "00:00"))
 			rest_m = self.hhmm2minutes(data.get("Rest", "00:00"))
@@ -430,6 +526,35 @@ class Sheet(models.Model):
 			entry["WeekDay"] = correct_weekdays_dict[entry["Day"]]
 		self.save()
 
+
+	def reset_approval_state(self):
+		self.submitted = False
+		self.manager_level_1_verified = False
+		self.manager_level_2_verified = False
+		self.supreme_verified = False
+		self.manager_level_1_verified_at = None
+		self.manager_level_2_verified_at = None
+		self.supreme_verified_at = None
+		self.manager_level_1_verified_by = None
+		self.manager_level_2_verified_by = None
+		self.supreme_verified_by = None
+		self.is_verified = False
+		self.is_supreme_verified = False
+
+	@property
+	def is_fully_approved(self) -> bool:
+		return (
+			self.submitted
+			and self.manager_level_1_verified
+			and self.manager_level_2_verified
+			and self.supreme_verified
+		)
+
+	def sync_legacy_verification_fields(self):
+		# Old code only had one manager flag. In the new workflow, old
+		# is_verified is true only after both manager approvals are present.
+		self.is_verified = self.manager_level_1_verified and self.manager_level_2_verified
+		self.is_supreme_verified = self.supreme_verified
 
 
 class ProjectFamily(models.Model):

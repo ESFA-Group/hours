@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from import_export import resources, fields
+from import_export.widgets import ForeignKeyWidget
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from import_export.admin import ImportExportModelAdmin
 from sheets.models import *
@@ -13,19 +14,69 @@ admin.site.register(ProjectFamily)
 @admin.register(Sheet)
 class SheetAdmin(admin.ModelAdmin):
     ordering = ["-year", "-month", "user_name"]
-    list_filter = ['year', 'month', 'user_name']
-    search_fields = ['user_name', 'user__first_name_p', 'user__last_name_p'] 
-    list_display = ['user_name', 'month', 'year']
+    list_filter = ['year', 'month', 'user_name', 'submitted', 'manager_level_1_verified', 'manager_level_2_verified', 'supreme_verified']
+    search_fields = ['user_name', 'user__first_name_p', 'user__last_name_p', 'user__username'] 
+    list_display = [
+        'user_name',
+        'month',
+        'year',
+        'submitted',
+        'manager_level_1_verified',
+        'manager_level_2_verified',
+        'supreme_verified',
+    ]
 
 
 class UserResource(resources.ModelResource):
+    manager_level_1 = fields.Field(
+        column_name='manager_level_1',
+        attribute='manager_level_1',
+        widget=ForeignKeyWidget(User, 'username'),
+    )
+    manager_level_2 = fields.Field(
+        column_name='manager_level_2',
+        attribute='manager_level_2',
+        widget=ForeignKeyWidget(User, 'username'),
+    )
+
     class Meta:
         model = User
         # Explicitly exclude 'id' from import/export
         exclude = ('id',)
-        fields = ('username', 'first_name_p', 'last_name_p', 'staff_group_tag', 'auto_hour_ID')
-        export_order = ('username', 'first_name_p', 'last_name_p', 'staff_group_tag', 'auto_hour_ID')
+        fields = (
+            'username',
+            'first_name_p',
+            'last_name_p',
+            'staff_group_tag',
+            'verifier_group_tags',
+            'auto_hour_ID',
+            'manager_level_1',
+            'manager_level_2',
+            'payment_type',
+        )
+        export_order = (
+            'username',
+            'first_name_p',
+            'last_name_p',
+            'staff_group_tag',
+            'verifier_group_tags',
+            'auto_hour_ID',
+            'manager_level_1',
+            'manager_level_2',
+            'payment_type',
+        )
         import_id_fields = ('username',)
+
+    def before_import_row(self, row, **kwargs):
+        for field_name in ('manager_level_1', 'manager_level_2'):
+            username = str(row.get(field_name) or '').strip()
+            if username and not User.objects.filter(username=username).exists():
+                raise ValueError(f"{field_name}: username '{username}' does not exist")
+
+        payment_type = str(row.get('payment_type') or '').strip()
+        if payment_type and payment_type not in dict(User.payment_type_choices):
+            allowed = ', '.join(dict(User.payment_type_choices).keys())
+            raise ValueError(f"payment_type '{payment_type}' is invalid. Allowed values: {allowed}")
 
 
 @admin.register(User)
@@ -34,10 +85,11 @@ class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     ordering = ["last_name", "first_name"]
     filter_horizontal = ('groups', 'user_permissions')
     search_fields = ['last_name', 'first_name', 'username', 'first_name_p', 'last_name_p']
+    autocomplete_fields = ['manager_level_1', 'manager_level_2']
     
     # Add these for better import/export experience
-    list_display = ('username', 'last_name_p', 'first_name_p', 'staff_group_tag')
-    list_filter = ('is_staff', 'is_superuser', 'is_active')
+    list_display = ('username', 'last_name_p', 'first_name_p', 'staff_group_tag', 'manager_level_1', 'manager_level_2', 'payment_type')
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'payment_type')
     
     # Import-export resource
     resource_class = UserResource

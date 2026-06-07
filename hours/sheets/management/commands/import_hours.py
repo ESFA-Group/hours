@@ -24,6 +24,8 @@ class Command(BaseCommand):
 			df.fillna(0, inplace=True)
 			not_founds = []
 			imported_any = False
+			skipped_submitted = []
+			skipped_submitted_user_ids = set()
 			current_sheet = None
 			for index, row in df.iterrows():
 				personnel_code = row.get("کد پرسنلي")
@@ -37,6 +39,8 @@ class Command(BaseCommand):
 						not_founds.append(missing_info)
 					continue
 				user_id = user.id
+				if user_id in skipped_submitted_user_ids:
+					continue
 				date = str(row["تاريخ"])
 				hours = row["مدت حضور"]
 				parts = []
@@ -65,6 +69,12 @@ class Command(BaseCommand):
 					if created:
 						current_sheet.setup_sheet()
 
+					if current_sheet.submitted:
+						skipped_submitted_user_ids.add(user_id)
+						skipped_submitted.append({"username": user.username, "name": user.get_full_name()})
+						current_sheet = None
+						continue
+
 					current_sheet.normalize_sheet()
 				currentDayData = current_sheet.data[d-1]
 				currentDayData["Auto Hours"] = f"{hours.hour:02d}:{hours.minute:02d}"
@@ -72,13 +82,13 @@ class Command(BaseCommand):
 				current_sheet.normalize_sheet()
 				imported_any = True
 			
-			summary = f"Import finished. Users not found: {not_founds}"
+			summary = f"Import finished. Users not found: {not_founds}. Submitted sheets skipped: {skipped_submitted}"
 			status = 'completed' if imported_any else 'error'
 			if not imported_any:
 				summary = f"Import failed: No matching data found for {year}/{month}."
 
 			if task_id:
-				set_task_status(task_id, status, summary, data={'users_not_found': not_founds})
+				set_task_status(task_id, status, summary, data={'users_not_found': not_founds, 'skipped_submitted': skipped_submitted})
 			self.stdout.write(self.style.SUCCESS(summary))
 		except Exception as e:
 			error_msg = f"Import failed: {str(e)}"

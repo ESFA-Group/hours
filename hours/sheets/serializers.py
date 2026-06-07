@@ -11,4 +11,4 @@ class ProjectSerializer(serializers.ModelSerializer):
 class SheetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sheet
-        fields = "__all__"
+        exclude = ["manager_level_1_comment", "manager_level_2_comment"]
