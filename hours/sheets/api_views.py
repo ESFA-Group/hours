@@ -1338,6 +1338,7 @@ def _sheet_summary(sheet, role):
         "managerLevel1Name": user.manager_level_1.get_full_name() if user.manager_level_1 else "",
         "managerLevel2Name": user.manager_level_2.get_full_name() if user.manager_level_2 else "",
         "lastRejectedAt": sheet.last_rejected_at.isoformat() if sheet.last_rejected_at else None,
+        "rejectionReason": sheet.rejection_reason,
     }
 
 
@@ -1415,9 +1416,9 @@ class HourVerifierAPIView(APIView):
             "mode": "manager",
             "sections": sections,
             "labels": {
-                "currentQueue": "نیازمند تایید شما",
-                "other": "سایر موارد / آماده نیست",
-                "approved": "تایید شده توسط شما",
+                "currentQueue": "Needs your approval",
+                "other": "Other / not ready",
+                "approved": "Approved by you",
             },
             "sequentialManagerLevel2": True,
         }
@@ -1438,9 +1439,9 @@ class HourVerifierAPIView(APIView):
             "mode": "supreme",
             "sections": sections,
             "labels": {
-                "currentQueue": "ارسال‌شده ولی هنوز کامل تایید نشده",
-                "other": "سایر موارد",
-                "approved": "کاملا تایید شده / آماده پرداخت",
+                "currentQueue": "Submitted but not fully approved",
+                "other": "Other",
+                "approved": "Fully approved / ready for payment",
             },
             "sequentialManagerLevel2": True,
         }

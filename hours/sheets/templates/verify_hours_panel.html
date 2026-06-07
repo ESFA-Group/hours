@@ -12,26 +12,41 @@
         max-height: 30vh;
         overflow-y: auto;
     }
+
     .approval-status-line span {
         margin-inline-start: 6px;
+    }
+
+    .verification-sheet-scroll {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: visible;
+        padding-bottom: 12px;
+    }
+
+    .verification-sheet-scroll .jexcel_content,
+    .verification-sheet-scroll .jspreadsheet_content {
+        max-width: 100%;
+        overflow-x: auto !important;
     }
 </style>
 {% endblock extra_css %}
 {% block body %}
 
-<div class="px-4" dir="rtl">
+<div class="px-4" dir="ltr">
     <div class="row">
         <div class="col col-12 col-lg-3 mt-2">
             <div style="position: sticky; top: 10px;">
                 <div class="d-flex justify-content-between mb-3" style="gap: 10px;">
                     <div class="flex-grow-1 text-center">
-                        <strong>سال</strong>
+                        <strong>Year</strong>
                         <div class="mt-1">
                             <select name="year" id="year" class="form-select"></select>
                         </div>
                     </div>
                     <div class="flex-grow-1 text-center">
-                        <strong>ماه</strong>
+                        <strong>Month</strong>
                         <div class="mt-1">
                             <select name="month" id="month" class="form-select">
                                 {{ 1|render_month_options }}
@@ -39,10 +54,10 @@
                         </div>
                     </div>
                     <div class="flex-grow-1 text-center">
-                        <strong>گروه</strong>
+                        <strong>Group</strong>
                         <div class="mt-1">
                             <select name="staff_group" id="staff_group" class="form-select">
-                                <option value="all">همه</option>
+                                <option value="all">All</option>
                             </select>
                         </div>
                     </div>
@@ -50,28 +65,28 @@
 
                 <div class="card mb-3">
                     <div class="card-header bg-danger text-white">
-                        <h6 class="mb-0"><span id="current-queue-title">نیازمند تایید شما</span> (<span id="current-queue-count">0</span>)</h6>
+                        <h6 class="mb-0"><span id="current-queue-title">Needs your approval</span> (<span id="current-queue-count">0</span>)</h6>
                     </div>
                     <ul class="list-group list-group-flush approval-section-list" id="current-queue-list">
-                        <li class="list-group-item text-muted text-center">موردی وجود ندارد</li>
+                        <li class="list-group-item text-muted text-center">No records</li>
                     </ul>
                 </div>
 
                 <div class="card mb-3">
                     <div class="card-header bg-secondary text-white">
-                        <h6 class="mb-0"><span id="other-title">سایر موارد / آماده نیست</span> (<span id="other-count">0</span>)</h6>
+                        <h6 class="mb-0"><span id="other-title">Other / not ready</span> (<span id="other-count">0</span>)</h6>
                     </div>
                     <ul class="list-group list-group-flush approval-section-list" id="other-list">
-                        <li class="list-group-item text-muted text-center">موردی وجود ندارد</li>
+                        <li class="list-group-item text-muted text-center">No records</li>
                     </ul>
                 </div>
 
                 <div class="card">
                     <div class="card-header bg-success text-white">
-                        <h6 class="mb-0"><span id="approved-title">تایید شده توسط شما</span> (<span id="approved-count">0</span>)</h6>
+                        <h6 class="mb-0"><span id="approved-title">Approved by you</span> (<span id="approved-count">0</span>)</h6>
                     </div>
                     <ul class="list-group list-group-flush approval-section-list" id="approved-list">
-                        <li class="list-group-item text-muted text-center">موردی وجود ندارد</li>
+                        <li class="list-group-item text-muted text-center">No records</li>
                     </ul>
                 </div>
             </div>
@@ -80,36 +95,38 @@
         <div class="col col-12 col-lg-9 mt-2">
             <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap" style="gap: 10px;">
                 <div>
-                    <h4 id="selected-user-name">یک نفر را انتخاب کنید</h4>
+                    <h4 id="selected-user-name">Select a person</h4>
                     <div id="selected-user-status" class="approval-status-line text-muted small"></div>
                 </div>
                 <div class="d-flex gap-2">
-                    <button id="verify-btn" class="btn btn-success" disabled>تایید</button>
-                    <button id="reject-btn" class="btn btn-danger" disabled>رد</button>
+                    <button id="verify-btn" class="btn btn-success" disabled>Verify</button>
+                    <button id="reject-btn" class="btn btn-danger" disabled>Reject</button>
                 </div>
             </div>
 
             <div id="comments-card" class="card mb-3 d-none">
-                <div class="card-header">یادداشت‌های داخلی مدیران</div>
+                <div class="card-header">Internal manager comments</div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col col-12 col-lg-6 mb-2">
-                            <label class="form-label" for="manager-level-1-comment">نظر مدیر اول</label>
+                            <label class="form-label" for="manager-level-1-comment">Manager level 1 comment</label>
                             <textarea id="manager-level-1-comment" class="form-control" rows="3"></textarea>
                         </div>
                         <div class="col col-12 col-lg-6 mb-2">
-                            <label class="form-label" for="manager-level-2-comment">نظر مدیر دوم</label>
+                            <label class="form-label" for="manager-level-2-comment">Manager level 2 comment</label>
                             <textarea id="manager-level-2-comment" class="form-control" rows="3"></textarea>
                         </div>
                     </div>
-                    <button id="save-comments-btn" class="btn btn-outline-primary">ذخیره یادداشت‌ها</button>
+                    <button id="save-comments-btn" class="btn btn-outline-primary">Save comments</button>
                 </div>
             </div>
 
-            <div id="spreadsheet" style="width: 100%;"></div>
+            <div class="verification-sheet-scroll">
+                <div id="spreadsheet"></div>
+            </div>
 
             <div id="no-user-selected" class="alert alert-info text-center mt-5">
-                لطفا از فهرست سمت راست یک نفر را انتخاب کنید.
+                Please select a person from the list.
             </div>
         </div>
     </div>

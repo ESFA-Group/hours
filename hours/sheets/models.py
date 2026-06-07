@@ -461,7 +461,6 @@ class Sheet(models.Model):
 			"food_reduction": self.food_reduction,
 			"addition1": self.addition1,
 			"addition2": self.addition2,
-			"paymentType": self.payment_type,
 			"finalPayment": self.get_final_payment(),
 			"complementaryPayment": self.get_complementary_payment(),
 			"paymentStatus": self.payment_status,
@@ -473,7 +472,6 @@ class Sheet(models.Model):
 			"basePayment": self.get_base_payment(),
 			"complementaryPayment": self.get_complementary_payment(),
 			"food_reduction": self.food_reduction,
-			"paymentType": self.payment_type,
 			"paymentStatus": self.payment_status,
 		}
 		return info

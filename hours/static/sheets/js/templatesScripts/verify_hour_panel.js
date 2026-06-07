@@ -1,17 +1,18 @@
 "use strict";
-//CONSTANTS************************************************
+// CONSTANTS************************************************
 const today = new JDate();
 const currentYear = today.getFullYear();
 const currentMonth = today.getMonth();
-let allUsersData = [];
+let approvalPayload = { sections: { currentQueue: [], other: [], approved: [] }, labels: {} };
 let selectedUserId = null;
+let selectedRole = null;
+let selectedDetail = null;
 
 const AutoHourCol = 3;
 const RestCol = 4;
 const RemoteCol = 5;
 const TotalCol = 6;
 // ********************************************************
-
 
 function fillYears(year) {
 	for (let i = window.START_YEAR; i <= year; i++) {
@@ -22,69 +23,81 @@ function fillYears(year) {
 let isLoadingVerificationData = false;
 let latestLoadRequestId = 0;
 
+function getApiPath(extraQuery = "") {
+	const year = $("#year").val();
+	const month = $("#month").val();
+	return `verify_hours/${year}/${month}${extraQuery}`;
+}
+
+function flattenSections() {
+	const sections = approvalPayload.sections || {};
+	return [
+		...(sections.currentQueue || []),
+		...(sections.other || []),
+		...(sections.approved || []),
+	];
+}
+
 async function loadData() {
-	if (isLoadingVerificationData) {
-		return;
-	}
+	if (isLoadingVerificationData) return;
 
 	isLoadingVerificationData = true;
 	const requestId = ++latestLoadRequestId;
 
-	const year = $("#year").val();
-	const month = $("#month").val();
-	const path = `verify_hours/${year}/${month}`;
-
 	try {
 		await GlobalLoader.wrap(async () => {
 			const response = await apiService.get(
-				path,
+				getApiPath(),
 				{},
 				{},
 				"Fetching Verification Data"
 			);
 
 			if (!response.ok) return;
+			if (requestId !== latestLoadRequestId) return;
 
-			/*
-			  Safety check:
-			  If a newer loadData request somehow started, ignore this older result.
-			*/
-			if (requestId !== latestLoadRequestId) {
-				return;
-			}
-
-			allUsersData = response.data;
-
+			approvalPayload = response.data || { sections: { currentQueue: [], other: [], approved: [] }, labels: {} };
+			updateSectionLabels();
 			updateStaffGroupDropdown();
 			renderUserLists();
 
-			if (typeof window.spreadTable === "object" && window.spreadTable) {
-				window.spreadTable.destroy();
-				window.spreadTable = null;
-			}
-
-			$("#spreadsheet").empty();
-			$("#no-user-selected").show();
-			$("#selected-user-name").text("Select a user");
-
-			$("#verify-btn").prop("disabled", true).show();
-			$("#unverify-btn").hide();
-			$("#supreme-verify-btn").hide();
-			$("#supreme-unverify-btn").hide();
-
-			selectedUserId = null;
+			clearSelectedUser();
 		}, "Loading verification data...");
-
 	} catch (error) {
 		console.error("Error loading verification data:", error);
-
 	} finally {
 		isLoadingVerificationData = false;
 	}
 }
 
+function updateSectionLabels() {
+	const labels = approvalPayload.labels || {};
+	$("#current-queue-title").text(labels.currentQueue || "Needs your approval");
+	$("#other-title").text(labels.other || "Other / not ready");
+	$("#approved-title").text(labels.approved || "Approved by you");
+}
+
+function clearSelectedUser() {
+	if (typeof window.spreadTable === "object" && window.spreadTable) {
+		window.spreadTable.destroy();
+		window.spreadTable = null;
+	}
+	$("#spreadsheet").empty();
+	$("#no-user-selected").show();
+	$("#selected-user-name").text("Select a person");
+	$("#selected-user-status").empty();
+	$("#comments-card").addClass("d-none");
+	$("#verify-btn").prop("disabled", true).text("Verify");
+	$("#reject-btn").prop("disabled", true).text("Reject");
+	$(".list-group-item").removeClass("active");
+	selectedUserId = null;
+	selectedRole = null;
+	selectedDetail = null;
+}
+
 function updateStaffGroupDropdown() {
-	const groups = new Set(allUsersData.map(u => u.staffGroup).filter(g => g !== undefined && g !== null));
+	const users = flattenSections();
+	const groups = new Set(users.map(u => u.staffGroup).filter(g => g !== undefined && g !== null));
 	const currentSelection = $("#staff_group").val() || "all";
 
 	const $dropdown = $("#staff_group");
@@ -95,7 +108,6 @@ function updateStaffGroupDropdown() {
 		$dropdown.append($("<option>").val(group).text(group));
 	});
 
-	// Restore selection if it still exists, otherwise default to "all"
 	const selectionExists = [...groups].some(g => String(g) === String(currentSelection));
 	if (selectionExists || currentSelection === "all") {
 		$dropdown.val(currentSelection);
@@ -105,14 +117,13 @@ function updateStaffGroupDropdown() {
 }
 
 function hhmm2minutes(str) {
-	if (typeof str !== 'string' || !str.includes(":"))
-		return 0
+	if (typeof str !== 'string' || !str.includes(":")) return 0;
 	const [h, m] = str.split(":");
-	return Number(h) * 60 + Number(m)
+	return Number(h) * 60 + Number(m);
 }
 
 function minutes2hhmm(mins) {
-	if (mins < 0) mins = 0;
+	if (!mins || mins < 0) mins = 0;
 	const h = Math.floor(mins / 60);
 	const m = mins % 60;
 	return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
@@ -123,7 +134,6 @@ function calculateRowTotalMinutes(row) {
 	const rest = hhmm2minutes(row["Rest"] || "00:00");
 	const remote = hhmm2minutes(row["Remote"] || "00:00");
 	let totalM = auto + remote - rest;
-
 	if (totalM < 0) totalM = 0;
 	return totalM;
 }
@@ -150,8 +160,6 @@ function recalculateTableTotals(tableData, updateSpreadsheet = true) {
 				window.spreadTable.setValueFromCoords(TotalCol, rowIndex, newTotalStr, true);
 			}
 
-			// Same as the working Django page: bypass the numeric hh:mm mask for the visible cell,
-			// because jspreadsheet can display values above 23:59 like a clock even when the raw value is correct.
 			const cellElement = window.spreadTable.getCell("G" + (rowIndex + 1));
 			if (cellElement) {
 				cellElement.textContent = newTotalStr;
@@ -162,36 +170,41 @@ function recalculateTableTotals(tableData, updateSpreadsheet = true) {
 	return { totalTime, autoTime, workedDaysCount };
 }
 
-function getSheetHoursInfo(sheetData) {
-	// Clone rows before calculating, so rendering the sidebar never mutates the API response.
-	const clonedData = Array.isArray(sheetData) ? sheetData.map(row => ({ ...row })) : [];
-	return recalculateTableTotals(clonedData, false);
-}
-
 function getTableProjects(tableData) {
 	if (!tableData || tableData.length === 0) return [];
 	const allHeaders = new Set(Object.keys(tableData[0]));
-	const defaultHeaders = new Set(['Day', 'WeekDay', 'Attendance', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours', 'Description']);
+	const defaultHeaders = new Set([
+		'Day',
+		'WeekDay',
+		'Attendance',
+		'Auto Hours',
+		'Rest',
+		'Remote',
+		'Total',
+		'Hours',
+		'Description',
+		'Note Hours',
+	]);
 	const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
-	return [...tableProjects]
+	return [...tableProjects];
 }
 
 function constructTable(data) {
+	data = Array.isArray(data) ? data : [];
 	const columns = [
 		{ type: 'text', title: 'Day', width: 50, readOnly: true },
 		{ type: 'text', title: 'WeekDay', width: 80, readOnly: true },
-		{ type: 'text', title: 'Attendance', width: 80, readOnly: true },
+		{ type: 'text', title: 'Attendance', width: 100, readOnly: true },
 		{ type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true },
 		{ type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: true },
 		{ type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: true },
 		{ type: 'numeric', title: 'Total', mask: 'hh:mm', width: 120, readOnly: true },
-		{ type: 'text', title: 'Description', width: 200, readOnly: true },
+		{ type: 'textarea', title: 'Note Hours', width: 180, readOnly: true },
+		{ type: 'textarea', title: 'Description', width: 200, readOnly: true },
 	];
 
 	if (data[0] && data[0]["Hours"] !== undefined) {
-		columns.push(
-			{ type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: true },
-		)
+		columns.push({ type: 'numeric', title: 'Hours', mask: 'hh:mm', width: 120, readOnly: true });
 	}
 
 	const projects = getTableProjects(data);
@@ -229,19 +242,15 @@ function constructTable(data) {
 		allowRenameColumn: false,
 		tableOverflow: true,
 		tableHeight: "150vh",
+		tableWidth: "100%",
 		updateTable: function (el, cell, x, y, source, value, id) {
-			if (value == "Fri") {
-				cell.style.color = 'red';
-			}
+			if (value == "Fri") cell.style.color = 'red';
 		}
 	});
 	window.spreadTable.hideIndex();
 
-	// Keep verification page logic identical to the working sheet page:
-	// Total = Auto Hours + Remote - Rest, and display values above 23:59 without wrapping.
 	recalculateTableTotals(orderedData);
 
-	// Check for holidays
 	const year = $("#year").val();
 	const month = $("#month").val();
 
@@ -260,163 +269,252 @@ function constructTable(data) {
 	});
 }
 
-function selectUser(userId) {
+function getRoleLabel(role) {
+	if (role === "manager_level_1") return "Manager level 1";
+	if (role === "manager_level_2") return "Manager level 2";
+	if (role === "supreme") return "Supreme approval";
+	return "";
+}
+
+function getStatusIcons(user) {
+	let statusIcons = '';
+	if (user.isSubmitted) statusIcons += ' <span title="Submitted">☑️</span>';
+	if (user.managerLevel1Verified) statusIcons += ' <span title="Manager level 1 approved">✅ M1</span>';
+	if (user.managerLevel2Verified) statusIcons += ' <span title="Manager level 2 approved">✅ M2</span>';
+	if (user.supremeVerified) statusIcons += ' <span title="Supreme approval">👑</span>';
+	if (user.isFullyApproved) statusIcons += ' <span title="Fully approved">🏁</span>';
+	return statusIcons;
+}
+
+function renderSelectedStatus(user) {
+	const submitted = user.isSubmitted ? "✅ Submitted" : "⏳ Not submitted";
+	const m1 = user.managerLevel1Verified ? "✅ Manager level 1 approval" : "⏳ Manager level 1 approval";
+	const m2 = user.managerLevel2Verified ? "✅ Manager level 2 approval" : "⏳ Manager level 2 approval";
+	const supreme = user.supremeVerified ? "👑 Supreme approval" : "⏳ Supreme approval";
+	let warning = user.isWarning ? `<span class="text-warning">⚠️ Device hours and total hours differ</span>` : "";
+	let rejected = user.rejectionReason ? `<span class="text-danger">Rejected: ${user.rejectionReason}</span>` : "";
+	$("#selected-user-status").html(`${submitted} <span>${m1}</span> <span>${m2}</span> <span>${supreme}</span> ${warning} ${rejected}`);
+}
+
+function resolveActions(detail) {
+	const p = detail.permissions || {};
+	const candidates = [];
+	if (selectedRole === "manager_level_1") {
+		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "Verify as manager level 1"]);
+		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "Reject as manager level 1"]);
+	} else if (selectedRole === "manager_level_2") {
+		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "Verify as manager level 2"]);
+		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "Reject as manager level 2"]);
+	} else if (selectedRole === "supreme") {
+		candidates.push([p.canVerifySupreme, "verify_supreme", "Supreme approval"]);
+		candidates.push([p.canRejectSupreme, "reject_supreme", "Supreme reject"]);
+	} else {
+		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "Verify as manager level 1"]);
+		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "Verify as manager level 2"]);
+		candidates.push([p.canVerifySupreme, "verify_supreme", "Supreme approval"]);
+		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "Reject as manager level 1"]);
+		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "Reject as manager level 2"]);
+		candidates.push([p.canRejectSupreme, "reject_supreme", "Supreme reject"]);
+	}
+
+	const verify = candidates.find(([allowed, action]) => allowed && action.startsWith("verify"));
+	const reject = candidates.find(([allowed, action]) => allowed && action.startsWith("reject"));
+	return { verify, reject };
+}
+
+async function selectUser(userId, role) {
 	selectedUserId = userId;
-	const userData = allUsersData.find(u => u.userId === userId);
-	if (!userData) return;
+	selectedRole = role;
 
-	// Update active state in sidebar
 	$(".list-group-item").removeClass("active");
-	$(`.user-item[data-id='${userId}']`).addClass("active");
+	$(`.user-item[data-id='${userId}'][data-role='${role}']`).addClass("active");
 
-	// Update main area
-	$("#no-user-selected").hide();
+	try {
+		await GlobalLoader.wrap(async () => {
+			const response = await apiService.get(
+				getApiPath(`?userId=${encodeURIComponent(userId)}&role=${encodeURIComponent(role || "")}`),
+				{},
+				{},
+				"Fetching Sheet Data"
+			);
+			if (!response.ok) return;
 
-	let warningIcon = userData.isWarning ? ' <span title="Total hours >= 1.1 * Auto hours">⚠️</span>' : '';
-	let verificationIcons = '';
-	if (userData.isVerified) verificationIcons += ' ✅';
-	if (userData.isSupremeVerified) verificationIcons += ' 👑';
+			selectedDetail = response.data;
+			$("#no-user-selected").hide();
 
-	$("#selected-user-name").html(`${userData.userName} (#${userData.staffGroup || 'No Group'})${warningIcon}${verificationIcons}`);
+			let warningIcon = selectedDetail.isWarning ? ' <span title="Total hours >= 1.1 * Auto hours">⚠️</span>' : '';
+			$("#selected-user-name").html(`${selectedDetail.userName} <small class="text-muted">${getRoleLabel(role)}</small>${warningIcon}`);
+			renderSelectedStatus(selectedDetail);
 
-	// Standard buttons
-	if (userData.isVerified) {
-		$("#verify-btn").hide();
-		$("#unverify-btn").prop("disabled", false).show();
-	} else {
-		$("#unverify-btn").hide();
-		$("#verify-btn").prop("disabled", false).show();
+			const actions = resolveActions(selectedDetail);
+			if (actions.verify) {
+				$("#verify-btn").prop("disabled", false).data("action", actions.verify[1]).text(actions.verify[2]);
+			} else {
+				$("#verify-btn").prop("disabled", true).data("action", "").text("Verify");
+			}
+
+			if (actions.reject) {
+				$("#reject-btn").prop("disabled", false).data("action", actions.reject[1]).text(actions.reject[2]);
+			} else {
+				$("#reject-btn").prop("disabled", true).data("action", "").text("Reject");
+			}
+
+			$("#comments-card").removeClass("d-none");
+			$("#manager-level-1-comment")
+				.val(selectedDetail.managerLevel1Comment || "")
+				.prop("disabled", !(selectedDetail.permissions || {}).canEditManagerLevel1Comment);
+			$("#manager-level-2-comment")
+				.val(selectedDetail.managerLevel2Comment || "")
+				.prop("disabled", !(selectedDetail.permissions || {}).canEditManagerLevel2Comment);
+
+			constructTable(selectedDetail.sheetData);
+		}, "Loading sheet...");
+	} catch (error) {
+		console.error("Error loading selected user:", error);
 	}
-
-	// Supreme buttons
-	if (window.USER.is_SupremeHourVerifier) {
-		if (userData.isSupremeVerified) {
-			$("#supreme-verify-btn").hide();
-			$("#supreme-unverify-btn").prop("disabled", false).show();
-		} else {
-			$("#supreme-unverify-btn").hide();
-			$("#supreme-verify-btn").prop("disabled", false).show();
-		}
-	} else {
-		$("#supreme-verify-btn").hide();
-		$("#supreme-unverify-btn").hide();
-	}
-
-	constructTable(userData.sheetData);
 }
 
 function renderUserLists() {
 	const selectedGroup = $("#staff_group").val();
+	const sections = approvalPayload.sections || { currentQueue: [], other: [], approved: [] };
 
-	let filteredUsers = allUsersData;
-	if (selectedGroup !== "all") {
-		filteredUsers = allUsersData.filter(u => String(u.staffGroup) === String(selectedGroup));
-	}
+	const filterUsers = users => {
+		if (selectedGroup === "all") return users || [];
+		return (users || []).filter(u => String(u.staffGroup) === String(selectedGroup));
+	};
 
-	const unverifiedUsers = filteredUsers.filter(u => !u.isVerified && !u.isSupremeVerified);
-	const verifiedUsers = filteredUsers.filter(u => u.isVerified || u.isSupremeVerified);
-
-	$("#unverified-count").text(unverifiedUsers.length);
-	$("#verified-count").text(verifiedUsers.length);
-
-	const renderList = (users, containerId) => {
+	const renderList = (users, containerId, countId) => {
+		const filteredUsers = filterUsers(users);
+		$(`#${countId}`).text(filteredUsers.length);
 		const $container = $(`#${containerId}`);
 		$container.empty();
 
-		if (users.length === 0) {
-			$container.append(`<li class="list-group-item text-muted text-center">No users</li>`);
+		if (filteredUsers.length === 0) {
+			$container.append(`<li class="list-group-item text-muted text-center">No records</li>`);
 			return;
 		}
 
-		users.sort((a, b) => a.userName.localeCompare(b.userName)).forEach(user => {
-			let bgClass = "";
-			if (user.isWarning) {
-				bgClass = "list-group-item-warning";
-			}
-
-			const hasSheetData = Array.isArray(user.sheetData) && user.sheetData.length > 0;
-			const sheetHoursInfo = getSheetHoursInfo(user.sheetData);
-			const autoHours = hasSheetData ? sheetHoursInfo.autoTime : (user.autoHours || 0);
-			const totalHours = hasSheetData ? sheetHoursInfo.totalTime : (user.totalHours || 0);
-			const hoursInfo = `<small class="d-block">Auto: ${minutes2hhmm(autoHours)} | Total: ${minutes2hhmm(totalHours)}</small>`;
-
-			let statusIcons = '';
-			if (user.isSubmitted) statusIcons += ' <span title="submitted">☑️</span>';
-			if (user.isVerified) statusIcons += ' <span title="Verified">✅</span>';
-			if (user.isSupremeVerified) statusIcons += ' <span title="Supreme Verified">👑</span>';
-			if (user.isWarning) statusIcons += ' <span title="Total hours >= 1.1 * Auto hours">⚠️</span>';
+		filteredUsers.sort((a, b) => a.userName.localeCompare(b.userName)).forEach(user => {
+			const hoursInfo = `<small class="d-block">Total: ${minutes2hhmm(user.totalHours || 0)}</small>`;
+			const roleInfo = user.role ? `<small class="text-muted">${getRoleLabel(user.role)}</small>` : "";
+			const rejectedInfo = user.rejectionReason ? `<small class="d-block text-danger">Rejected: ${user.rejectionReason}</small>` : "";
+			const statusIcons = getStatusIcons(user);
 
 			const $item = $(`
-                <li class="list-group-item list-group-item-action user-item ${bgClass}" data-id="${user.userId}" style="cursor: pointer;">
+                <li class="list-group-item list-group-item-action user-item" data-id="${user.userId}" data-role="${user.role}" style="cursor: pointer;">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-bold">${user.userName}</span>
                         <div>${statusIcons}</div>
                     </div>
-                    ${hoursInfo}
+                    <div class="d-flex justify-content-between">
+                        ${hoursInfo}
+                        ${roleInfo}
+                    </div>
+                    ${rejectedInfo}
                 </li>
             `);
 
-			$item.click(() => selectUser(user.userId));
+			$item.click(() => selectUser(user.userId, user.role));
 			$container.append($item);
 		});
 	};
 
-	renderList(unverifiedUsers, "unverified-list");
-	renderList(verifiedUsers, "verified-list");
+	renderList(sections.currentQueue, "current-queue-list", "current-queue-count");
+	renderList(sections.other, "other-list", "other-count");
+	renderList(sections.approved, "approved-list", "approved-count");
 
-	// Re-select user if they are still in the list
-	if (selectedUserId) {
-		$(`.user-item[data-id='${selectedUserId}']`).addClass("active");
+	if (selectedUserId && selectedRole) {
+		$(`.user-item[data-id='${selectedUserId}'][data-role='${selectedRole}']`).addClass("active");
 	}
 }
 
 let isUpdatingVerification = false;
 
-async function verifySheet(isVerified, verifyType = "standard") {
-	if (!selectedUserId || isUpdatingVerification) return;
+function getCommentPayload() {
+	const payload = {};
+	if (!$("#manager-level-1-comment").prop("disabled")) {
+		payload.managerLevel1Comment = $("#manager-level-1-comment").val();
+	}
+	if (!$("#manager-level-2-comment").prop("disabled")) {
+		payload.managerLevel2Comment = $("#manager-level-2-comment").val();
+	}
+	return payload;
+}
+
+async function postSheetAction(action) {
+	if (!selectedUserId || isUpdatingVerification || !action) return;
+
+	let reason = "";
+	if (action.startsWith("reject")) {
+		reason = window.prompt("Enter rejection reason (optional):", "") || "";
+	}
 
 	isUpdatingVerification = true;
-
 	const userIdBeforeRefresh = selectedUserId;
-	const year = $("#year").val();
-	const month = $("#month").val();
-	const path = `verify_hours/${year}/${month}`;
+	const roleBeforeRefresh = selectedRole;
 
 	try {
 		await GlobalLoader.wrap(async () => {
-			const response = await apiService.post(path, {
+			const response = await apiService.post(getApiPath(), {
 				userId: selectedUserId,
-				isVerified: isVerified,
-				verifyType: verifyType
+				action: action,
+				reason: reason,
+				...getCommentPayload(),
 			}, {}, "Updating Verification Status");
 
 			if (!response.ok) return;
 
 			jSuites.notification({
 				name: "Success",
-				title: isVerified ? "Sheet Verified" : "Sheet Unverified",
-				message: "Successfully updated status.",
+				title: "Status updated",
+				message: "The action was completed successfully.",
 				timeout: 3000,
 			});
 
 			await loadData();
 
-			if (userIdBeforeRefresh) {
-				selectUser(userIdBeforeRefresh);
+			const stillVisible = flattenSections().some(user =>
+				String(user.userId) === String(userIdBeforeRefresh) && user.role === roleBeforeRefresh
+			);
+			if (stillVisible) {
+				await selectUser(userIdBeforeRefresh, roleBeforeRefresh);
 			}
 		}, "Updating verification status...");
-
 	} catch (error) {
 		console.error("Error setting verification status:", error);
-
 	} finally {
 		isUpdatingVerification = false;
 	}
 }
 
+async function saveComments() {
+	if (!selectedUserId || isUpdatingVerification) return;
+	isUpdatingVerification = true;
+
+	try {
+		await GlobalLoader.wrap(async () => {
+			const response = await apiService.post(getApiPath(), {
+				userId: selectedUserId,
+				action: "save_comments",
+				...getCommentPayload(),
+			}, {}, "Saving Comments");
+
+			if (!response.ok) return;
+			jSuites.notification({
+				name: "Success",
+				title: "Comments saved",
+				message: "Comments were saved.",
+				timeout: 3000,
+			});
+		}, "Saving comments...");
+	} catch (error) {
+		console.error("Error saving comments:", error);
+	} finally {
+		isUpdatingVerification = false;
+	}
+}
 
 $("document").ready(async function () {
-
 	fillYears(currentYear);
 	$("#month").val(currentMonth);
 	$("#year").val(currentYear);
@@ -427,31 +525,12 @@ $("document").ready(async function () {
 		await loadData();
 	});
 
-	$("#staff_group").on("change", async function () {
-		await GlobalLoader.wrap(async () => {
-			renderUserLists();
-
-			if (typeof window.spreadTable === "object" && window.spreadTable) {
-				window.spreadTable.destroy();
-				window.spreadTable = null;
-			}
-
-			$("#spreadsheet").empty();
-			$("#no-user-selected").show();
-			$("#selected-user-name").text("Select a user");
-
-			$("#verify-btn").prop("disabled", true).show();
-			$("#unverify-btn").hide();
-			$("#supreme-verify-btn").hide();
-			$("#supreme-unverify-btn").hide();
-
-			selectedUserId = null;
-		}, "Updating staff group...");
+	$("#staff_group").on("change", function () {
+		renderUserLists();
+		clearSelectedUser();
 	});
 
-	$("#verify-btn").click(() => verifySheet(true, "standard"));
-	$("#unverify-btn").click(() => verifySheet(false, "standard"));
-	$("#supreme-verify-btn").click(() => verifySheet(true, "supreme"));
-	$("#supreme-unverify-btn").click(() => verifySheet(false, "supreme"));
-
+	$("#verify-btn").click(() => postSheetAction($("#verify-btn").data("action")));
+	$("#reject-btn").click(() => postSheetAction($("#reject-btn").data("action")));
+	$("#save-comments-btn").click(saveComments);
 });

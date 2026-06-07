@@ -72,9 +72,9 @@ async function loadData() {
 
 function updateSectionLabels() {
 	const labels = approvalPayload.labels || {};
-	$("#current-queue-title").text(labels.currentQueue || "نیازمند تایید شما");
-	$("#other-title").text(labels.other || "سایر موارد / آماده نیست");
-	$("#approved-title").text(labels.approved || "تایید شده توسط شما");
+	$("#current-queue-title").text(labels.currentQueue || "Needs your approval");
+	$("#other-title").text(labels.other || "Other / not ready");
+	$("#approved-title").text(labels.approved || "Approved by you");
 }
 
 function clearSelectedUser() {
@@ -84,11 +84,11 @@ function clearSelectedUser() {
 	}
 	$("#spreadsheet").empty();
 	$("#no-user-selected").show();
-	$("#selected-user-name").text("یک نفر را انتخاب کنید");
+	$("#selected-user-name").text("Select a person");
 	$("#selected-user-status").empty();
 	$("#comments-card").addClass("d-none");
-	$("#verify-btn").prop("disabled", true).text("تایید");
-	$("#reject-btn").prop("disabled", true).text("رد");
+	$("#verify-btn").prop("disabled", true).text("Verify");
+	$("#reject-btn").prop("disabled", true).text("Reject");
 	$(".list-group-item").removeClass("active");
 	selectedUserId = null;
 	selectedRole = null;
@@ -102,7 +102,7 @@ function updateStaffGroupDropdown() {
 
 	const $dropdown = $("#staff_group");
 	$dropdown.empty();
-	$dropdown.append(`<option value="all">همه</option>`);
+	$dropdown.append(`<option value="all">All</option>`);
 
 	[...groups].sort((a, b) => a - b).forEach(group => {
 		$dropdown.append($("<option>").val(group).text(group));
@@ -242,6 +242,7 @@ function constructTable(data) {
 		allowRenameColumn: false,
 		tableOverflow: true,
 		tableHeight: "150vh",
+		tableWidth: "100%",
 		updateTable: function (el, cell, x, y, source, value, id) {
 			if (value == "Fri") cell.style.color = 'red';
 		}
@@ -269,29 +270,29 @@ function constructTable(data) {
 }
 
 function getRoleLabel(role) {
-	if (role === "manager_level_1") return "مدیر اول";
-	if (role === "manager_level_2") return "مدیر دوم";
-	if (role === "supreme") return "تایید نهایی";
+	if (role === "manager_level_1") return "Manager level 1";
+	if (role === "manager_level_2") return "Manager level 2";
+	if (role === "supreme") return "Supreme approval";
 	return "";
 }
 
 function getStatusIcons(user) {
 	let statusIcons = '';
-	if (user.isSubmitted) statusIcons += ' <span title="ارسال شده">☑️</span>';
-	if (user.managerLevel1Verified) statusIcons += ' <span title="تایید مدیر اول">✅۱</span>';
-	if (user.managerLevel2Verified) statusIcons += ' <span title="تایید مدیر دوم">✅۲</span>';
-	if (user.supremeVerified) statusIcons += ' <span title="تایید نهایی">👑</span>';
-	if (user.isFullyApproved) statusIcons += ' <span title="کاملا تایید شده">🏁</span>';
+	if (user.isSubmitted) statusIcons += ' <span title="Submitted">☑️</span>';
+	if (user.managerLevel1Verified) statusIcons += ' <span title="Manager level 1 approved">✅ M1</span>';
+	if (user.managerLevel2Verified) statusIcons += ' <span title="Manager level 2 approved">✅ M2</span>';
+	if (user.supremeVerified) statusIcons += ' <span title="Supreme approval">👑</span>';
+	if (user.isFullyApproved) statusIcons += ' <span title="Fully approved">🏁</span>';
 	return statusIcons;
 }
 
 function renderSelectedStatus(user) {
-	const submitted = user.isSubmitted ? "✅ ارسال شده" : "⏳ ارسال نشده";
-	const m1 = user.managerLevel1Verified ? "✅ تایید مدیر اول" : "⏳ تایید مدیر اول";
-	const m2 = user.managerLevel2Verified ? "✅ تایید مدیر دوم" : "⏳ تایید مدیر دوم";
-	const supreme = user.supremeVerified ? "👑 تایید نهایی" : "⏳ تایید نهایی";
-	let warning = user.isWarning ? `<span class="text-warning">⚠️ اختلاف ساعت دستگاه و مجموع ساعات</span>` : "";
-	let rejected = user.rejectionReason ? `<span class="text-danger">رد شده: ${user.rejectionReason}</span>` : "";
+	const submitted = user.isSubmitted ? "✅ Submitted" : "⏳ Not submitted";
+	const m1 = user.managerLevel1Verified ? "✅ Manager level 1 approval" : "⏳ Manager level 1 approval";
+	const m2 = user.managerLevel2Verified ? "✅ Manager level 2 approval" : "⏳ Manager level 2 approval";
+	const supreme = user.supremeVerified ? "👑 Supreme approval" : "⏳ Supreme approval";
+	let warning = user.isWarning ? `<span class="text-warning">⚠️ Device hours and total hours differ</span>` : "";
+	let rejected = user.rejectionReason ? `<span class="text-danger">Rejected: ${user.rejectionReason}</span>` : "";
 	$("#selected-user-status").html(`${submitted} <span>${m1}</span> <span>${m2}</span> <span>${supreme}</span> ${warning} ${rejected}`);
 }
 
@@ -299,21 +300,21 @@ function resolveActions(detail) {
 	const p = detail.permissions || {};
 	const candidates = [];
 	if (selectedRole === "manager_level_1") {
-		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "تایید مدیر اول"]);
-		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "رد توسط مدیر اول"]);
+		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "Verify as manager level 1"]);
+		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "Reject as manager level 1"]);
 	} else if (selectedRole === "manager_level_2") {
-		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "تایید مدیر دوم"]);
-		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "رد توسط مدیر دوم"]);
+		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "Verify as manager level 2"]);
+		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "Reject as manager level 2"]);
 	} else if (selectedRole === "supreme") {
-		candidates.push([p.canVerifySupreme, "verify_supreme", "تایید نهایی"]);
-		candidates.push([p.canRejectSupreme, "reject_supreme", "رد نهایی"]);
+		candidates.push([p.canVerifySupreme, "verify_supreme", "Supreme approval"]);
+		candidates.push([p.canRejectSupreme, "reject_supreme", "Supreme reject"]);
 	} else {
-		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "تایید مدیر اول"]);
-		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "تایید مدیر دوم"]);
-		candidates.push([p.canVerifySupreme, "verify_supreme", "تایید نهایی"]);
-		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "رد توسط مدیر اول"]);
-		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "رد توسط مدیر دوم"]);
-		candidates.push([p.canRejectSupreme, "reject_supreme", "رد نهایی"]);
+		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "Verify as manager level 1"]);
+		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "Verify as manager level 2"]);
+		candidates.push([p.canVerifySupreme, "verify_supreme", "Supreme approval"]);
+		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "Reject as manager level 1"]);
+		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "Reject as manager level 2"]);
+		candidates.push([p.canRejectSupreme, "reject_supreme", "Supreme reject"]);
 	}
 
 	const verify = candidates.find(([allowed, action]) => allowed && action.startsWith("verify"));
@@ -349,13 +350,13 @@ async function selectUser(userId, role) {
 			if (actions.verify) {
 				$("#verify-btn").prop("disabled", false).data("action", actions.verify[1]).text(actions.verify[2]);
 			} else {
-				$("#verify-btn").prop("disabled", true).data("action", "").text("تایید");
+				$("#verify-btn").prop("disabled", true).data("action", "").text("Verify");
 			}
 
 			if (actions.reject) {
 				$("#reject-btn").prop("disabled", false).data("action", actions.reject[1]).text(actions.reject[2]);
 			} else {
-				$("#reject-btn").prop("disabled", true).data("action", "").text("رد");
+				$("#reject-btn").prop("disabled", true).data("action", "").text("Reject");
 			}
 
 			$("#comments-card").removeClass("d-none");
@@ -389,13 +390,14 @@ function renderUserLists() {
 		$container.empty();
 
 		if (filteredUsers.length === 0) {
-			$container.append(`<li class="list-group-item text-muted text-center">موردی وجود ندارد</li>`);
+			$container.append(`<li class="list-group-item text-muted text-center">No records</li>`);
 			return;
 		}
 
 		filteredUsers.sort((a, b) => a.userName.localeCompare(b.userName)).forEach(user => {
-			const hoursInfo = `<small class="d-block">مجموع: ${minutes2hhmm(user.totalHours || 0)}</small>`;
+			const hoursInfo = `<small class="d-block">Total: ${minutes2hhmm(user.totalHours || 0)}</small>`;
 			const roleInfo = user.role ? `<small class="text-muted">${getRoleLabel(user.role)}</small>` : "";
+			const rejectedInfo = user.rejectionReason ? `<small class="d-block text-danger">Rejected: ${user.rejectionReason}</small>` : "";
 			const statusIcons = getStatusIcons(user);
 
 			const $item = $(`
@@ -408,6 +410,7 @@ function renderUserLists() {
                         ${hoursInfo}
                         ${roleInfo}
                     </div>
+                    ${rejectedInfo}
                 </li>
             `);
 
@@ -443,7 +446,7 @@ async function postSheetAction(action) {
 
 	let reason = "";
 	if (action.startsWith("reject")) {
-		reason = window.prompt("دلیل رد را وارد کنید (اختیاری):", "") || "";
+		reason = window.prompt("Enter rejection reason (optional):", "") || "";
 	}
 
 	isUpdatingVerification = true;
@@ -463,14 +466,17 @@ async function postSheetAction(action) {
 
 			jSuites.notification({
 				name: "Success",
-				title: "وضعیت بروزرسانی شد",
-				message: "عملیات با موفقیت انجام شد.",
+				title: "Status updated",
+				message: "The action was completed successfully.",
 				timeout: 3000,
 			});
 
 			await loadData();
 
-			if (!action.startsWith("reject")) {
+			const stillVisible = flattenSections().some(user =>
+				String(user.userId) === String(userIdBeforeRefresh) && user.role === roleBeforeRefresh
+			);
+			if (stillVisible) {
 				await selectUser(userIdBeforeRefresh, roleBeforeRefresh);
 			}
 		}, "Updating verification status...");
@@ -496,8 +502,8 @@ async function saveComments() {
 			if (!response.ok) return;
 			jSuites.notification({
 				name: "Success",
-				title: "یادداشت ذخیره شد",
-				message: "یادداشت‌ها ذخیره شدند.",
+				title: "Comments saved",
+				message: "Comments were saved.",
 				timeout: 3000,
 			});
 		}, "Saving comments...");
