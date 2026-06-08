@@ -147,11 +147,17 @@
                     href="{% url 'sheets:payment' %}"
                     style="width: 150px">Payments</a>
                 {% endif %}
-                {% if request.user.is_HourVerifier or request.user.is_SupremeHourVerifier %}
+                {% if request.user.is_HourVerifier%}
                     <a class="btn mx-1"
                     href="{% url 'sheets:verify_hours' %}"
                     style="width: 150px; background-color: #ff7b25; border-color: #ff7b25; color: white;"
                     >Verify Hours</a>
+                {% endif %}
+                {% if request.user.is_SupremeHourVerifier %}
+                    <a class="btn mx-1"
+                    href="{% url 'sheets:supreme_verify_hours' %}"
+                    style="width: 150px; background-color: #d0590a; border-color: #d0590a; color: white;"
+                    >Supreme Verify Hours</a>
                 {% endif %}
                 {% if request.user.is_FoodManager %}
                     <a class="btn btn-info mx-1"

@@ -65,7 +65,19 @@ def hours_verifier_required(
     view_func=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url="admin:login"
 ):
     actual_decorator = user_passes_test(
-        lambda u: u.is_active and (u.is_HourVerifier or u.is_SupremeHourVerifier),
+        lambda u: u.is_active and (u.is_HourVerifier),
+        login_url=login_url,
+        redirect_field_name=redirect_field_name,
+    )
+    if view_func:
+        return actual_decorator(view_func)
+    return actual_decorator
+
+def supremehours_verifier_required(
+    view_func=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url="admin:login"
+):
+    actual_decorator = user_passes_test(
+        lambda u: u.is_active and (u.is_SupremeHourVerifier),
         login_url=login_url,
         redirect_field_name=redirect_field_name,
     )

@@ -3,7 +3,8 @@
 const today = new JDate();
 const currentYear = today.getFullYear();
 const currentMonth = today.getMonth();
-let approvalPayload = { sections: { currentQueue: [], other: [], approved: [] }, labels: {} };
+const VERIFY_HOURS_MODE = window.VERIFY_HOURS_MODE || "manager";
+let approvalPayload = { sections: { currentQueue: [], other: [], unsubmitted: [], approved: [] }, labels: {} };
 let selectedUserId = null;
 let selectedRole = null;
 let selectedDetail = null;
@@ -26,7 +27,9 @@ let latestLoadRequestId = 0;
 function getApiPath(extraQuery = "") {
 	const year = $("#year").val();
 	const month = $("#month").val();
-	return `verify_hours/${year}/${month}${extraQuery}`;
+	const params = new URLSearchParams(extraQuery.startsWith("?") ? extraQuery.slice(1) : extraQuery);
+	params.set("mode", VERIFY_HOURS_MODE);
+	return `verify_hours/${year}/${month}?${params.toString()}`;
 }
 
 function flattenSections() {
@@ -34,6 +37,7 @@ function flattenSections() {
 	return [
 		...(sections.currentQueue || []),
 		...(sections.other || []),
+		...(sections.unsubmitted || []),
 		...(sections.approved || []),
 	];
 }
@@ -56,7 +60,7 @@ async function loadData() {
 			if (!response.ok) return;
 			if (requestId !== latestLoadRequestId) return;
 
-			approvalPayload = response.data || { sections: { currentQueue: [], other: [], approved: [] }, labels: {} };
+			approvalPayload = response.data || { sections: { currentQueue: [], other: [], unsubmitted: [], approved: [] }, labels: {} };
 			updateSectionLabels();
 			updateStaffGroupDropdown();
 			renderUserLists();
@@ -74,6 +78,7 @@ function updateSectionLabels() {
 	const labels = approvalPayload.labels || {};
 	$("#current-queue-title").text(labels.currentQueue || "Needs your approval");
 	$("#other-title").text(labels.other || "Other / not ready");
+	$("#unsubmitted-title").text(labels.unsubmitted || "Unsubmitted");
 	$("#approved-title").text(labels.approved || "Approved by you");
 }
 
@@ -376,7 +381,7 @@ async function selectUser(userId, role) {
 
 function renderUserLists() {
 	const selectedGroup = $("#staff_group").val();
-	const sections = approvalPayload.sections || { currentQueue: [], other: [], approved: [] };
+	const sections = approvalPayload.sections || { currentQueue: [], other: [], unsubmitted: [], approved: [] };
 
 	const filterUsers = users => {
 		if (selectedGroup === "all") return users || [];
@@ -421,6 +426,7 @@ function renderUserLists() {
 
 	renderList(sections.currentQueue, "current-queue-list", "current-queue-count");
 	renderList(sections.other, "other-list", "other-count");
+	renderList(sections.unsubmitted, "unsubmitted-list", "unsubmitted-count");
 	renderList(sections.approved, "approved-list", "approved-count");
 
 	if (selectedUserId && selectedRole) {
