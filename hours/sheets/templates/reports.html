@@ -166,6 +166,9 @@
             .replace("monthHolder", month);
         try{
             let res = await fetch(url);
+            if (!res.ok) {
+                throw new Error(`Server returned ${res.status} while loading the monthly report.`);
+            }
             return await res.json();
         }
         catch (err){

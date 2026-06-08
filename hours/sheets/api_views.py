@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.db.models import QuerySet, Sum
+from django.db import connection
 from sheets import customPermissions
 from django.http import HttpResponse
 from collections import OrderedDict
@@ -213,7 +214,9 @@ class PublicMonthlyReportApiView(APIView):
 
     def get(self, request, year: str, month: str):
 
-        sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
+        sheets = Sheet.objects.filter(
+            year=year, month=month, user__is_active=True
+        ).only("id", "user", "year", "month", "data", "submitted")
         hours, activeUsers = PublicMonthlyReportApiView.get_sheet_sums(sheets)
         res = {
             "hours": hours,
@@ -246,7 +249,8 @@ class PublicMonthlyReportApiView(APIView):
             inplace=True
         )
         df.rename(columns={"Hours": "Total"}, inplace=True)
-        return df.sum()
+        df = df.apply(pd.to_numeric, errors="coerce").fillna(0)
+        return df.sum(numeric_only=True)
 
     @classmethod
     def minute_formatter(cls, minutes: int) -> str:
@@ -257,57 +261,138 @@ class MonthlyReportApiView(APIView):
 
     permission_classes = [customPermissions.IsProjectReportManager]
 
-    def get(self, request, year: str, month: str):
-        # 1. Base queryset: only active users, single join for user
-        base_sheets = (
+    REPORT_SHEET_FIELDS = [
+        "id",
+        "user",
+        "year",
+        "month",
+        "data",
+        "submitted",
+        "is_verified",
+        "is_supreme_verified",
+    ]
+    NEW_APPROVAL_FIELDS = [
+        "manager_level_1_verified",
+        "manager_level_2_verified",
+        "supreme_verified",
+    ]
+
+    @classmethod
+    def db_has_model_fields(cls, model, field_names):
+        """Return False when code has new fields but the DB migration is not applied yet."""
+        try:
+            with connection.cursor() as cursor:
+                table_columns = {
+                    column.name
+                    for column in connection.introspection.get_table_description(
+                        cursor, model._meta.db_table
+                    )
+                }
+        except Exception:
+            return False
+
+        for field_name in field_names:
+            try:
+                db_column = model._meta.get_field(field_name).column
+            except Exception:
+                return False
+            if db_column not in table_columns:
+                return False
+        return True
+
+    @classmethod
+    def new_approval_columns_available(cls):
+        return cls.db_has_model_fields(Sheet, cls.NEW_APPROVAL_FIELDS)
+
+    @staticmethod
+    def full_name_from_row(row):
+        full_name = f"{row.get('first_name', '')} {row.get('last_name', '')}".strip()
+        return full_name or "Unnamed User"
+
+    @classmethod
+    def get_active_user_report_rows(cls):
+        # values() keeps this report working even if optional new User fields have
+        # been added in code but their migration has not been applied yet.
+        return list(
+            User.objects
+            .filter(is_active=True)
+            .values("id", "first_name", "last_name", "wage")
+        )
+
+    @classmethod
+    def get_report_sheet_queryset(cls, year, month, include_new_approval=None):
+        if include_new_approval is None:
+            include_new_approval = cls.new_approval_columns_available()
+
+        fields = list(cls.REPORT_SHEET_FIELDS)
+        if include_new_approval:
+            fields.extend(cls.NEW_APPROVAL_FIELDS)
+
+        # Do not select_related('user') here. If the new User manager fields are
+        # not migrated yet, selecting the full User row can also crash reports.
+        return (
             Sheet.objects
             .filter(year=year, month=month, user__is_active=True)
-            .select_related('user')
+            .only(*fields)
         )
 
-        # 2. Single aggregation for counts (no hours/payments fields)
-        agg = base_sheets.aggregate(
-            total_sheets=Count('id'),
-            submitted=Count('id', filter=Q(submitted=True)),
-            manager_level_1_verified=Count('id', filter=Q(manager_level_1_verified=True)),
-            manager_level_2_verified=Count('id', filter=Q(manager_level_2_verified=True)),
-            verified=Count('id', filter=Q(manager_level_1_verified=True, manager_level_2_verified=True)),
-            supreme_verified=Count('id', filter=Q(supreme_verified=True)),
+    def get(self, request, year: str, month: str):
+        has_new_approval_columns = self.new_approval_columns_available()
+        sheets_list = list(
+            self.get_report_sheet_queryset(
+                year, month, include_new_approval=has_new_approval_columns
+            )
         )
 
-        # 3. Force evaluation – one query, then Python filtering
-        sheets_list = list(base_sheets)
+        active_user_rows = self.get_active_user_report_rows()
+        user_name_map = {
+            row["id"]: self.full_name_from_row(row) for row in active_user_rows
+        }
+        user_wage_map = {row["id"]: row.get("wage", 0) or 0 for row in active_user_rows}
+        sheet_user_ids = {sheet.user_id for sheet in sheets_list if sheet.user_id}
+        sheetless_rows = [
+            row for row in active_user_rows if row["id"] not in sheet_user_ids
+        ]
+
+        def sheet_user_name(sheet):
+            return user_name_map.get(sheet.user_id, "Deleted User")
 
         submitted_names = [
-            s.user.get_full_name() for s in sheets_list if s.submitted
+            sheet_user_name(sheet) for sheet in sheets_list if sheet.submitted
         ]
-        verified_names = [
-            s.user.get_full_name() for s in sheets_list if s.manager_level_1_verified and s.manager_level_2_verified
-        ]
-        supreme_verified_names = [
-            s.user.get_full_name() for s in sheets_list if s.supreme_verified
-        ]
+        if has_new_approval_columns:
+            verified_names = [
+                sheet_user_name(sheet)
+                for sheet in sheets_list
+                if sheet.manager_level_1_verified and sheet.manager_level_2_verified
+            ]
+            supreme_verified_names = [
+                sheet_user_name(sheet) for sheet in sheets_list if sheet.supreme_verified
+            ]
+        else:
+            # Legacy fallback when the approval migration has not been applied.
+            verified_names = [
+                sheet_user_name(sheet) for sheet in sheets_list if sheet.is_verified
+            ]
+            supreme_verified_names = [
+                sheet_user_name(sheet) for sheet in sheets_list if sheet.is_supreme_verified
+            ]
 
-        # 4. Active users without a sheet this month
-        sheetless_users = User.objects.filter(is_active=True).exclude(
-            sheets__year=year, sheets__month=month
-        )
-        sheetless_names = [u.get_full_name() for u in sheetless_users]
+        sheetless_names = [self.full_name_from_row(row) for row in sheetless_rows]
 
-        # 5. Active user count (instead of all users)
-        active_user_count = User.objects.filter(is_active=True).count()
-
-        # 6. Use the original method, but pass the already-fetched sheets list
-        hours, payments = MonthlyReportApiView.get_sheet_sums(
-            sheets_list, sheetless_users
+        hours, payments = self.get_sheet_sums(
+            sheets_list,
+            sheetless_rows,
+            user_name_map=user_name_map,
+            user_wage_map=user_wage_map,
         )
 
         res = {
             "hours": hours,
             # "payments": payments,
-            "usersNum": active_user_count,
-            "sheetsNum": agg['total_sheets'],
-            "submittedSheetsNum": agg['submitted'],
+            "usersNum": len(active_user_rows),
+            "sheetsNum": len(sheets_list),
+            "submittedSheetsNum": len(submitted_names),
             "sheetlessUsers": sheetless_names,
             "submittedUsers": submitted_names,
             "verifiedUsers": verified_names,
@@ -317,7 +402,41 @@ class MonthlyReportApiView(APIView):
         return Response(res, status=status.HTTP_200_OK)
 
     @classmethod
-    def get_sheet_sums(cls, sheets: QuerySet, sheetless_users: QuerySet) -> dict:
+    def report_row_name(cls, row_or_user):
+        if isinstance(row_or_user, dict):
+            return cls.full_name_from_row(row_or_user)
+        return row_or_user.get_full_name()
+
+    @classmethod
+    def normalize_sheet_data_for_report(cls, sheet: Sheet):
+        """Normalize old row shapes in memory only; reports must not write sheets."""
+        data = sheet.data or []
+        if not data:
+            return
+
+        if "Remote" not in data[0]:
+            for row in data:
+                row.setdefault("Remote", "00:00")
+                row.setdefault("Auto Hours", "00:00")
+                row.setdefault("Rest", "00:00")
+
+        for row in data:
+            row.setdefault("Note Hours", "")
+            auto_m = sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
+            remote_m = sheet.hhmm2minutes(row.get("Remote", "00:00"))
+            rest_m = sheet.hhmm2minutes(row.get("Rest", "00:00"))
+            row["Total"] = sheet.minutes2hhmm(auto_m + remote_m - rest_m)
+
+    @classmethod
+    def get_sheet_sums(
+        cls,
+        sheets: QuerySet,
+        sheetless_users: QuerySet,
+        user_name_map=None,
+        user_wage_map=None,
+    ) -> dict:
+        user_name_map = user_name_map or {}
+        user_wage_map = user_wage_map or {}
         projects = [p["name"] for p in Project.objects.values("name")]
         projects.append("Total")
         # projects.append("Total 2")
@@ -331,18 +450,22 @@ class MonthlyReportApiView(APIView):
         hours = dict()
         payments = dict()
         for sheet in sheets:
-            sheet.normalize_sheet()
+            cls.normalize_sheet_data_for_report(sheet)
             sheet_sum = cls.get_sum(sheet)
             sheet_sum = projects_empty.add(sheet_sum, fill_value=0)
             projects_sum = projects_sum.add(sheet_sum, fill_value=0)
-            full_name = sheet.user.get_full_name() if sheet.user else "Deleted User"
+            if user_name_map:
+                full_name = user_name_map.get(sheet.user_id, "Deleted User")
+                wage = user_wage_map.get(sheet.user_id, 0)
+            else:
+                full_name = sheet.user.get_full_name() if sheet.user else "Deleted User"
+                wage = sheet.user.wage if sheet.user else 0
             hours[full_name] = sheet_sum.apply(cls.minute_formatter).to_dict()
-            wage = sheet.user.wage if sheet.user else 0
             payments[full_name] = sheet_sum.apply(
                 lambda x: int(x / 60 * wage)
             ).to_dict()
         for user in sheetless_users:
-            full_name = user.get_full_name()
+            full_name = cls.report_row_name(user)
             hours[full_name] = projects_empty.to_dict()
             payments[full_name] = 0
         hours["Total"] = projects_sum.apply(cls.minute_formatter).to_dict()
@@ -352,16 +475,21 @@ class MonthlyReportApiView(APIView):
     def get_sum(self, sheet: Sheet) -> pd.Series:
         """returns sheet column sums"""
         df = sheet.transform()
+        if df.empty:
+            return pd.Series(dtype="float64")
         df.drop(
             columns=[
                 "Day", "WeekDay", "Attendance", "Description",
-                "Auto Hours", "Rest", "Remote", "Total"
+                "Auto Hours", "Rest", "Remote", "Total", "Note Hours"
             ],
             errors="ignore",
             inplace=True
         )
         df.rename(columns={"Hours": "Total"}, inplace=True)
-        return df.sum()
+        # Note/comment columns are strings. Keep only numeric project/hour data so
+        # pandas does not concatenate text and then crash when totals are added.
+        df = df.apply(pd.to_numeric, errors="coerce").fillna(0)
+        return df.sum(numeric_only=True)
 
     @classmethod
     def minute_formatter(cls, minutes: int) -> str:

@@ -225,13 +225,21 @@ class DetailedReportView(View):
 
 		year = request.GET.get("year")
 		month = request.GET.get("month")
-		sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
+		sheets = MonthlyReportApiView.get_report_sheet_queryset(
+			year, month, include_new_approval=False
+		)
+		active_user_rows = MonthlyReportApiView.get_active_user_report_rows()
+		user_name_map = {
+			row["id"]: MonthlyReportApiView.full_name_from_row(row)
+			for row in active_user_rows
+		}
 
 		buffer = io.BytesIO()
 		writer = pd.ExcelWriter(buffer, engine="xlsxwriter")
 		for sheet in sheets:
 			df = pd.DataFrame(sheet.data)
-			df.to_excel(writer, sheet_name=sheet.user.get_full_name())
+			sheet_name = user_name_map.get(sheet.user_id, "Deleted User")[:31]
+			df.to_excel(writer, sheet_name=sheet_name)
 		writer.close()
 
 		response = HttpResponse(
@@ -251,12 +259,24 @@ class MainReportView(View):
 
 		year = request.GET.get("year")
 		month = request.GET.get("month")
-		sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
-		sheetless_users = User.objects.select_related().exclude(
-			sheets__year=year, sheets__month=month
-		)
+		sheets = list(MonthlyReportApiView.get_report_sheet_queryset(year, month))
+		active_user_rows = MonthlyReportApiView.get_active_user_report_rows()
+		user_name_map = {
+			row["id"]: MonthlyReportApiView.full_name_from_row(row)
+			for row in active_user_rows
+		}
+		user_wage_map = {row["id"]: row.get("wage", 0) or 0 for row in active_user_rows}
+		sheet_user_ids = {sheet.user_id for sheet in sheets if sheet.user_id}
+		sheetless_users = [
+			row for row in active_user_rows if row["id"] not in sheet_user_ids
+		]
 
-		hours, payments = MonthlyReportApiView.get_sheet_sums(sheets, sheetless_users)
+		hours, payments = MonthlyReportApiView.get_sheet_sums(
+			sheets,
+			sheetless_users,
+			user_name_map=user_name_map,
+			user_wage_map=user_wage_map,
+		)
 		hours_df = pd.DataFrame(hours).transpose()
 		hours_df = hours_df.reindex(np.roll(hours_df.index, 1))
 		payments_df = pd.DataFrame(payments).transpose()
@@ -283,11 +303,11 @@ class UsersMonthlyReportView(View):
 	def get(self, request):
 
 		year = request.GET.get("year")
-		users = User.objects.all()
+		users = User.objects.values("id", "first_name", "last_name")
 		data = dict()
 		for u in users:
-			sheets = Sheet.objects.filter(year=year, user=u).values("month", "total")
-			data[u.get_full_name()] = {
+			sheets = Sheet.objects.filter(year=year, user_id=u["id"]).values("month", "total")
+			data[MonthlyReportApiView.full_name_from_row(u)] = {
 				sheet["month"]: round(sheet["total"] / 60, 2) for sheet in sheets
 			}
 
@@ -319,7 +339,9 @@ class ProjectsYearlyReportView(View):
 		year = request.GET.get("year")
 		d = dict()
 		for i in range(1, 13):
-			qs = Sheet.objects.filter(month=i, year=year)
+			qs = Sheet.objects.filter(month=i, year=year).only(
+				"id", "user", "year", "month", "data", "submitted"
+			)
 			d[i] = self.get_info(qs).to_dict()
 
 		for month, data in d.items():
@@ -350,12 +372,19 @@ class ProjectsYearlyReportView(View):
 			return pd.Series(dtype="float64")
 		df_all = pd.DataFrame()
 		for sheet in queryset:
+			MonthlyReportApiView.normalize_sheet_data_for_report(sheet)
 			df = sheet.transform()
 			if "Hours" not in df:
 				continue
-			if "َAuto Hours" not in df:
+			if "Auto Hours" not in df:
 				continue
-			df.drop(["Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest"], axis=1, inplace=True)
+			df.drop(
+				["Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest", "Note Hours"],
+				axis=1,
+				errors="ignore",
+				inplace=True,
+			)
+			df = df.apply(pd.to_numeric, errors="coerce").fillna(0)
 			df_all = df_all.add(df, fill_value=0)
 		return df_all.sum()
 
