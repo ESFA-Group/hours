@@ -72,7 +72,10 @@
     async function getPublicInfo() {
         const url = '{% url "sheets:api_info"%}';
         try {
-            let res = await fetch(url);
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error(`Info API returned ${res.status}`);
+            }
             return await res.json();
         }
         catch (err) {
@@ -80,13 +83,18 @@
                 error: 1,
                 name: 'Error',
                 title: "Fetching Info",
-                message: err,
+                message: err.message || err,
                 timeout: 6000,
             });
+            return null;
         }
     }
 
     function drawInfoChart(selector, monthInfo, yearInfo, totInfo) {
+        monthInfo = Object.assign({}, monthInfo || {});
+        yearInfo = Object.assign({}, yearInfo || {});
+        totInfo = Object.assign({}, totInfo || {});
+
         const layout = {
             grid: { rows: 1, columns: 3 },
             legend: { "orientation": "h" },
@@ -96,11 +104,11 @@
 
         }
 
-        const monthTotal = monthInfo.Hours;
+        const monthTotal = Number(monthInfo.Hours || 0);
         delete monthInfo.Hours;
-        const yearTotal = yearInfo.Hours;
+        const yearTotal = Number(yearInfo.Hours || 0);
         delete yearInfo.Hours;
-        const totTotal = totInfo.Hours;
+        const totTotal = Number(totInfo.Hours || 0);
         delete totInfo.Hours;
 
         const data = [
@@ -149,17 +157,23 @@
 
 
     async function getEsfaMonthlyData(year) {
-        MonthlyData = [];
+        const MonthlyData = [];
         for (let i = 1; i <= 12; i++) {
-            monthData = await getEsfaMonthData(year, i);
-            hours = parseInt(monthData.hours.Total.split(':')[0]);
-            if (hours == 0) {
+            const monthData = await getEsfaMonthData(year, i);
+            if (!monthData || !monthData.hours || !monthData.hours.Total || !monthData.activeUsers) {
+                continue;
+            }
+            const parts = String(monthData.hours.Total).split(':');
+            const hours = parseInt(parts[0] || '0', 10);
+            const minutes = parseInt(parts[1] || '0', 10);
+            const totalHours = hours + (minutes / 60);
+            if (!totalHours) {
                 continue;
             }
 
             MonthlyData.push({
                 month: i,
-                meanHours: hours / monthData.activeUsers,
+                meanHours: totalHours / monthData.activeUsers,
             });
         }
         return MonthlyData;
@@ -171,7 +185,10 @@
             .replace("monthHolder", month);
 
         try {
-            let res = await fetch(url);
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error(`Monthly report API returned ${res.status}`);
+            }
             return await res.json();
         }
         catch (err) {
@@ -179,9 +196,10 @@
                 error: 1,
                 name: 'Error',
                 title: "Fetching Info",
-                message: err,
+                message: err.message || err,
                 timeout: 6000,
             });
+            return null;
         }
     }
 
@@ -263,18 +281,25 @@
 
     async function showInfo() {
         const info = await getPublicInfo();
+        if (!info) {
+            return;
+        }
         console.log('info is:', info)
         drawInfoChart('user-chart', info.user_month_info, info.user_year_info, info.user_tot_info);
         drawInfoChart('ESFA-chart', info.esfa_month_info, info.esfa_year_info, info.esfa_tot_info);
-        const esfa_monthly_hours = await getEsfaMonthlyData(1403);
-        drawMonthlyChart('monthly-chart', info.user_monthly_hours, esfa_monthly_hours);
-        $("#hero-name").text(info.last_hero);
+        const esfa_monthly_hours = Array.isArray(info.esfa_monthly_hours)
+            ? info.esfa_monthly_hours
+            : await getEsfaMonthlyData(info.current_year || 1403);
+        drawMonthlyChart('monthly-chart', info.user_monthly_hours || [], esfa_monthly_hours || []);
+        $("#hero-name").text(info.last_hero || '-');
         $("#cool-sentence").text(sentences[randInt(0, sentences.length)]);
-        $("#esfa-mean").text(`${Math.floor(info.last_esfa_mean / 60)}:${Math.floor(info.last_esfa_mean % 60)}`);
-        $("#user-mean").text(`${Math.floor(info.last_user_mean / 60)}:${Math.floor(info.last_user_mean % 60)}`);
-        const diff = Math.abs(info.last_esfa_mean - info.last_user_mean);
-        const color = info.last_esfa_mean < info.last_user_mean ? "green" : "red";
-        const txt = info.last_esfa_mean <= info.last_user_mean ? "above" : "under";
+        const lastEsfaMean = Number(info.last_esfa_mean || 0);
+        const lastUserMean = Number(info.last_user_mean || 0);
+        $("#esfa-mean").text(`${Math.floor(lastEsfaMean / 60)}:${Math.floor(lastEsfaMean % 60)}`);
+        $("#user-mean").text(`${Math.floor(lastUserMean / 60)}:${Math.floor(lastUserMean % 60)}`);
+        const diff = Math.abs(lastEsfaMean - lastUserMean);
+        const color = lastEsfaMean < lastUserMean ? "green" : "red";
+        const txt = lastEsfaMean <= lastUserMean ? "above" : "under";
         $("#mean-diff").text(`${Math.floor(diff / 60)}:${Math.floor(diff % 60)} ${txt}`).css({ color: color });
     }
 

@@ -126,36 +126,48 @@ class InfoApiView(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
+    INFO_SHEET_FIELDS = ["id", "user", "year", "month", "data", "total"]
+    NON_PROJECT_COLUMNS = {
+        "Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest", "Total",
+        "Attendance", "Description", "Note Hours",
+    }
+
     def get(self, request):
 
         today = jdt.date.today()
         month, year = today.month, today.year
 
-        all_sheets = Sheet.objects.all()
+        # Keep this page fast by selecting only fields used by the charts.  Do not
+        # select_related('user') here because this page must keep working even when
+        # optional approval User fields exist in code but their DB migration has not
+        # been applied yet.
+        base_sheets = Sheet.objects.only(*self.INFO_SHEET_FIELDS).filter(user__is_active=True)
+        user_sheets = base_sheets.filter(user=request.user)
 
         user_month_info = self.get_info(
-            all_sheets.filter(user=request.user, month=month)
+            user_sheets.filter(year=year, month=month)
         )
         user_year_info = self.get_info(
-            all_sheets.filter(user=request.user, year=year).exclude(month=month)
+            user_sheets.filter(year=year).exclude(month=month)
         )
         user_year_info = user_year_info.add(user_month_info, fill_value=0)
         user_tot_info = self.get_info(
-            all_sheets.filter(user=request.user).exclude(year=year)
+            user_sheets.exclude(year=year)
         )
         user_tot_info = user_tot_info.add(user_year_info, fill_value=0)
 
-        esfa_month_info = self.get_info(all_sheets.filter(month=month))
+        esfa_month_info = self.get_info(base_sheets.filter(year=year, month=month))
         esfa_year_info = self.get_info(
-            all_sheets.filter(year=year).exclude(month=month)
+            base_sheets.filter(year=year).exclude(month=month)
         )
         esfa_year_info = esfa_year_info.add(esfa_month_info, fill_value=0)
-        esfa_tot_info = self.get_info(all_sheets.exclude(year=year))
+        esfa_tot_info = self.get_info(base_sheets.exclude(year=year))
         esfa_tot_info = esfa_tot_info.add(esfa_year_info, fill_value=0)
 
         last_month = month - 1 if month != 1 else 12
+        last_month_year = year if month != 1 else year - 1
         monthly_sheets = (
-            Sheet.objects.filter(year=year, user=request.user)
+            user_sheets.filter(year=year)
             .values("total", "month")
             .order_by("month")
         )
@@ -167,45 +179,124 @@ class InfoApiView(APIView):
             "esfa_month_info": esfa_month_info.to_dict(),
             "esfa_year_info": esfa_year_info.to_dict(),
             "esfa_tot_info": esfa_tot_info.to_dict(),
-            "last_hero": self.get_hero(year, last_month),
-            "last_esfa_mean": self.get_month_mean(year, last_month),
-            "last_user_mean": self.get_month_mean(year, last_month, user=request.user),
+            "last_hero": self.get_hero(last_month_year, last_month),
+            "last_esfa_mean": self.get_month_mean(last_month_year, last_month),
+            "last_user_mean": self.get_month_mean(last_month_year, last_month, user=request.user),
             "user_monthly_hours": user_monthly_hours,
+            "esfa_monthly_hours": self.get_esfa_monthly_means(year),
+            "current_year": year,
+            "current_month": month,
         }
 
-        # print('info is:', info)
         return Response(info, status=status.HTTP_200_OK)
 
     def get_hero(self, year: int, month: int) -> str:
         hero_name = "Anonymous Anonymousian"
-        hero = Sheet.objects.filter(year=year, month=month, user__is_active=True).order_by("-total").first()
-        if hero:  # hero may be None
-            hero_name = hero.user.get_full_name()
+        hero_row = (
+            Sheet.objects
+            .filter(year=year, month=month, user__is_active=True)
+            .values("user__first_name", "user__last_name", "user_name")
+            .order_by("-total")
+            .first()
+        )
+        if hero_row:
+            full_name = f"{hero_row.get('user__first_name', '')} {hero_row.get('user__last_name', '')}".strip()
+            hero_name = full_name or hero_row.get("user_name") or hero_name
         return hero_name
 
-    def get_month_mean(self, year: int, month: int, user=None) -> str:
+    def get_month_mean(self, year: int, month: int, user=None) -> float:
         sheets = Sheet.objects.filter(year=year, month=month, user__is_active=True)
         if user is not None:
             sheets = sheets.filter(user=user)
-        if not sheets.count():
+        totals = sheets.aggregate(total_sum=Sum("total"), users_count=Count("id"))
+        users_count = totals.get("users_count") or 0
+        if not users_count:
             return 0
-        tot = sheets.aggregate(Sum("total"))
-        return tot["total__sum"] / sheets.count()
+        return (totals.get("total_sum") or 0) / users_count
 
-    def get_info(self, queryset: QuerySet) -> pd.Series:
-        if not queryset.count():
+    def get_esfa_monthly_means(self, year: int) -> list:
+        """Return monthly ESFA mean hours in one cheap aggregate query.
+
+        The old page made 12 sequential calls to the public monthly report API. Each
+        call transformed every monthly sheet with pandas, which made /hours_info
+        very slow and could timeout. This keeps the chart data in the main payload.
+        """
+        rows = (
+            Sheet.objects
+            .filter(year=year, user__is_active=True)
+            .values("month")
+            .annotate(total_sum=Sum("total"), active_users=Count("id"))
+            .order_by("month")
+        )
+        data = []
+        for row in rows:
+            active_users = row.get("active_users") or 0
+            total_sum = row.get("total_sum") or 0
+            if not active_users or total_sum <= 0:
+                continue
+            data.append({
+                "month": row["month"],
+                "meanHours": total_sum / active_users / 60,
+            })
+        return data
+
+    @classmethod
+    def hhmm2minutes(cls, value) -> int:
+        try:
+            if value is None:
+                return 0
+            if isinstance(value, (int, float)):
+                return int(value)
+            h, m = str(value).split(":")[:2]
+            return int(h) * 60 + int(m)
+        except Exception:
+            return 0
+
+    @classmethod
+    def parse_project_prop(cls, value) -> float:
+        try:
+            if value is None or value == "":
+                return 0
+            if isinstance(value, str):
+                return float(value.replace("%", "").strip()) / 100
+            return float(value)
+        except Exception:
+            return 0
+
+    @classmethod
+    def row_hours(cls, row: dict, sheet: Sheet) -> int:
+        auto_m = cls.hhmm2minutes(row.get("Auto Hours", "00:00"))
+        remote_m = cls.hhmm2minutes(row.get("Remote", "00:00"))
+        rest_m = cls.hhmm2minutes(row.get("Rest", "00:00"))
+        computed = auto_m + remote_m - rest_m
+        # Old rows may have only Hours. Also keep submitted manual Hours when no
+        # attendance/remote/rest data exists yet.
+        if computed == 0 and "Hours" in row:
+            return cls.hhmm2minutes(row.get("Hours", "00:00"))
+        return computed
+
+    @classmethod
+    def get_info(cls, queryset: QuerySet) -> pd.Series:
+        totals = {}
+        has_rows = False
+        for sheet in queryset.iterator(chunk_size=200):
+            for row in sheet.data or []:
+                if not isinstance(row, dict):
+                    continue
+                has_rows = True
+                hours = cls.row_hours(row, sheet)
+                totals["Hours"] = totals.get("Hours", 0) + hours
+                if not hours:
+                    continue
+                for key, value in row.items():
+                    if key in cls.NON_PROJECT_COLUMNS:
+                        continue
+                    prop = cls.parse_project_prop(value)
+                    if prop:
+                        totals[key] = totals.get(key, 0) + (prop * hours)
+        if not has_rows:
             return pd.Series(dtype="float64")
-        df_all = pd.DataFrame()
-        for sheet in queryset:
-            df = sheet.transform()
-            df.drop(
-                columns=["Day", "WeekDay", "Attendance", "Description", "Note Hours", "Auto Hours", "Rest", "Remote"],
-                errors='ignore',
-                inplace=True
-            )
-            df = df.select_dtypes(include="number")
-            df_all = df_all.add(df, fill_value=0)
-        return df_all.sum()
+        return pd.Series(totals, dtype="float64")
 
 
 class PublicMonthlyReportApiView(APIView):
@@ -229,28 +320,39 @@ class PublicMonthlyReportApiView(APIView):
     def get_sheet_sums(cls, sheets: QuerySet) -> dict:
         projects = [p["name"] for p in Project.objects.values("name")]
         projects.append("Total")
+        projects_sum = {p: 0 for p in projects}
+        active_users = 0
 
-        # a pandas Series which will be a summation of all desiered sheet sums
-        projects_sum = pd.Series({p: 0 for p in projects})
-
-        for sheet in sheets:
+        iterable = sheets.iterator(chunk_size=200) if hasattr(sheets, "iterator") else sheets
+        for sheet in iterable:
+            active_users += 1
             sheet_sum = cls.get_sum(sheet)
-            projects_sum = projects_sum.add(sheet_sum, fill_value=0)
+            for key, value in sheet_sum.items():
+                projects_sum[key] = projects_sum.get(key, 0) + value
 
-        return projects_sum.apply(cls.minute_formatter).to_dict(), sheets.count()
+        return {
+            key: cls.minute_formatter(value)
+            for key, value in projects_sum.items()
+        }, active_users
 
     @classmethod
-    def get_sum(self, sheet: Sheet) -> pd.Series:
-        """returns sheet column sums"""
-        df = sheet.transform()
-        df.drop(
-            columns=["Day", "WeekDay", "Attendance", "Description", "Note Hours", "Auto Hours", "Rest", "Remote"],
-            errors='ignore',
-            inplace=True
-        )
-        df.rename(columns={"Hours": "Total"}, inplace=True)
-        df = df.apply(pd.to_numeric, errors="coerce").fillna(0)
-        return df.sum(numeric_only=True)
+    def get_sum(self, sheet: Sheet) -> dict:
+        """Return sheet column sums without pandas; used by the public info page."""
+        totals = {"Total": 0}
+        for row in sheet.data or []:
+            if not isinstance(row, dict):
+                continue
+            hours = InfoApiView.row_hours(row, sheet)
+            totals["Total"] = totals.get("Total", 0) + hours
+            if not hours:
+                continue
+            for key, value in row.items():
+                if key in InfoApiView.NON_PROJECT_COLUMNS:
+                    continue
+                prop = InfoApiView.parse_project_prop(value)
+                if prop:
+                    totals[key] = totals.get(key, 0) + (prop * hours)
+        return totals
 
     @classmethod
     def minute_formatter(cls, minutes: int) -> str:
