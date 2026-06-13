@@ -1,3 +1,5 @@
+import requests
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -5,6 +7,8 @@ from esfa_eyes import customPermissions
 
 from esfa_eyes.models import EsfaEyes
 from .schemas.esfa_eyes_info import EsfaEyesInfo
+
+BRSAPI_CURRENCY_URL = "https://brsapi.ir/Api/Market/Gold_Currency.php?key=BfTErgVQ4YHlDZ33IcmWap9FhgiWU17H"
 
 
 class EsfaEyesApiView(APIView):
@@ -86,9 +90,40 @@ class DetailedSalesApiView(APIView):
 
 class StaffInfoApiView(APIView):
 	permission_classes = [customPermissions.hasStaffInfoAccess]
-	
+
 	def get(self, request):
 		user = self.request.user
-		
+
 		url = "https://docs.google.com/spreadsheets/d/1NOEgVtkJAwRoBmt0NXxoQ6-jA_CGuEF21ccSxbfTINQ/edit?usp=sharing"
 		return Response(url, status=status.HTTP_200_OK)
+
+
+class CurrenciesApiView(APIView):
+	"""Server-side proxy for the brsapi.ir Gold/Currency feed.
+
+	The browser cannot call brsapi.ir directly (it redirects the CORS
+	preflight, which the spec forbids), so we fetch it here and keep the
+	API key off the client.
+	"""
+	permission_classes = [permissions.IsAuthenticated]
+
+	def get(self, request):
+		headers = {
+			"User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 OPR/106.0.0.0",
+			"Accept": "application/json, text/plain, */*"
+		}
+
+		try:
+			resp = requests.get(
+				BRSAPI_CURRENCY_URL,
+				headers=headers,
+				timeout=10,
+			)
+			resp.raise_for_status()
+		except requests.RequestException as exc:
+			return Response(
+				{"title": "Currency service error", "message": str(exc)},
+				status=status.HTTP_502_BAD_GATEWAY,
+			)
+
+		return Response(resp.json(), status=status.HTTP_200_OK)

@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = true;
+let Debug = false;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -169,7 +169,7 @@ async function getCurrencies() {
 		};
 	}
 
-	return apiService.get('https://BrsApi.ir/Api/Market/Gold_Currency.php?key=BfTErgVQ4YHlDZ33IcmWap9FhgiWU17H', {}, {}, "failed to get currencies")
+	return apiService.get('/currencies', {}, {}, "failed to get currencies")
 		.then(res => {
 			if (res.ok) {
 				return { "USD": res.data.currency[1], "CNY": res.data.currency[9] };
