@@ -47,14 +47,18 @@ const titleMapping = {
 	kavosh_series_sales_1403: "1403",
 	kavosh_series_sales_1404: "1404",
 	kavosh_series_sales_international: "خارج",
-	kavosh_series_sales_international_not_deliverd: "خارج تحویل داده نشده",
+	kavosh_series_sales_international_not_deliverd: "خارج بکاپ",
+	kavosh_series_sales_international_in_progress: "خارج در پروسه",
 	MCM_series_sales_1402: "1402",
 	MCM_series_sales_1403: "1403",
 	MCM_series_sales_1404: "1404",
 	MCM_series_sales_international: "خارج",
+	MCM_series_sales_international_not_deliverd: "خارج بکاپ",
+	MCM_series_sales_international_in_progress: "خارج در پروسه",
 	Captan_series_sales_1404: "1404",
 	Captan_series_sales_international: "خارج",
-	Captan_series_sales_international_not_delivered: "خارج تحویل داده نشده"
+	Captan_series_sales_international_not_delivered: "خارج بکاپ",
+	Captan_series_sales_international_in_progress: "خارج در پروسه"
 };
 
 const keyToModelFieldMap = {
@@ -117,17 +121,21 @@ const keyToModelFieldMap = {
 	kavosh_series_sales_1404: 'kavosh_series_sales_info',
 	kavosh_series_sales_international: 'kavosh_series_sales_info',
 	kavosh_series_sales_international_not_deliverd: 'kavosh_series_sales_info',
+	kavosh_series_sales_international_in_progress: 'kavosh_series_sales_info',
 
 	// MCM_series_sales_info
 	MCM_series_sales_1402: "MCM_series_sales_info",
 	MCM_series_sales_1403: "MCM_series_sales_info",
 	MCM_series_sales_1404: "MCM_series_sales_info",
 	MCM_series_sales_international: "MCM_series_sales_info",
+	MCM_series_sales_international_not_deliverd: "MCM_series_sales_info",
+	MCM_series_sales_international_in_progress: "MCM_series_sales_info",
 
 	// Captan_series_sales_info
 	Captan_series_sales_1404: "Captan_series_sales_info",
 	Captan_series_sales_international: "Captan_series_sales_info",
 	Captan_series_sales_international_not_delivered: "Captan_series_sales_info",
+	Captan_series_sales_international_in_progress: "Captan_series_sales_info",
 };
 
 // data backend connection ========================
@@ -298,11 +306,10 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 	let tableBody = '';
 	let cardBgColor = 'bg-success-subtle';
 
-	const rowsForColumnSum = columnSumConfig ? availableItems.filter(key => columnSumConfig.includeKeys.includes(key)) : [];
-	const columnSums = {};
-	subItemHeaders.forEach(header => {
-		columnSums[header] = 0;
-	});
+	// columnSumConfig may be a single {name, includeKeys} object or an array of them.
+	const sumConfigs = columnSumConfig
+		? (Array.isArray(columnSumConfig) ? columnSumConfig : [columnSumConfig])
+		: [];
 
 	availableItems.forEach(key => {
 		const item = data[key];
@@ -324,9 +331,6 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 			if (add_sum) {
 				rowSum += isNumeric(value) ? Number(value) : 0;
 			}
-			if (rowsForColumnSum.includes(key) && isNumeric(value)) {
-				columnSums[header] += Number(value);
-			}
 			dataCells += `<td class="data-cell" contenteditable="${isRowEditable}" data-key="${key}" data-subkey="${header}">${value.toLocaleString()}</td>`;
 		});
 
@@ -344,29 +348,32 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 		tableBody += row;
 	});
 
-	if (columnSumConfig && rowsForColumnSum.length > 0) {
-		let columnSumRow = `<tr class="column-sum-row table-warning" style="font-weight: bold;"><td>${columnSumConfig.name}</td>`;
+	sumConfigs.forEach((cfg, sumIdx) => {
+		const includedRows = availableItems.filter(key => cfg.includeKeys.includes(key));
+		if (includedRows.length === 0) return;
+
+		const cfgSums = {};
+		subItemHeaders.forEach(header => {
+			cfgSums[header] = includedRows.reduce((sum, key) => {
+				const value = data[key]._info[header];
+				return sum + (isNumeric(value) ? Number(value) : 0);
+			}, 0);
+		});
+
+		let columnSumRow = `<tr class="column-sum-row table-warning" data-sum-index="${sumIdx}" style="font-weight: bold;"><td>${cfg.name}</td>`;
 
 		if (add_sum) {
-			// Calculate total of row sums for included rows
-			let totalRowSum = 0;
-			rowsForColumnSum.forEach(key => {
-				const rowSumCell = document.createElement('td');
-				// This would need to be calculated from the actual row sums
-				// For simplicity, we'll calculate it from column sums
-			});
-			// Calculate total from column sums
-			const totalColumnSum = Object.values(columnSums).reduce((sum, val) => sum + val, 0);
-			columnSumRow += `<td class="column-total-sum table-warning">${totalColumnSum.toLocaleString()}</td>`;
+			const totalColumnSum = Object.values(cfgSums).reduce((sum, val) => sum + val, 0);
+			columnSumRow += `<td class="column-total-sum table-warning" data-sum-index="${sumIdx}">${totalColumnSum.toLocaleString()}</td>`;
 		}
 
 		subItemHeaders.forEach(header => {
-			columnSumRow += `<td class="column-sum-cell" data-subkey="${header}">${columnSums[header].toLocaleString()}</td>`;
+			columnSumRow += `<td class="column-sum-cell" data-sum-index="${sumIdx}" data-subkey="${header}">${cfgSums[header].toLocaleString()}</td>`;
 		});
 
 		columnSumRow += '<td>-</td></tr>';
 		tableBody += columnSumRow;
-	}
+	});
 
 	if (percentageConfig) {
 		const numData = data[percentageConfig.numeratorKey];
@@ -440,26 +447,29 @@ function createObjectTable(data, title, itemKeys, editable = false, add_sum = fa
 					if (sumCell) sumCell.innerText = newRowSum.toLocaleString();
 				}
 
-				if (columnSumConfig && rowsForColumnSum.includes(key)) {
-					let newColumnSum = 0;
-					table.querySelectorAll(`.data-cell[data-subkey="${subkey}"]`).forEach(cell => {
-						if (rowsForColumnSum.includes(cell.dataset.key)) {
-							newColumnSum += parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
-						}
-					});
-					const columnSumCell = table.querySelector(`.column-sum-cell[data-subkey="${subkey}"]`);
-					if (columnSumCell) columnSumCell.innerText = newColumnSum.toLocaleString();
+				sumConfigs.forEach((cfg, sumIdx) => {
+					if (!cfg.includeKeys.includes(key)) return;
 
-					// Update total column sum
+					subItemHeaders.forEach(header => {
+						let newColumnSum = 0;
+						table.querySelectorAll(`.data-cell[data-subkey="${header}"]`).forEach(cell => {
+							if (cfg.includeKeys.includes(cell.dataset.key)) {
+								newColumnSum += parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
+							}
+						});
+						const columnSumCell = table.querySelector(`.column-sum-cell[data-sum-index="${sumIdx}"][data-subkey="${header}"]`);
+						if (columnSumCell) columnSumCell.innerText = newColumnSum.toLocaleString();
+					});
+
 					if (add_sum) {
 						let newTotalColumnSum = 0;
-						table.querySelectorAll('.column-sum-cell').forEach(cell => {
+						table.querySelectorAll(`.column-sum-cell[data-sum-index="${sumIdx}"]`).forEach(cell => {
 							newTotalColumnSum += parseInt(cell.innerText.replace(/,/g, ''), 10) || 0;
 						});
-						const totalSumCell = table.querySelector('.column-total-sum');
+						const totalSumCell = table.querySelector(`.column-total-sum[data-sum-index="${sumIdx}"]`);
 						if (totalSumCell) totalSumCell.innerText = newTotalColumnSum.toLocaleString();
 					}
-				}
+				});
 
 				if (percentageConfig) {
 					const subkey = targetCell.dataset.subkey;
@@ -571,9 +581,23 @@ async function initPrivateSalesTables(data = null) {
 
 	document.getElementById('pv-sales-dashboard-container').innerHTML = '';
 
-	createObjectTable(data, 'فروش تفکیکی کاوش', ['kavosh_series_sales_1399', 'kavosh_series_sales_1400', 'kavosh_series_sales_1401', 'kavosh_series_sales_1402', 'kavosh_series_sales_1403', 'kavosh_series_sales_1404', 'kavosh_series_sales_international', 'kavosh_series_sales_international_not_deliverd'], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
-	createObjectTable(data, 'فروش تفکیکی MCM', ['MCM_series_sales_1402', 'MCM_series_sales_1403', 'MCM_series_sales_1404', 'MCM_series_sales_international'], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
-	createObjectTable(data, 'فروش تفکیکی کپتان', ['Captan_series_sales_1404', 'Captan_series_sales_international', 'Captan_series_sales_international_not_delivered'], window.USER.is_detailed_sales_viewer, false, false, null, "pv-sales-dashboard-container");
+	const kavoshSalesSumConfig = [
+		{ name: 'جمع داخل', includeKeys: ['kavosh_series_sales_1399', 'kavosh_series_sales_1400', 'kavosh_series_sales_1401', 'kavosh_series_sales_1402', 'kavosh_series_sales_1403', 'kavosh_series_sales_1404'] },
+		{ name: 'جمع خارج', includeKeys: ['kavosh_series_sales_international', 'kavosh_series_sales_international_not_deliverd', 'kavosh_series_sales_international_in_progress'] },
+	];
+	createObjectTable(data, 'فروش تفکیکی کاوش', ['kavosh_series_sales_1399', 'kavosh_series_sales_1400', 'kavosh_series_sales_1401', 'kavosh_series_sales_1402', 'kavosh_series_sales_1403', 'kavosh_series_sales_1404', 'kavosh_series_sales_international', 'kavosh_series_sales_international_not_deliverd', 'kavosh_series_sales_international_in_progress'], window.USER.is_detailed_sales_viewer, false, false, kavoshSalesSumConfig, "pv-sales-dashboard-container");
+
+	const mcmSalesSumConfig = [
+		{ name: 'جمع داخل', includeKeys: ['MCM_series_sales_1402', 'MCM_series_sales_1403', 'MCM_series_sales_1404'] },
+		{ name: 'جمع خارج', includeKeys: ['MCM_series_sales_international', 'MCM_series_sales_international_not_deliverd', 'MCM_series_sales_international_in_progress'] },
+	];
+	createObjectTable(data, 'فروش تفکیکی MCM', ['MCM_series_sales_1402', 'MCM_series_sales_1403', 'MCM_series_sales_1404', 'MCM_series_sales_international', 'MCM_series_sales_international_not_deliverd', 'MCM_series_sales_international_in_progress'], window.USER.is_detailed_sales_viewer, false, false, mcmSalesSumConfig, "pv-sales-dashboard-container");
+
+	const captanSalesSumConfig = [
+		{ name: 'جمع داخل', includeKeys: ['Captan_series_sales_1404'] },
+		{ name: 'جمع خارج', includeKeys: ['Captan_series_sales_international', 'Captan_series_sales_international_not_delivered', 'Captan_series_sales_international_in_progress'] },
+	];
+	createObjectTable(data, 'فروش تفکیکی کپتان', ['Captan_series_sales_1404', 'Captan_series_sales_international', 'Captan_series_sales_international_not_delivered', 'Captan_series_sales_international_in_progress'], window.USER.is_detailed_sales_viewer, false, false, captanSalesSumConfig, "pv-sales-dashboard-container");
 
 	console.log(data);
 

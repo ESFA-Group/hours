@@ -191,6 +191,10 @@ def default_Captan_series_sales_info():
 				"Captan12": 12,
 				"Inductan": 0,
 			},update_interval_days=180, who_can_see=access_mappings["Captan_series_sales_info"]).__dict__,
+		"Captan_series_sales_international_in_progress": EsfaEyesProductInfo({
+				"Captan12": 0,
+				"Inductan": 0,
+			},update_interval_days=180, who_can_see=access_mappings["Captan_series_sales_info"]).__dict__,
 	}
 
 def default_kavosh_series_sales_info():
@@ -251,6 +255,13 @@ def default_kavosh_series_sales_info():
 				"CB1": 1,
 				"CM1": 1,
 			},update_interval_days=180, who_can_see=access_mappings["kavosh_series_sales_info"]).__dict__,
+		"kavosh_series_sales_international_in_progress": EsfaEyesProductInfo({
+				"Kavosh": 0,
+				"TDM": 0,
+				"TEM": 0,
+				"CB1": 0,
+				"CM1": 0,
+			},update_interval_days=180, who_can_see=access_mappings["kavosh_series_sales_info"]).__dict__,
 	}
 
 def default_MCM_series_sales_info():
@@ -270,6 +281,14 @@ def default_MCM_series_sales_info():
 		"MCM_series_sales_international": EsfaEyesProductInfo({
 				"MCM1": 3,
 				"غیر فروش": 1,
+			},update_interval_days=180, who_can_see=access_mappings["MCM_series_sales_info"]).__dict__,
+		"MCM_series_sales_international_not_deliverd": EsfaEyesProductInfo({
+				"MCM1": 0,
+				"غیر فروش": 0,
+			},update_interval_days=180, who_can_see=access_mappings["MCM_series_sales_info"]).__dict__,
+		"MCM_series_sales_international_in_progress": EsfaEyesProductInfo({
+				"MCM1": 0,
+				"غیر فروش": 0,
 			},update_interval_days=180, who_can_see=access_mappings["MCM_series_sales_info"]).__dict__,
 	}
 
