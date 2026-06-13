@@ -1,5 +1,5 @@
 let originalApiData = {};
-let Debug = false;
+let Debug = true;
 
 const titleMapping = {
 	balance_rials_official: 'موجودی حساب‌های رسمی (ریال)',
@@ -123,6 +123,11 @@ const keyToModelFieldMap = {
 	MCM_series_sales_1403: "MCM_series_sales_info",
 	MCM_series_sales_1404: "MCM_series_sales_info",
 	MCM_series_sales_international: "MCM_series_sales_info",
+
+	// Captan_series_sales_info
+	Captan_series_sales_1404: "Captan_series_sales_info",
+	Captan_series_sales_international: "Captan_series_sales_info",
+	Captan_series_sales_international_not_delivered: "Captan_series_sales_info",
 };
 
 // data backend connection ========================
@@ -718,7 +723,7 @@ $("document").ready(async function () {
 		initPrivateSalesTables();
 	});
 
-	$('#dashboard-container').on('click', '.btn-submit', function () {
+	$('#dashboard-container, #pv-sales-dashboard-container').on('click', '.btn-submit', function () {
 		handleSubmit(this);
 	});
 
