@@ -309,6 +309,7 @@
     const RestCol = 4
     const RemoteCol = 5
     const TotalCol = 6
+    const NoteHoursCol = 7
     const [BASE_PAYMENT, COMPLIMENTARY, FOOD_REDUCTION, TOTAL] = get_payment_holders_eleements();
 
     function get_payment_holders_eleements() {
@@ -783,7 +784,7 @@
         // Standard flow
         if (x !== undefined && value !== undefined) {
             const standardValue = TryStandartizeValue(value);
-            if ((x == AutoHourCol || x == RestCol || x == RemoteCol) && value !== standardValue) {
+            if ((x == AutoHourCol || x == RestCol || x == RemoteCol || x == NoteHoursCol) && value !== standardValue) {
                 window.spreadTable.updateCell(x, y, standardValue);
                 return;
             }
@@ -876,7 +877,7 @@
             { type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Total', mask: 'hh:mm', width: 80, readOnly: true },
-            { type: 'textarea', title: 'Note Hours', width: 160, readOnly: readOnlyAll },
+            { type: 'numeric', title: 'Note Hours', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
             { type: 'textarea', title: 'Description', width: 150, readOnly: readOnlyAll },
         ];
 
