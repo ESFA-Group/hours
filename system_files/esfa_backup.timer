@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the ESFA hours database backup daily
+
+[Timer]
+# Run every day at 02:30. Persistent=true means a missed run (e.g. machine
+# was off) fires as soon as the machine is back up.
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+Unit=esfa_backup.service
+
+[Install]
+WantedBy=timers.target

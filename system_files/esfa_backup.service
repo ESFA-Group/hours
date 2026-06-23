@@ -1,0 +1,15 @@
+[Unit]
+Description=ESFA hours database backup (tiered SQLite snapshot)
+After=network.target
+
+[Service]
+Type=oneshot
+User=mrn
+Group=mrn
+# Override these via systemd if your paths differ:
+Environment=ESFA_DB_PATH=/home/mrn/hours/hours/db.sqlite3
+Environment=ESFA_BACKUP_DIR=/home/mrn/hours/backups
+ExecStart=/bin/bash /home/mrn/hours/system_files/db_backup.sh
+
+[Install]
+WantedBy=multi-user.target
