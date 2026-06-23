@@ -1,3 +1,4 @@
+import copy
 from datetime import time
 from tempfile import NamedTemporaryFile
 
@@ -202,3 +203,143 @@ class HourApprovalWorkflowTests(TestCase):
         self.assertTrue(response.data['submitted'])
         self.assertTrue(response.data['manager_level_1_verified'])
         self.assertFalse(response.data['manager_level_2_verified'])
+
+
+class SheetEmptyProtectionTests(TestCase):
+    """Guards the hours grid against being wiped by empty/partial saves
+    (dropped connection, incomplete page load, client bugs) while keeping
+    legitimate edits -- including adding a project to a blank sheet -- working.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = self._make_user('worker')
+        self.year, self.month = 1403, 1
+        self.sheet = Sheet.objects.create(
+            user=self.user,
+            user_name=self.user.get_full_name(),
+            year=self.year,
+            month=self.month,
+        )
+        # A realistic full-month grid with real hours logged on day 1.
+        self.sheet.data = Sheet.empty_sheet_data(self.year, self.month)
+        self.sheet.data[0].update(
+            {'Auto Hours': '08:00', 'Rest': '00:00', 'Remote': '00:00'}
+        )
+        self.sheet.save()
+        self.full_rows = len(self.sheet.data)
+        self.client.force_authenticate(self.user)
+
+    def _make_user(self, username, **kwargs):
+        defaults = {
+            'password': 'pass',
+            'first_name': username,
+            'last_name': 'User',
+            'first_name_p': username,
+            'last_name_p': 'User',
+            'email': f'{username}@example.com',
+            'national_ID': '1234567890',
+            'dob': '1360/01/01',
+            'mobile1': '09120000000',
+            'address': 'Address',
+            'emergency_phone': '09120000001',
+            'bank_name': 'Bank',
+            'card_number': '1234567890123456',
+            'account_number': '1234567890123',
+            'SHEBA_number': 'IR123456789012345678901234',
+            'personal_image': 'p.jpg',
+            'national_ID_front_image': 'f.jpg',
+            'national_ID_back_image': 'b.jpg',
+            'birth_cert_first_page': 'bc1.jpg',
+            'birth_cert_changes_page': 'bc2.jpg',
+        }
+        defaults.update(kwargs)
+        return User.objects.create_user(username=username, **defaults)
+
+    def _url(self):
+        return reverse(
+            'sheets:api_sheets', kwargs={'year': self.year, 'month': self.month}
+        )
+
+    def _post(self, payload):
+        return self.client.post(self._url(), payload, format='json')
+
+    # --- protection against accidental emptying ---
+
+    def test_empty_data_is_rejected_and_sheet_preserved(self):
+        response = self._post({'saveSheet': True, 'data': []})
+        self.assertEqual(response.status_code, 400)
+        self.sheet.refresh_from_db()
+        self.assertEqual(len(self.sheet.data), self.full_rows)
+        self.assertEqual(self.sheet.data[0]['Auto Hours'], '08:00')
+
+    def test_missing_data_is_rejected_and_sheet_preserved(self):
+        response = self._post({'saveSheet': True})
+        self.assertEqual(response.status_code, 400)
+        self.sheet.refresh_from_db()
+        self.assertEqual(len(self.sheet.data), self.full_rows)
+        self.assertEqual(self.sheet.data[0]['Auto Hours'], '08:00')
+
+    def test_partial_data_is_rejected_and_sheet_preserved(self):
+        partial = copy.deepcopy(self.sheet.data)[:5]
+        response = self._post({'saveSheet': True, 'data': partial})
+        self.assertEqual(response.status_code, 400)
+        self.sheet.refresh_from_db()
+        self.assertEqual(len(self.sheet.data), self.full_rows)
+        self.assertEqual(self.sheet.data[0]['Auto Hours'], '08:00')
+
+    # --- legitimate flows still work ---
+
+    def test_full_grid_saves(self):
+        full = copy.deepcopy(self.sheet.data)
+        full[1].update({'Auto Hours': '07:00'})
+        response = self._post({'saveSheet': True, 'data': full})
+        self.assertEqual(response.status_code, 200)
+        self.sheet.refresh_from_db()
+        self.assertEqual(len(self.sheet.data), self.full_rows)
+        self.assertEqual(self.sheet.data[1]['Auto Hours'], '07:00')
+
+    def test_adding_project_to_blank_sheet_saves(self):
+        # Simulate a blank sheet (no hours yet) plus the "add project" action,
+        # which sends the full grid with a new project column.
+        blank = Sheet.empty_sheet_data(self.year, self.month)
+        for row in blank:
+            row.update(
+                {'Auto Hours': '00:00', 'Rest': '00:00', 'Remote': '00:00', 'ProjectX': ''}
+            )
+        blank[0].update({'Auto Hours': '08:00', 'ProjectX': '100'})
+        response = self._post({'saveSheet': True, 'data': blank})
+        self.assertEqual(response.status_code, 200)
+        self.sheet.refresh_from_db()
+        self.assertEqual(len(self.sheet.data), self.full_rows)
+        self.assertEqual(self.sheet.data[0]['ProjectX'], '100')
+
+    # --- editSheet hardening ---
+
+    def test_editsheet_cannot_blank_data(self):
+        response = self._post(
+            {'editSheet': True, 'field': 'data', 'row': {'userID': self.user.id, 'data': []}}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.sheet.refresh_from_db()
+        self.assertEqual(len(self.sheet.data), self.full_rows)
+
+    def test_editsheet_allows_payment_fields(self):
+        response = self._post(
+            {
+                'editSheet': True,
+                'field': 'reduction1',
+                'row': {'userID': self.user.id, 'reduction1': 12345},
+            }
+        )
+        self.assertEqual(response.status_code, 200)
+        self.sheet.refresh_from_db()
+        self.assertEqual(self.sheet.reduction1, 12345)
+
+    # --- self-heal on read ---
+
+    def test_get_heals_empty_sheet(self):
+        Sheet.objects.filter(pk=self.sheet.pk).update(data=[])
+        response = self.client.get(self._url())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['data']), self.full_rows)

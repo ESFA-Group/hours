@@ -51,6 +51,12 @@ class SheetApiView(APIView):
         if created:
             sheet.setup_sheet()
 
+        # Self-heal sheets that somehow lost their rows (legacy/corrupt data, an old
+        # bug, etc.). Serving an empty grid would make the page unusable and could
+        # lead to an empty save, so rebuild a blank month for this period.
+        if not sheet.data:
+            sheet.normalize_sheet()
+
         serializer = SheetSerializer(sheet)
         data = dict(serializer.data)
         # Manager comments are internal verifier notes and should not be exposed on
@@ -75,18 +81,55 @@ class SheetApiView(APIView):
                 )
 
             data = request.data.get("data", [])
+            # Guard against accidentally emptying a sheet. The hours grid always has
+            # exactly one row per day and there is no UI to add or remove rows, so a
+            # payload that is empty or has fewer rows than what is already stored is
+            # never a legitimate edit -- it almost always means a dropped connection,
+            # an incomplete page load, or a client-side bug. Reject it instead of
+            # overwriting good data.
+            existing_rows = len(sheet.data or [])
+            if not isinstance(data, list) or len(data) == 0 or len(data) < existing_rows:
+                return Response(
+                    {
+                        "error": (
+                            "Sheet data looks incomplete, so it was not saved to avoid "
+                            "overwriting your hours. Please reload the page and try again."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             data.sort(key=lambda row: int(row.get("Day", 0)))
             sheet.data = data
             sheet.normalize_sheet()
             return Response({"success": True}, status=status.HTTP_200_OK)
         elif "editSheet" in request.data:
-            data = request.data.get("row", {})
+            # `editSheet` uses QuerySet.update(), which writes raw SQL and bypasses
+            # Sheet.save() and every safeguard in it. Restrict it to a fixed set of
+            # scalar payment/note fields so it can never blank the hours grid (e.g.
+            # via field="data") or tamper with submission/verification state.
+            EDITABLE_FIELDS = {
+                "wage", "base_payment", "reduction1", "reduction2", "reduction3",
+                "addition1", "addition2", "food_reduction", "payment_status",
+                "note_hours",
+            }
+            row = request.data.get("row", {})
             field = request.data.get("field", "")
-            user = User.objects.get(pk=data["userID"])
-            update_data = {camel_to_snake(field): data[field]}
-            sheet = Sheet.objects.filter(user=user, year=year, month=month)
-            sheet.update(**update_data)
-            return Response(sheet.first().get_payment_info(), status=status.HTTP_200_OK)
+            db_field = camel_to_snake(field)
+            if db_field not in EDITABLE_FIELDS:
+                return Response(
+                    {"error": f"Field '{field}' cannot be edited from this endpoint."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user = User.objects.get(pk=row["userID"])
+            sheets = Sheet.objects.filter(user=user, year=year, month=month)
+            sheets.update(**{db_field: row[field]})
+            first = sheets.first()
+            if first is None:
+                return Response(
+                    {"error": "Sheet not found."}, status=status.HTTP_404_NOT_FOUND
+                )
+            return Response(first.get_payment_info(), status=status.HTTP_200_OK)
 
     def put(self, request, year: str, month: str):
         try:

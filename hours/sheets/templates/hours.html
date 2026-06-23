@@ -436,6 +436,12 @@
     }
 
     async function saveSheetNow(data, showConflictError = true) {
+        // Never send an empty grid. A missing/empty payload (table not fully built
+        // yet, a transient client error, etc.) must not be allowed to overwrite and
+        // wipe the saved sheet. The backend rejects it too; this avoids the request.
+        if (!Array.isArray(data) || data.length === 0) {
+            return false;
+        }
         const res = await fetch(getSheetApiUrl(), {
             method: 'POST',
             headers: {
@@ -1242,6 +1248,14 @@
         await initTable();
 
         $("#year, #month").change(async function () {
+            // Cancel any pending autosave before switching months. The save URL is
+            // built from the current dropdowns at send time, so a queued save from
+            // the previous month would otherwise be written to the newly selected
+            // month.
+            if (saveSheetTimeout) {
+                clearTimeout(saveSheetTimeout);
+                saveSheetTimeout = null;
+            }
             await initTable();
         });
 

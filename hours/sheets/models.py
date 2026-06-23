@@ -306,9 +306,15 @@ class Sheet(models.Model):
 
 	def save(self, *args, **kwargs):
 		if not len(self.data):
-			today = jdt.date.today()
-			month, year = today.month, today.year
-			self.data = Sheet.empty_sheet_data(year, month)
+			# Never persist a sheet with zero rows. Rebuild a blank grid for THIS
+			# sheet's own period (not "today") so months viewed out of season keep
+			# their correct days/weekdays. Fall back to the current month only if
+			# year/month are somehow unusable.
+			try:
+				self.data = Sheet.empty_sheet_data(int(self.year), int(self.month))
+			except (TypeError, ValueError):
+				today = jdt.date.today()
+				self.data = Sheet.empty_sheet_data(today.year, today.month)
 		df = self.transform()
 		self.mean = self.get_mean(df)
 		self.total = self.get_total(df)
@@ -477,8 +483,15 @@ class Sheet(models.Model):
 		return info
 	
 	def normalize_sheet(self, should_normalize_weekday: bool = True):
+		# Defensive: never index into or persist an empty grid. Callers validate
+		# input, but if an empty list still reaches here, rebuild a blank month for
+		# this sheet's period instead of crashing on all_data[0] or saving an empty
+		# sheet.
+		if not self.data:
+			self.data = Sheet.empty_sheet_data(int(self.year), int(self.month))
+
 		all_data = self.data
-	
+
 		if "Remote" not in all_data[0]:
 			for data in all_data:
 				# if "Hours" in data:
