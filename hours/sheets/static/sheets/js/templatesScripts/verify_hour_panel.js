@@ -400,15 +400,17 @@ function renderUserLists() {
 		}
 
 		filteredUsers.sort((a, b) => a.userName.localeCompare(b.userName)).forEach(user => {
-			const hoursInfo = `<small class="d-block">Total: ${minutes2hhmm(user.totalHours || 0)}</small>`;
+			const hoursInfo = `<small class="d-block">Auto: ${minutes2hhmm(user.autoHours || 0)} | Total: ${minutes2hhmm(user.totalHours || 0)}</small>`;
 			const roleInfo = user.role ? `<small class="text-muted">${getRoleLabel(user.role)}</small>` : "";
 			const rejectedInfo = user.rejectionReason ? `<small class="d-block text-danger">Rejected: ${user.rejectionReason}</small>` : "";
 			const statusIcons = getStatusIcons(user);
+			const warningClass = user.isWarning ? " list-group-item-warning" : "";
+			const warningIcon = user.isWarning ? ' <span title="Total hours >= 1.1 * Auto hours">⚠️</span>' : '';
 
 			const $item = $(`
-                <li class="list-group-item list-group-item-action user-item" data-id="${user.userId}" data-role="${user.role}" style="cursor: pointer;">
+                <li class="list-group-item list-group-item-action user-item${warningClass}" data-id="${user.userId}" data-role="${user.role}" style="cursor: pointer;">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="fw-bold">${user.userName}</span>
+                        <span class="fw-bold">${user.userName}${warningIcon}</span>
                         <div>${statusIcons}</div>
                     </div>
                     <div class="d-flex justify-content-between">

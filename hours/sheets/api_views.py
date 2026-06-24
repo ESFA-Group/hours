@@ -1591,6 +1591,10 @@ def _can_reject_supreme(sheet, verifier):
 
 def _sheet_summary(sheet, role):
     user = sheet.user
+    auto_hours = 0
+    for row in sheet.data:
+        auto_hours += sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
+    is_warning = auto_hours > 0 and sheet.total > 1.1 * auto_hours
     return {
         "userId": user.id,
         "userName": user.get_full_name(),
@@ -1607,6 +1611,8 @@ def _sheet_summary(sheet, role):
         "isVerified": sheet.manager_level_1_verified and sheet.manager_level_2_verified,
         "isSupremeVerified": sheet.supreme_verified,
         "isFullyApproved": sheet.is_fully_approved,
+        "autoHours": auto_hours,
+        "isWarning": is_warning,
         "totalHours": sheet.total,
         "managerLevel1Name": user.manager_level_1.get_full_name() if user.manager_level_1 else "",
         "managerLevel2Name": user.manager_level_2.get_full_name() if user.manager_level_2 else "",
