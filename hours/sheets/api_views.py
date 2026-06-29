@@ -506,6 +506,16 @@ class MonthlyReportApiView(APIView):
             sheet_user_name(sheet) for sheet in sheets_list if sheet.submitted
         ]
         if has_new_approval_columns:
+            manager_level_1_verified_names = [
+                sheet_user_name(sheet)
+                for sheet in sheets_list
+                if sheet.manager_level_1_verified
+            ]
+            manager_level_2_verified_names = [
+                sheet_user_name(sheet)
+                for sheet in sheets_list
+                if sheet.manager_level_2_verified
+            ]
             verified_names = [
                 sheet_user_name(sheet)
                 for sheet in sheets_list
@@ -519,6 +529,10 @@ class MonthlyReportApiView(APIView):
             verified_names = [
                 sheet_user_name(sheet) for sheet in sheets_list if sheet.is_verified
             ]
+            # No separate M1/M2 columns in legacy mode; treat a verified sheet as
+            # having both manager levels approved.
+            manager_level_1_verified_names = list(verified_names)
+            manager_level_2_verified_names = list(verified_names)
             supreme_verified_names = [
                 sheet_user_name(sheet) for sheet in sheets_list if sheet.is_supreme_verified
             ]
@@ -540,6 +554,8 @@ class MonthlyReportApiView(APIView):
             "submittedSheetsNum": len(submitted_names),
             "sheetlessUsers": sheetless_names,
             "submittedUsers": submitted_names,
+            "managerLevel1VerifiedUsers": manager_level_1_verified_names,
+            "managerLevel2VerifiedUsers": manager_level_2_verified_names,
             "verifiedUsers": verified_names,
             "suprimeVerifiedUsers": supreme_verified_names,
         }

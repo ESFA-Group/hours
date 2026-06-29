@@ -253,10 +253,21 @@
                         $("<th>").text(`${name}${data.submittedUsers.includes(name) ? " ☑️" : ""}`)
                     );
 
+                    let verifiedHtml = "";
+                    if (data.managerLevel1VerifiedUsers.includes(name)) {
+                        verifiedHtml += "✅<sup>1</sup>";
+                    }
+                    if (data.managerLevel2VerifiedUsers.includes(name)) {
+                        verifiedHtml += "✅<sup>2</sup>";
+                    }
+                    if (data.suprimeVerifiedUsers.includes(name)) {
+                        verifiedHtml += "👑";
+                    }
+
                     tr.append(
-                        $("<th>").text(
-                            `${data.verifiedUsers.includes(name) ? "✅" : ""}${data.suprimeVerifiedUsers.includes(name) ? "👑" : ""}`
-                        )
+                        $("<th>")
+                            .css({"font-size": "0.75rem", "white-space": "nowrap", "min-width": "70px"})
+                            .html(verifiedHtml)
                     );
 
                     ths.forEach(prj => {
