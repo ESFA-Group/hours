@@ -379,6 +379,8 @@ class Sheet(models.Model):
 			"Hours",
 			"Auto Hours",
 			"Remote",
+			"Mission",
+			"Forget",
 			"Rest",
 			"Total",
 			"Attendance",
@@ -397,19 +399,31 @@ class Sheet(models.Model):
 		if not all(col in df.columns for col in required):
 			return df
 
-		projects = self.get_sheet_projects(df)
-		
-		for col in required:
-			df[col] = df[col].apply(self.hhmm2minutes)
+		# Older sheets predate these columns; treat missing ones as zero.
+		optional = ["Mission", "Forget"]
+		for col in optional:
+			if col not in df.columns:
+				df[col] = "00:00"
 
-		sum_three = df["Auto Hours"] + df["Remote"] + df["Rest"]
-		
+		projects = self.get_sheet_projects(df)
+
+		for col in required + optional:
+			df[col] = df[col].apply(self.hhmm2minutes).fillna(0)
+
+		sum_components = (
+			df["Auto Hours"] + df["Remote"] + df["Mission"] + df["Forget"] + df["Rest"]
+		)
+
 		if self.submitted and "Hours" in df:
 			original_hours_converted = df["Hours"].apply(self.hhmm2minutes)
-			computed_hours = df["Auto Hours"] + df["Remote"] - df["Rest"]
-			df["Hours"] = original_hours_converted.where(sum_three == 0, computed_hours)
+			computed_hours = (
+				df["Auto Hours"] + df["Forget"] + df["Mission"] + df["Remote"] - df["Rest"]
+			)
+			df["Hours"] = original_hours_converted.where(sum_components == 0, computed_hours)
 		else:
-			df["Hours"] = df["Auto Hours"] + df["Remote"] - df["Rest"]
+			df["Hours"] = (
+				df["Auto Hours"] + df["Forget"] + df["Mission"] + df["Remote"] - df["Rest"]
+			)
 
 		df[projects] = (
 			df[projects]
@@ -507,10 +521,19 @@ class Sheet(models.Model):
 		for data in all_data:
 			if "Note Hours" not in data:
 				data["Note Hours"] = ""
+			# Older sheets predate Mission/Forget; back-fill so they persist.
+			if "Mission" not in data:
+				data["Mission"] = "00:00"
+			if "Forget" not in data:
+				data["Forget"] = "00:00"
 			auto_m = self.hhmm2minutes(data.get("Auto Hours", "00:00"))
 			rem_m = self.hhmm2minutes(data.get("Remote", "00:00"))
+			mission_m = self.hhmm2minutes(data.get("Mission", "00:00"))
+			forget_m = self.hhmm2minutes(data.get("Forget", "00:00"))
 			rest_m = self.hhmm2minutes(data.get("Rest", "00:00"))
-			data["Total"] = self.minutes2hhmm(auto_m + rem_m - rest_m)
+			data["Total"] = self.minutes2hhmm(
+				auto_m + forget_m + mission_m + rem_m - rest_m
+			)
 		
 		if should_normalize_weekday:
 			self.normalize_sheet_weekday_data()

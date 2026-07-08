@@ -308,8 +308,11 @@
     const AutoHourCol = 3
     const RestCol = 4
     const RemoteCol = 5
-    const TotalCol = 6
-    const NoteHoursCol = 7
+    const MissionCol = 6
+    const ForgetCol = 7
+    const TotalCol = 8
+    const NoteHoursCol = 9
+    const TotalCellLetter = "I"
     const [BASE_PAYMENT, COMPLIMENTARY, FOOD_REDUCTION, TOTAL] = get_payment_holders_eleements();
 
     function get_payment_holders_eleements() {
@@ -603,7 +606,7 @@
 
     function getTableProjects(tableData) {
         const allHeaders = new Set(Object.keys(tableData[0]));
-        const defaultHeaders = new Set(['Day', 'WeekDay', 'Attendance', 'Auto Hours', 'Rest', 'Remote', 'Total', 'Hours', 'Description', 'Note Hours']);
+        const defaultHeaders = new Set(['Day', 'WeekDay', 'Attendance', 'Auto Hours', 'Rest', 'Remote', 'Mission', 'Forget', 'Total', 'Hours', 'Description', 'Note Hours']);
         const tableProjects = new Set([...allHeaders].filter(x => !defaultHeaders.has(x)));
         return [...tableProjects]
     }
@@ -765,16 +768,18 @@
         if (projects.length === 1) {
             const projectColIndex = window.spreadTable.getHeaders(true).indexOf(projects[0]);
 
-            // Trigger on: Rest, Remote, or Auto Hours updated indirectly
-            const relevantChange = (x == RestCol || x == RemoteCol) ||
+            // Trigger on: Rest, Remote, Mission, Forget, or Auto Hours updated indirectly
+            const relevantChange = (x == RestCol || x == RemoteCol || x == MissionCol || x == ForgetCol) ||
                 (worksheet == null && value === undefined);
 
             if (relevantChange || x == AutoHourCol) {  // also catch direct Auto Hours edits if any
                 for (let row = 0; row < tableData.length; row++) {
                     const auto = hhmm2minutes(tableData[row]["Auto Hours"] || "00:00");
                     const remote = hhmm2minutes(tableData[row]["Remote"] || "00:00");
+                    const mission = hhmm2minutes(tableData[row]["Mission"] || "00:00");
+                    const forget = hhmm2minutes(tableData[row]["Forget"] || "00:00");
                     const rest = hhmm2minutes(tableData[row]["Rest"] || "00:00");
-                    const totalM = auto + remote - rest;
+                    const totalM = auto + forget + mission + remote - rest;
 
                     if (totalM > 0) {
                         const currentPercent = tableData[row][projects[0]] || "";
@@ -790,7 +795,7 @@
         // Standard flow
         if (x !== undefined && value !== undefined) {
             const standardValue = TryStandartizeValue(value);
-            if ((x == AutoHourCol || x == RestCol || x == RemoteCol || x == NoteHoursCol) && value !== standardValue) {
+            if ((x == AutoHourCol || x == RestCol || x == RemoteCol || x == MissionCol || x == ForgetCol || x == NoteHoursCol) && value !== standardValue) {
                 window.spreadTable.updateCell(x, y, standardValue);
                 return;
             }
@@ -799,14 +804,16 @@
         const isStartupOrImport = worksheet === null || worksheet === undefined || x === undefined || y === undefined;
 
         // We use loose equality (==) because jspreadsheet sometimes passes x / y as strings (e.g., "2").
-        if (isStartupOrImport || x == AutoHourCol || x == RestCol || x == RemoteCol) {
+        if (isStartupOrImport || x == AutoHourCol || x == RestCol || x == RemoteCol || x == MissionCol || x == ForgetCol) {
             const startRow = isStartupOrImport ? 0 : parseInt(y);
             const endRow = isStartupOrImport ? tableData.length - 1 : parseInt(y);
             for (let row = startRow; row <= endRow; row++) {
                 const auto = hhmm2minutes(window.spreadTable.getValueFromCoords(AutoHourCol, row));
                 const rest = hhmm2minutes(window.spreadTable.getValueFromCoords(RestCol, row));
                 const remote = hhmm2minutes(window.spreadTable.getValueFromCoords(RemoteCol, row));
-                let totalM = auto + remote - rest;
+                const mission = hhmm2minutes(window.spreadTable.getValueFromCoords(MissionCol, row));
+                const forget = hhmm2minutes(window.spreadTable.getValueFromCoords(ForgetCol, row));
+                let totalM = auto + forget + mission + remote - rest;
 
                 if (totalM < 0) totalM = 0;
 
@@ -817,7 +824,7 @@
                 }
 
                 // Directly mutate the DOM cell visually to bypass recursive readOnly lock limitations
-                const cellName = "G" + (row + 1);
+                const cellName = TotalCellLetter + (row + 1);
                 const cellElement = window.spreadTable.getCell(cellName);
                 if (cellElement) {
                     cellElement.textContent = newTotalStr;
@@ -882,6 +889,8 @@
             { type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true },
             { type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
+            { type: 'numeric', title: 'Mission', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
+            { type: 'numeric', title: 'Forget', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Total', mask: 'hh:mm', width: 80, readOnly: true },
             { type: 'numeric', title: 'Note Hours', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
             { type: 'textarea', title: 'Description', width: 150, readOnly: readOnlyAll },

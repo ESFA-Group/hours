@@ -12,7 +12,10 @@ let selectedDetail = null;
 const AutoHourCol = 3;
 const RestCol = 4;
 const RemoteCol = 5;
-const TotalCol = 6;
+const MissionCol = 6;
+const ForgetCol = 7;
+const TotalCol = 8;
+const TotalCellLetter = "I";
 // ********************************************************
 
 function fillYears(year) {
@@ -138,7 +141,9 @@ function calculateRowTotalMinutes(row) {
 	const auto = hhmm2minutes(row["Auto Hours"] || "00:00");
 	const rest = hhmm2minutes(row["Rest"] || "00:00");
 	const remote = hhmm2minutes(row["Remote"] || "00:00");
-	let totalM = auto + remote - rest;
+	const mission = hhmm2minutes(row["Mission"] || "00:00");
+	const forget = hhmm2minutes(row["Forget"] || "00:00");
+	let totalM = auto + forget + mission + remote - rest;
 	if (totalM < 0) totalM = 0;
 	return totalM;
 }
@@ -165,7 +170,7 @@ function recalculateTableTotals(tableData, updateSpreadsheet = true) {
 				window.spreadTable.setValueFromCoords(TotalCol, rowIndex, newTotalStr, true);
 			}
 
-			const cellElement = window.spreadTable.getCell("G" + (rowIndex + 1));
+			const cellElement = window.spreadTable.getCell(TotalCellLetter + (rowIndex + 1));
 			if (cellElement) {
 				cellElement.textContent = newTotalStr;
 			}
@@ -185,6 +190,8 @@ function getTableProjects(tableData) {
 		'Auto Hours',
 		'Rest',
 		'Remote',
+		'Mission',
+		'Forget',
 		'Total',
 		'Hours',
 		'Description',
@@ -203,6 +210,8 @@ function constructTable(data) {
 		{ type: 'numeric', title: 'Auto Hours', mask: 'hh:mm', width: 120, readOnly: true },
 		{ type: 'numeric', title: 'Rest', mask: 'hh:mm', width: 120, readOnly: true },
 		{ type: 'numeric', title: 'Remote', mask: 'hh:mm', width: 120, readOnly: true },
+		{ type: 'numeric', title: 'Mission', mask: 'hh:mm', width: 120, readOnly: true },
+		{ type: 'numeric', title: 'Forget', mask: 'hh:mm', width: 120, readOnly: true },
 		{ type: 'numeric', title: 'Total', mask: 'hh:mm', width: 120, readOnly: true },
 		{ type: 'textarea', title: 'Note Hours', width: 180, readOnly: true },
 		{ type: 'textarea', title: 'Description', width: 200, readOnly: true },

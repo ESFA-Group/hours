@@ -379,7 +379,7 @@ class ProjectsYearlyReportView(View):
 			if "Auto Hours" not in df:
 				continue
 			df.drop(
-				["Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest", "Note Hours"],
+				["Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Mission", "Forget", "Rest", "Note Hours"],
 				axis=1,
 				errors="ignore",
 				inplace=True,

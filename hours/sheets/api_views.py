@@ -171,8 +171,8 @@ class InfoApiView(APIView):
 
     INFO_SHEET_FIELDS = ["id", "user", "year", "month", "data", "total"]
     NON_PROJECT_COLUMNS = {
-        "Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Rest", "Total",
-        "Attendance", "Description", "Note Hours",
+        "Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Mission", "Forget",
+        "Rest", "Total", "Attendance", "Description", "Note Hours",
     }
 
     def get(self, request):
@@ -310,8 +310,10 @@ class InfoApiView(APIView):
     def row_hours(cls, row: dict, sheet: Sheet) -> int:
         auto_m = cls.hhmm2minutes(row.get("Auto Hours", "00:00"))
         remote_m = cls.hhmm2minutes(row.get("Remote", "00:00"))
+        mission_m = cls.hhmm2minutes(row.get("Mission", "00:00"))
+        forget_m = cls.hhmm2minutes(row.get("Forget", "00:00"))
         rest_m = cls.hhmm2minutes(row.get("Rest", "00:00"))
-        computed = auto_m + remote_m - rest_m
+        computed = auto_m + forget_m + mission_m + remote_m - rest_m
         # Old rows may have only Hours. Also keep submitted manual Hours when no
         # attendance/remote/rest data exists yet.
         if computed == 0 and "Hours" in row:
@@ -583,10 +585,16 @@ class MonthlyReportApiView(APIView):
 
         for row in data:
             row.setdefault("Note Hours", "")
+            row.setdefault("Mission", "00:00")
+            row.setdefault("Forget", "00:00")
             auto_m = sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
             remote_m = sheet.hhmm2minutes(row.get("Remote", "00:00"))
+            mission_m = sheet.hhmm2minutes(row.get("Mission", "00:00"))
+            forget_m = sheet.hhmm2minutes(row.get("Forget", "00:00"))
             rest_m = sheet.hhmm2minutes(row.get("Rest", "00:00"))
-            row["Total"] = sheet.minutes2hhmm(auto_m + remote_m - rest_m)
+            row["Total"] = sheet.minutes2hhmm(
+                auto_m + forget_m + mission_m + remote_m - rest_m
+            )
 
     @classmethod
     def get_sheet_sums(
@@ -641,7 +649,8 @@ class MonthlyReportApiView(APIView):
         df.drop(
             columns=[
                 "Day", "WeekDay", "Attendance", "Description",
-                "Auto Hours", "Rest", "Remote", "Total", "Note Hours"
+                "Auto Hours", "Rest", "Remote", "Mission", "Forget",
+                "Total", "Note Hours"
             ],
             errors="ignore",
             inplace=True
