@@ -21,6 +21,7 @@
 {% block body %}
 
 <div class="px-4">
+    <div id="sheet-warnings"></div>
     <div class="row">
 
         <div class="col col-12 col-lg-4 mt-2">
@@ -106,8 +107,8 @@
                     <!-- Verification hour stats -->
                     <div class="accordion-item">
                         <h4 class="accordion-header" id="headingVerification">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#collapseVerification" aria-expanded="false" aria-controls="collapseVerification">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseVerification" aria-expanded="true" aria-controls="collapseVerification">
                                 Verification hour stats
                             </button>
                         </h4>
@@ -118,11 +119,11 @@
                                     <strong id="submitted-status">-</strong>
                                 </p>
                                 <p class="d-flex justify-content-between status-line">
-                                    <strong>Manager level 1 approval:</strong>
+                                    <strong>Manager 1 approval:</strong>
                                     <strong id="manager1-status">-</strong>
                                 </p>
                                 <p class="d-flex justify-content-between status-line">
-                                    <strong>Manager level 2 approval:</strong>
+                                    <strong>Manager 2 approval:</strong>
                                     <strong id="manager2-status">-</strong>
                                 </p>
                                 <p class="d-flex justify-content-between status-line text-danger d-none" id="rejected-status-row">
@@ -467,7 +468,8 @@
             throw new Error(responseData.error || "Sheet could not be saved.");
         }
 
-        await res.json().catch(() => ({}));
+        const saved = await res.json().catch(() => ({}));
+        if (saved && saved.warnings) renderSheetWarnings(saved.warnings);
         updatePaymentsValue();
         return true;
     }
@@ -1023,16 +1025,25 @@
         addColumnToTable(config);
     }
 
+    function renderSheetWarnings(warnings) {
+        const $c = $("#sheet-warnings");
+        if (!$c.length) return;
+        $c.empty();
+        (warnings || []).forEach(w => {
+            $c.append(`<div class="alert alert-warning py-2 mb-2">⚠️ ${w}</div>`);
+        });
+    }
+
     function updateApprovalStatus(sheet) {
         const icon = value => value ? "✅" : "⏳";
         $("#submitted-status").text(sheet.submitted ? "✅ Submitted" : "⏳ Not submitted");
-        $("#manager1-status").text(`${icon(sheet.manager_level_1_verified)} Manager level 1`);
-        $("#manager2-status").text(`${icon(sheet.manager_level_2_verified)} Manager level 2`);
+        $("#manager1-status").text(`${icon(sheet.manager_level_1_verified)} Manager 1`);
+        $("#manager2-status").text(`${icon(sheet.manager_level_2_verified)} Manager 2`);
 
         if (!sheet.submitted && (sheet.rejection_reason || sheet.last_rejected_at)) {
-            const reason = sheet.rejection_reason ? ` - ${sheet.rejection_reason}` : "";
+            const reason = sheet.rejection_reason ? sheet.rejection_reason : "";
             $("#rejected-status-row").removeClass("d-none");
-            $("#rejected-status").text(`Needs correction and resubmission${reason}`);
+            $("#rejected-status").text(reason);
         } else {
             $("#rejected-status-row").addClass("d-none");
             $("#rejected-status").text("-");
@@ -1075,6 +1086,7 @@
 
             handleSubmit(sheet.submitted);
             updateApprovalStatus(sheet);
+            renderSheetWarnings(sheet.warnings);
             toggleSubmit();
 
             await constructTable(sheet.data, sheet.submitted);

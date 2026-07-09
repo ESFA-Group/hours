@@ -78,6 +78,10 @@ class User(AbstractUser):
 	is_KavoshProductionManager = models.BooleanField("is_KavoshProductionManager", default=False)
 	is_KavoshProductionManager_readonly = models.BooleanField("is_KavoshProductionManager_readonly", default=False)
 	
+	# max remote hours allowed as a percentage of on-site (auto) hours.
+	# e.g. 10 => may work 10h remote per 100h on-site. 0 => no remote allowance.
+	remote_percentage = models.PositiveSmallIntegerField("remote_percentage", default=0)
+
 	# group tags for verification
 	staff_group_tag = models.PositiveSmallIntegerField("staff_group_tag", default=1)
 	verifier_group_tags = models.CharField("verifier_group_tags", max_length=255, blank=True, default="", help_text="Comma-separated tags this verifier can see")
@@ -444,6 +448,47 @@ class Sheet(models.Model):
 		if "Hours" not in df.columns:
 			return 0
 		return df["Hours"].sum()
+
+	def get_warnings(self) -> list:
+		"""Non-blocking warnings for the hours page and verifier panels.
+		Informational only -- they never block submit or verification."""
+		if not self.data:
+			return []
+
+		auto_m = remote_m = total_m = 0
+		forget_no_attendance_days = []
+		for row in self.data:
+			auto = self.hhmm2minutes(row.get("Auto Hours", "00:00"))
+			forget = self.hhmm2minutes(row.get("Forget", "00:00"))
+			auto_m += auto
+			remote_m += self.hhmm2minutes(row.get("Remote", "00:00"))
+			total_m += self.hhmm2minutes(row.get("Total", "00:00"))
+			if forget > 0 and not str(row.get("Attendance", "")).strip():
+				forget_no_attendance_days.append(row.get("Day"))
+
+		warnings = []
+
+		if forget_no_attendance_days:
+			days = ", ".join(str(d) for d in forget_no_attendance_days)
+			warnings.append(
+				f"Forget hours recorded without any attendance on day(s): {days}"
+			)
+
+		pct = self.user.remote_percentage or 0
+		allowed_remote_m = auto_m * pct / 100
+		if remote_m > allowed_remote_m:
+			warnings.append(
+				f"Remote hours ({self.minutes2hhmm(remote_m)}) exceed the allowed "
+				f"{pct}% of on-site hours (max {self.minutes2hhmm(int(allowed_remote_m))})"
+			)
+
+		if auto_m > 0 and total_m > 1.10 * auto_m:
+			warnings.append(
+				f"Total hours ({self.minutes2hhmm(total_m)}) exceed on-site hours "
+				f"({self.minutes2hhmm(auto_m)}) by more than 10%"
+			)
+
+		return warnings
 
 	def get_base_payment(self) -> int:
 		return self.base_payment

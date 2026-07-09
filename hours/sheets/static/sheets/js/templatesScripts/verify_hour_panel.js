@@ -85,12 +85,22 @@ function updateSectionLabels() {
 	$("#approved-title").text(labels.approved || "Approved by you");
 }
 
+function renderWarnings(warnings) {
+	const $c = $("#sheet-warnings");
+	if (!$c.length) return;
+	$c.empty();
+	(warnings || []).forEach(w => {
+		$c.append(`<div class="alert alert-warning py-2 mb-2">⚠️ ${w}</div>`);
+	});
+}
+
 function clearSelectedUser() {
 	if (typeof window.spreadTable === "object" && window.spreadTable) {
 		window.spreadTable.destroy();
 		window.spreadTable = null;
 	}
 	$("#spreadsheet").empty();
+	renderWarnings([]);
 	$("#no-user-selected").show();
 	$("#selected-user-name").text("Select a person");
 	$("#selected-user-status").empty();
@@ -284,8 +294,8 @@ function constructTable(data) {
 }
 
 function getRoleLabel(role) {
-	if (role === "manager_level_1") return "Manager level 1";
-	if (role === "manager_level_2") return "Manager level 2";
+	if (role === "manager_level_1") return "Manager 1";
+	if (role === "manager_level_2") return "Manager 2";
 	if (role === "supreme") return "Supreme approval";
 	return "";
 }
@@ -293,8 +303,8 @@ function getRoleLabel(role) {
 function getStatusIcons(user) {
 	let statusIcons = '';
 	if (user.isSubmitted) statusIcons += ' <span title="Submitted">☑️</span>';
-	if (user.managerLevel1Verified) statusIcons += ' <span title="Manager level 1 approved">✅ M1</span>';
-	if (user.managerLevel2Verified) statusIcons += ' <span title="Manager level 2 approved">✅ M2</span>';
+	if (user.managerLevel1Verified) statusIcons += ' <span title="Manager 1 approved">✅ M1</span>';
+	if (user.managerLevel2Verified) statusIcons += ' <span title="Manager 2 approved">✅ M2</span>';
 	if (user.supremeVerified) statusIcons += ' <span title="Supreme approval">👑</span>';
 	if (user.isFullyApproved) statusIcons += ' <span title="Fully approved">🏁</span>';
 	return statusIcons;
@@ -302,32 +312,31 @@ function getStatusIcons(user) {
 
 function renderSelectedStatus(user) {
 	const submitted = user.isSubmitted ? "✅ Submitted" : "⏳ Not submitted";
-	const m1 = user.managerLevel1Verified ? "✅ Manager level 1 approval" : "⏳ Manager level 1 approval";
-	const m2 = user.managerLevel2Verified ? "✅ Manager level 2 approval" : "⏳ Manager level 2 approval";
+	const m1 = user.managerLevel1Verified ? "✅ Manager 1 approval" : "⏳ Manager 1 approval";
+	const m2 = user.managerLevel2Verified ? "✅ Manager 2 approval" : "⏳ Manager 2 approval";
 	const supreme = user.supremeVerified ? "👑 Supreme approval" : "⏳ Supreme approval";
-	let warning = user.isWarning ? `<span class="text-warning">⚠️ Device hours and total hours differ</span>` : "";
 	let rejected = user.rejectionReason ? `<span class="text-danger">Rejected: ${user.rejectionReason}</span>` : "";
-	$("#selected-user-status").html(`${submitted} <span>${m1}</span> <span>${m2}</span> <span>${supreme}</span> ${warning} ${rejected}`);
+	$("#selected-user-status").html(`${submitted} <span>${m1}</span> <span>${m2}</span> <span>${supreme}</span> ${rejected}`);
 }
 
 function resolveActions(detail) {
 	const p = detail.permissions || {};
 	const candidates = [];
 	if (selectedRole === "manager_level_1") {
-		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "Verify as manager level 1"]);
-		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "Reject as manager level 1"]);
+		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "Verify as manager 1"]);
+		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "Reject as manager 1"]);
 	} else if (selectedRole === "manager_level_2") {
-		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "Verify as manager level 2"]);
-		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "Reject as manager level 2"]);
+		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "Verify as manager 2"]);
+		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "Reject as manager 2"]);
 	} else if (selectedRole === "supreme") {
 		candidates.push([p.canVerifySupreme, "verify_supreme", "Supreme approval"]);
 		candidates.push([p.canRejectSupreme, "reject_supreme", "Supreme reject"]);
 	} else {
-		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "Verify as manager level 1"]);
-		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "Verify as manager level 2"]);
+		candidates.push([p.canVerifyManagerLevel1, "verify_manager_level_1", "Verify as manager 1"]);
+		candidates.push([p.canVerifyManagerLevel2, "verify_manager_level_2", "Verify as manager 2"]);
 		candidates.push([p.canVerifySupreme, "verify_supreme", "Supreme approval"]);
-		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "Reject as manager level 1"]);
-		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "Reject as manager level 2"]);
+		candidates.push([p.canRejectManagerLevel1, "reject_manager_level_1", "Reject as manager 1"]);
+		candidates.push([p.canRejectManagerLevel2, "reject_manager_level_2", "Reject as manager 2"]);
 		candidates.push([p.canRejectSupreme, "reject_supreme", "Supreme reject"]);
 	}
 
@@ -356,9 +365,10 @@ async function selectUser(userId, role) {
 			selectedDetail = response.data;
 			$("#no-user-selected").hide();
 
-			let warningIcon = selectedDetail.isWarning ? ' <span title="Total hours >= 1.1 * Auto hours">⚠️</span>' : '';
+			const warningIcon = selectedDetail.isWarning ? ' <span title="See warnings below">⚠️</span>' : '';
 			$("#selected-user-name").html(`${selectedDetail.userName} <small class="text-muted">${getRoleLabel(role)}</small>${warningIcon}`);
 			renderSelectedStatus(selectedDetail);
+			renderWarnings(selectedDetail.warnings);
 
 			const actions = resolveActions(selectedDetail);
 			if (actions.verify) {
@@ -414,7 +424,8 @@ function renderUserLists() {
 			const rejectedInfo = user.rejectionReason ? `<small class="d-block text-danger">Rejected: ${user.rejectionReason}</small>` : "";
 			const statusIcons = getStatusIcons(user);
 			const warningClass = user.isWarning ? " list-group-item-warning" : "";
-			const warningIcon = user.isWarning ? ' <span title="Total hours >= 1.1 * Auto hours">⚠️</span>' : '';
+			const warningTitle = (user.warnings || []).join(" | ") || "Has warnings";
+			const warningIcon = user.isWarning ? ` <span title="${warningTitle}">⚠️</span>` : '';
 
 			const $item = $(`
                 <li class="list-group-item list-group-item-action user-item${warningClass}" data-id="${user.userId}" data-role="${user.role}" style="cursor: pointer;">

@@ -63,6 +63,7 @@ class SheetApiView(APIView):
         # the employee-facing hours page.
         data.pop("manager_level_1_comment", None)
         data.pop("manager_level_2_comment", None)
+        data["warnings"] = sheet.get_warnings()
         return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request, year: str, month: str):
@@ -102,7 +103,10 @@ class SheetApiView(APIView):
             data.sort(key=lambda row: int(row.get("Day", 0)))
             sheet.data = data
             sheet.normalize_sheet()
-            return Response({"success": True}, status=status.HTTP_200_OK)
+            return Response(
+                {"success": True, "warnings": sheet.get_warnings()},
+                status=status.HTTP_200_OK,
+            )
         elif "editSheet" in request.data:
             # `editSheet` uses QuerySet.update(), which writes raw SQL and bypasses
             # Sheet.save() and every safeguard in it. Restrict it to a fixed set of
@@ -1561,7 +1565,7 @@ def _is_manager_level_1(sheet, verifier):
         return False
     if sheet.user.manager_level_1_id == verifier.id:
         return True
-    # Backward compatibility: old group/tag verifiers act as manager level 1
+    # Backward compatibility: old group/tag verifiers act as manager 1
     # only where no direct manager_level_1 has been assigned yet.
     return sheet.user.manager_level_1_id is None and _has_legacy_group_access(verifier, sheet.user)
 
@@ -1579,8 +1583,19 @@ def _can_view_sheet(sheet, verifier):
     )
 
 
+def _managers_blocked_by_warnings(sheet):
+    # A sheet with warnings must be approved by a supreme verifier first.
+    # Managers may still reject it, but can only approve after supreme sign-off.
+    return not sheet.supreme_verified and bool(sheet.get_warnings())
+
+
 def _can_verify_manager_level_1(sheet, verifier):
-    return sheet.submitted and not sheet.manager_level_1_verified and _is_manager_level_1(sheet, verifier)
+    return (
+        sheet.submitted
+        and not sheet.manager_level_1_verified
+        and not _managers_blocked_by_warnings(sheet)
+        and _is_manager_level_1(sheet, verifier)
+    )
 
 
 def _can_reject_manager_level_1(sheet, verifier):
@@ -1593,11 +1608,12 @@ def _can_reject_manager_level_1(sheet, verifier):
 
 
 def _can_verify_manager_level_2(sheet, verifier):
-    # Sequential approval assumption: manager level 2 acts after manager level 1.
+    # Sequential approval assumption: manager 2 acts after manager 1.
     return (
         sheet.submitted
         and sheet.manager_level_1_verified
         and not sheet.manager_level_2_verified
+        and not _managers_blocked_by_warnings(sheet)
         and _is_manager_level_2(sheet, verifier)
     )
 
@@ -1619,7 +1635,8 @@ def _sheet_summary(sheet, role):
     auto_hours = 0
     for row in sheet.data:
         auto_hours += sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
-    is_warning = auto_hours > 0 and sheet.total > 1.1 * auto_hours
+    warnings = sheet.get_warnings()
+    is_warning = bool(warnings)
     return {
         "userId": user.id,
         "userName": user.get_full_name(),
@@ -1638,6 +1655,7 @@ def _sheet_summary(sheet, role):
         "isFullyApproved": sheet.is_fully_approved,
         "autoHours": auto_hours,
         "isWarning": is_warning,
+        "warnings": warnings,
         "totalHours": sheet.total,
         "managerLevel1Name": user.manager_level_1.get_full_name() if user.manager_level_1 else "",
         "managerLevel2Name": user.manager_level_2.get_full_name() if user.manager_level_2 else "",
@@ -1807,7 +1825,8 @@ class HourVerifierAPIView(APIView):
             for row in sheet.data:
                 auto_hours += sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
                 total_hours += sheet.hhmm2minutes(row.get("Total", "00:00"))
-            is_warning = auto_hours > 0 and total_hours > 1.1 * auto_hours
+            warnings = sheet.get_warnings()
+            is_warning = bool(warnings)
 
             can_edit_manager_1_comment = (mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_1(sheet, verifier)
             can_edit_manager_2_comment = (mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_2(sheet, verifier)
@@ -1818,6 +1837,7 @@ class HourVerifierAPIView(APIView):
                 "autoHours": auto_hours,
                 "totalHours": total_hours,
                 "isWarning": is_warning,
+                "warnings": warnings,
                 "managerLevel1Comment": sheet.manager_level_1_comment,
                 "managerLevel2Comment": sheet.manager_level_2_comment,
                 "rejectionReason": sheet.rejection_reason,
@@ -1865,12 +1885,12 @@ class HourVerifierAPIView(APIView):
         # Allow comment edits to be bundled with verify/reject actions or saved alone.
         if "managerLevel1Comment" in request.data:
             if not ((mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_1(sheet, verifier)):
-                return Response({"error": "You cannot edit manager level 1 comment."}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"error": "You cannot edit manager 1 comment."}, status=status.HTTP_403_FORBIDDEN)
             sheet.manager_level_1_comment = request.data.get("managerLevel1Comment", "")
 
         if "managerLevel2Comment" in request.data:
             if not ((mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_2(sheet, verifier)):
-                return Response({"error": "You cannot edit manager level 2 comment."}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"error": "You cannot edit manager 2 comment."}, status=status.HTTP_403_FORBIDDEN)
             sheet.manager_level_2_comment = request.data.get("managerLevel2Comment", "")
 
         if action == "save_comments":
@@ -1889,7 +1909,7 @@ class HourVerifierAPIView(APIView):
 
         if action == "verify_manager_level_1":
             if not _can_verify_manager_level_1(sheet, verifier):
-                return Response({"error": "You cannot verify this sheet as manager level 1."}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"error": "You cannot verify this sheet as manager 1."}, status=status.HTTP_403_FORBIDDEN)
             sheet.manager_level_1_verified = True
             sheet.manager_level_1_verified_at = now
             sheet.manager_level_1_verified_by = verifier
@@ -1899,13 +1919,13 @@ class HourVerifierAPIView(APIView):
 
         if action == "reject_manager_level_1":
             if not _can_reject_manager_level_1(sheet, verifier):
-                return Response({"error": "You cannot reject this sheet as manager level 1."}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"error": "You cannot reject this sheet as manager 1."}, status=status.HTTP_403_FORBIDDEN)
             _apply_rejection(sheet, verifier, reason)
             return Response({"success": True}, status=status.HTTP_200_OK)
 
         if action == "verify_manager_level_2":
             if not _can_verify_manager_level_2(sheet, verifier):
-                return Response({"error": "You cannot verify this sheet as manager level 2."}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"error": "You cannot verify this sheet as manager 2."}, status=status.HTTP_403_FORBIDDEN)
             sheet.manager_level_2_verified = True
             sheet.manager_level_2_verified_at = now
             sheet.manager_level_2_verified_by = verifier
@@ -1915,7 +1935,7 @@ class HourVerifierAPIView(APIView):
 
         if action == "reject_manager_level_2":
             if not _can_reject_manager_level_2(sheet, verifier):
-                return Response({"error": "You cannot reject this sheet as manager level 2."}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"error": "You cannot reject this sheet as manager 2."}, status=status.HTTP_403_FORBIDDEN)
             _apply_rejection(sheet, verifier, reason)
             return Response({"success": True}, status=status.HTTP_200_OK)
 
