@@ -410,8 +410,8 @@
             jSuites.notification({
                 error: 1,
                 name: 'Error',
-                title: "Fetching Projects",
-                message: err,
+                title: "Fetching Payments",
+                message: err.message || String(err),
                 timeout: 6000,
             });
         }
@@ -430,6 +430,8 @@
     let saveSheetTimeout = null;
     let latestTableData = null;
     let isSubmittingSheet = false;
+    let sheetSubmitted = false;
+    let validationToastTimeout = null;
 
     function getSheetApiUrl() {
         const year = $("#year").val();
@@ -475,6 +477,8 @@
     }
 
     function saveSheet(data) {
+        // Submitted sheets are read-only: never autosave (backend would 409).
+        if (sheetSubmitted) return;
         latestTableData = data;
         if (saveSheetTimeout) clearTimeout(saveSheetTimeout);
 
@@ -740,6 +744,26 @@
         return "";
     }
 
+    function notifySheetError(error) {
+        // The init/auto-fill cascades call onChangeHandler once per row synchronously;
+        // debounce so the whole burst collapses into a single toast.
+        if (validationToastTimeout) {
+            clearTimeout(validationToastTimeout);
+            validationToastTimeout = null;
+        }
+        if (!error || sheetSubmitted) return;
+        validationToastTimeout = setTimeout(() => {
+            validationToastTimeout = null;
+            jSuites.notification({
+                error: 1,
+                name: 'Error',
+                title: "Invalid Data",
+                message: error,
+                timeout: 8000,
+            });
+        }, 400);
+    }
+
     function convertTableData(rawData, saveOrderedData = true) {
         /*  table's getJson method won't return table data correctly, some headers (mostly created ones in project adding) 
             are wrong in each rows data. this function iterates each row and correct wrong keys to real keys in header.
@@ -805,7 +829,7 @@
         const projects = getTableProjects(tableData);
 
         // Auto-fill 100% when it's the only project
-        if (projects.length === 1) {
+        if (projects.length === 1 && !sheetSubmitted) {
             const projectColIndex = window.spreadTable.getHeaders(true).indexOf(projects[0]);
 
             // Trigger on: Rest, Remote, Mission, Forget, or Auto Hours updated indirectly
@@ -876,16 +900,7 @@
         }
 
         const check = validateSheet(tableData);
-        const error = sheetError(check);
-        if (error) {
-            jSuites.notification({
-                error: 1,
-                name: 'Error',
-                title: "Invalid Data",
-                message: error,
-                timeout: 8000,
-            });
-        }
+        notifySheetError(sheetError(check));
 
         const minutesInfo = getMinutesByProject(tableData);
         let { totalTime, meanTime, ...minutesByProject } = minutesInfo;
@@ -1019,7 +1034,7 @@
                 error: 1,
                 name: 'Error',
                 title: "Fetching Projects",
-                message: err,
+                message: err.message || String(err),
                 timeout: 6000,
             });
         }
@@ -1054,7 +1069,7 @@
                 error: 1,
                 name: 'Error',
                 title: "Fetching This month's Sheet",
-                message: err,
+                message: err.message || String(err),
             });
         }
     }
@@ -1116,6 +1131,8 @@
                 return;
             }
 
+            sheetSubmitted = !!sheet.submitted;
+
             if (typeof window.spreadTable === "object" && window.spreadTable) {
                 window.spreadTable.destroy();
                 window.spreadTable = null;
@@ -1131,6 +1148,15 @@
             await constructTable(sheet.data, sheet.submitted);
 
             onChangeHandler();
+
+            if (sheet.submitted) {
+                jSuites.notification({
+                    name: 'Notice',
+                    title: 'Sheet Submitted',
+                    message: 'This sheet has been submitted and is read-only.',
+                    timeout: 5000,
+                });
+            }
 
         }, "Loading your hours sheet...");
 
@@ -1316,10 +1342,21 @@
                 clearTimeout(saveSheetTimeout);
                 saveSheetTimeout = null;
             }
+            if (validationToastTimeout) {
+                clearTimeout(validationToastTimeout);
+                validationToastTimeout = null;
+            }
             await initTable();
         });
 
         $("#add-project").click(function () {
+            if (sheetSubmitted) {
+                jSuites.notification({
+                    name: 'Notice',
+                    message: 'This sheet has been submitted and is read-only.',
+                });
+                return;
+            }
             const project = $("#projects").val();
             if (!project) return;
 
