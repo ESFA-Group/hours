@@ -146,6 +146,20 @@ class SheetApiView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        missing_days = sheet.missing_description_days()
+        if missing_days:
+            days = ", ".join(str(d) for d in missing_days)
+            return Response(
+                {
+                    "error": (
+                        f"Day(s) {days} have Remote/Mission/Forget hours and need a "
+                        "Description before you can submit."
+                    ),
+                    "missingDescriptionDays": missing_days,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if (
             request.user.check_info()
         ):  # if the user has entered needed personal information

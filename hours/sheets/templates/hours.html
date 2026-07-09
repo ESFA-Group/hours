@@ -496,14 +496,17 @@
     async function submitSheet() {
         const rawData = window.spreadTable.getJson();
         const tableData = convertTableData(rawData, false);
-        const valid = validateSheet(tableData);
+        const check = validateSheet(tableData);
+        const error = sheetError(check);
 
-        if (!valid) {
+        if (error) {
             jSuites.notification({
                 error: 1,
                 name: "Error",
-                title: "Invalid Data",
-                message: "At least 1 project required. Project % sum must be 100%.",
+                title: check.missingDescDays.length && !check.noProjects && !check.badPercentDays.length
+                    ? "Explanation required"
+                    : "Invalid Data",
+                message: error,
                 timeout: 8000,
             });
             return;
@@ -561,6 +564,17 @@
                         name: "Error",
                         title: "Submitting Sheet",
                         message: "Please first complete your personal information.",
+                    });
+                    return;
+                }
+
+                if (data.error) {
+                    jSuites.notification({
+                        error: 1,
+                        name: "Error",
+                        title: "Submitting Sheet",
+                        message: data.error,
+                        timeout: 8000,
                     });
                     return;
                 }
@@ -667,23 +681,34 @@
     }
 
     function validateSheet(tableData) {
-        // validation function just indicates invalidity of row data
+        // Highlights invalid rows red and reports what's wrong. Two independent problems:
+        //  - noProjects / badPercentDays: project % must total 100% on every worked day
+        //  - missingDescDays: Remote/Mission/Forget hours need a Description
+        const result = { noProjects: false, badPercentDays: [], missingDescDays: [] };
         const projects = getTableProjects(tableData);
+
         if (!projects.length) {
             $(`.jexcel tbody td`).css({ "background-color": "rgba(255, 50, 75, 0.1)" });
-            return false
+            result.noProjects = true;
+            return result;
         }
         $(`.jexcel tbody td`).css({ "background-color": "white" });
 
         const today = new JDate().getDate();
         const month = new JDate().getMonth();
-        let valid = true;
 
         tableData.forEach((row, idx) => {
             if (idx === today - 1 && month == $("#month").val())
                 $(`.jexcel tbody tr`).eq(idx).find("td").css({ "background-color": "rgba(20, 150, 255, 0.1)" });
 
-            if (hhmm2minutes(row["Total"]) <= 0)
+            const worked = hhmm2minutes(row["Total"]) > 0;
+            const needsDesc =
+                (hhmm2minutes(row["Remote"] || "00:00") > 0 ||
+                    hhmm2minutes(row["Mission"] || "00:00") > 0 ||
+                    hhmm2minutes(row["Forget"] || "00:00") > 0) &&
+                !String(row["Description"] || "").trim();
+
+            if (!worked && !needsDesc)
                 return
 
             let percent = 0;
@@ -692,14 +717,27 @@
                     continue
                 percent += parseProjectPorp(row[prj]);
             }
-            const err = percent != 100;
-            valid = valid && !err;
+            const percentErr = worked && percent != 100;
 
-            const bgcolor = err ? "rgba(255, 50, 75, 0.1)" : "white";
+            if (percentErr) result.badPercentDays.push(row["Day"]);
+            if (needsDesc) result.missingDescDays.push(row["Day"]);
+
+            const bgcolor = (percentErr || needsDesc) ? "rgba(255, 50, 75, 0.1)" : "white";
             $(`.jexcel tbody tr`).eq(idx).find("td").css({ "background-color": bgcolor });
         });
 
-        return valid
+        return result
+    }
+
+    function sheetError(check) {
+        // Returns the first blocking error message, or "" if the sheet is submittable.
+        if (check.noProjects)
+            return "At least 1 project is required.";
+        if (check.badPercentDays.length)
+            return `Project percentages must total 100%. Fix day(s): ${check.badPercentDays.join(", ")}.`;
+        if (check.missingDescDays.length)
+            return `Day(s) ${check.missingDescDays.join(", ")} have Remote/Mission/Forget hours and need a Description.`;
+        return "";
     }
 
     function convertTableData(rawData, saveOrderedData = true) {
@@ -837,13 +875,14 @@
             }
         }
 
-        const valid = validateSheet(tableData);
-        if (!valid) {
+        const check = validateSheet(tableData);
+        const error = sheetError(check);
+        if (error) {
             jSuites.notification({
                 error: 1,
                 name: 'Error',
                 title: "Invalid Data",
-                message: "At least 1 project required. Project % sum must be 100%.",
+                message: error,
                 timeout: 8000,
             });
         }

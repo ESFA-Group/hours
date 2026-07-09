@@ -490,6 +490,19 @@ class Sheet(models.Model):
 
 		return warnings
 
+	def missing_description_days(self) -> list:
+		"""Days that have Remote/Mission/Forget hours but no Description.
+		These block submission -- an explanation is required for those hours."""
+		days = []
+		for row in (self.data or []):
+			needs_explanation = any(
+				self.hhmm2minutes(row.get(col, "00:00")) > 0
+				for col in ("Remote", "Mission", "Forget")
+			)
+			if needs_explanation and not str(row.get("Description", "")).strip():
+				days.append(row.get("Day"))
+		return days
+
 	def get_base_payment(self) -> int:
 		return self.base_payment
 
