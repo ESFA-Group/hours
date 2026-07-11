@@ -53,6 +53,7 @@ class UserResource(resources.ModelResource):
             'manager_level_1',
             'manager_level_2',
             'payment_type',
+            'remote_percentage',
         )
         export_order = (
             'username',
@@ -64,6 +65,7 @@ class UserResource(resources.ModelResource):
             'manager_level_1',
             'manager_level_2',
             'payment_type',
+            'remote_percentage',
         )
         import_id_fields = ('username',)
 
