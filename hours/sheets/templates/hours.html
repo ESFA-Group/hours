@@ -688,7 +688,8 @@
         // Highlights invalid rows red and reports what's wrong. Two independent problems:
         //  - noProjects / badPercentDays: project % must total 100% on every worked day
         //  - missingDescDays: Remote/Mission/Forget hours need a Description
-        const result = { noProjects: false, badPercentDays: [], missingDescDays: [] };
+        //  - forgetNoAttendanceDays: Forget hours need an Attendance record
+        const result = { noProjects: false, badPercentDays: [], missingDescDays: [], forgetNoAttendanceDays: [] };
         const projects = getTableProjects(tableData);
 
         if (!projects.length) {
@@ -711,8 +712,11 @@
                     hhmm2minutes(row["Mission"] || "00:00") > 0 ||
                     hhmm2minutes(row["Forget"] || "00:00") > 0) &&
                 !String(row["Description"] || "").trim();
+            const forgetNoAttendance =
+                hhmm2minutes(row["Forget"] || "00:00") > 0 &&
+                !String(row["Attendance"] || "").trim();
 
-            if (!worked && !needsDesc)
+            if (!worked && !needsDesc && !forgetNoAttendance)
                 return
 
             let percent = 0;
@@ -725,8 +729,9 @@
 
             if (percentErr) result.badPercentDays.push(row["Day"]);
             if (needsDesc) result.missingDescDays.push(row["Day"]);
+            if (forgetNoAttendance) result.forgetNoAttendanceDays.push(row["Day"]);
 
-            const bgcolor = (percentErr || needsDesc) ? "rgba(255, 50, 75, 0.1)" : "white";
+            const bgcolor = (percentErr || needsDesc || forgetNoAttendance) ? "rgba(255, 50, 75, 0.1)" : "white";
             $(`.jexcel tbody tr`).eq(idx).find("td").css({ "background-color": bgcolor });
         });
 
@@ -741,6 +746,8 @@
             return `Project percentages must total 100%. Fix day(s): ${check.badPercentDays.join(", ")}.`;
         if (check.missingDescDays.length)
             return `Day(s) ${check.missingDescDays.join(", ")} have Remote/Mission/Forget hours and need a Description.`;
+        if (check.forgetNoAttendanceDays.length)
+            return `Day(s) ${check.forgetNoAttendanceDays.join(", ")} have Forget hours but no Attendance.`;
         return "";
     }
 

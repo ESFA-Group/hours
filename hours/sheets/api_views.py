@@ -146,6 +146,20 @@ class SheetApiView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        forget_days = sheet.forget_no_attendance_days()
+        if forget_days:
+            days = ", ".join(str(d) for d in forget_days)
+            return Response(
+                {
+                    "error": (
+                        f"Day(s) {days} have Forget hours but no Attendance. "
+                        "Remove the Forget hours or record attendance before you can submit."
+                    ),
+                    "forgetNoAttendanceDays": forget_days,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         missing_days = sheet.missing_description_days()
         if missing_days:
             days = ", ".join(str(d) for d in missing_days)

@@ -459,23 +459,12 @@ class Sheet(models.Model):
 			return []
 
 		auto_m = remote_m = total_m = 0
-		forget_no_attendance_days = []
 		for row in self.data:
-			auto = self.hhmm2minutes(row.get("Auto Hours", "00:00"))
-			forget = self.hhmm2minutes(row.get("Forget", "00:00"))
-			auto_m += auto
+			auto_m += self.hhmm2minutes(row.get("Auto Hours", "00:00"))
 			remote_m += self.hhmm2minutes(row.get("Remote", "00:00"))
 			total_m += self.hhmm2minutes(row.get("Total", "00:00"))
-			if forget > 0 and not str(row.get("Attendance", "")).strip():
-				forget_no_attendance_days.append(row.get("Day"))
 
 		warnings = []
-
-		if forget_no_attendance_days:
-			days = ", ".join(str(d) for d in forget_no_attendance_days)
-			warnings.append(
-				f"Forget hours recorded without any attendance on day(s): {days}"
-			)
 
 		pct = self.user.remote_percentage or 0
 		allowed_remote_m = auto_m * pct / 100
@@ -492,6 +481,15 @@ class Sheet(models.Model):
 			)
 
 		return warnings
+
+	def forget_no_attendance_days(self) -> list:
+		"""Days with Forget hours but no Attendance. These block submission --
+		you can't forget-log hours on a day you never attended."""
+		days = []
+		for row in (self.data or []):
+			if self.hhmm2minutes(row.get("Forget", "00:00")) > 0 and not str(row.get("Attendance", "")).strip():
+				days.append(row.get("Day"))
+		return days
 
 	def missing_description_days(self) -> list:
 		"""Days that have Remote/Mission/Forget hours but no Description.
