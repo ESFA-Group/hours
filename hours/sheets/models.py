@@ -4,6 +4,9 @@ from django.contrib.auth.models import AbstractUser
 import pandas as pd
 import jdatetime as jdt
 
+# ponytail: disabled per request; flip to True to re-enable
+TOTAL_EXCEEDS_AUTO_WARNING_ENABLED = False
+
 
 def user_directory_path(instance, filename) -> str:
 	# file will be uploaded to MEDIA_ROOT/personal/username/<filename>
@@ -482,7 +485,7 @@ class Sheet(models.Model):
 				f"{pct}% of on-site hours (max {self.minutes2hhmm(int(allowed_remote_m))})"
 			)
 
-		if auto_m > 0 and total_m > 1.10 * auto_m:
+		if TOTAL_EXCEEDS_AUTO_WARNING_ENABLED and auto_m > 0 and total_m > 1.10 * auto_m:
 			warnings.append(
 				f"Total hours ({self.minutes2hhmm(total_m)}) exceed on-site hours "
 				f"({self.minutes2hhmm(auto_m)}) by more than 10%"
