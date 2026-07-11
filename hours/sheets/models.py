@@ -458,16 +458,19 @@ class Sheet(models.Model):
 		if not self.data:
 			return []
 
-		auto_m = remote_m = total_m = 0
+		auto_m = remote_m = total_m = forget_m = mission_m = 0
 		for row in self.data:
 			auto_m += self.hhmm2minutes(row.get("Auto Hours", "00:00"))
 			remote_m += self.hhmm2minutes(row.get("Remote", "00:00"))
 			total_m += self.hhmm2minutes(row.get("Total", "00:00"))
+			forget_m += self.hhmm2minutes(row.get("Forget", "00:00"))
+			mission_m += self.hhmm2minutes(row.get("Mission", "00:00"))
 
 		warnings = []
 
 		pct = self.user.remote_percentage or 0
-		allowed_remote_m = auto_m * pct / 100
+		onsite_m = auto_m + forget_m + mission_m
+		allowed_remote_m = onsite_m * pct / 100
 		if remote_m > allowed_remote_m:
 			warnings.append(
 				f"Remote hours ({self.minutes2hhmm(remote_m)}) exceed the allowed "
