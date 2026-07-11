@@ -618,6 +618,13 @@
         return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
     }
 
+    // Attendance is a display-only string like "9:1-17:5__8:0-12:30". Zero-pad each
+    // H:M so minutes read as :01 not :1. Cosmetic only -- not used in any calculation.
+    function padAttendance(str) {
+        if (typeof str !== 'string' || !str.includes(':')) return str;
+        return str.replace(/(\d+):(\d+)/g, (_, h, m) => `${h.padStart(2, '0')}:${m.padStart(2, '0')}`);
+    }
+
     function parseProjectPorp(str) {
         if (typeof str !== 'string')
             return 0
@@ -945,6 +952,7 @@
     }
 
     async function constructTable(data, readOnlyAll = false) {
+        data.forEach(row => { if (row["Attendance"]) row["Attendance"] = padAttendance(row["Attendance"]); });
         const columns = [
             { type: 'text', title: 'Day', width: 50, readOnly: true },
             { type: 'text', title: 'WeekDay', width: 80, readOnly: true },

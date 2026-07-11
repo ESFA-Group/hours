@@ -52,7 +52,7 @@ class Command(BaseCommand):
 					if exit ==0:
 						part = f"{entry.hour}:{entry.minute}"
 					else:
-						part = f"{entry.hour}:{entry.minute}-{exit.hour}:{exit.minute}"
+						part = f"{entry.hour:02d}:{entry.minute:02d}-{exit.hour:02d}:{exit.minute:02d}"
 
 					parts.append(part)
 				attendance = '__'.join(parts)
