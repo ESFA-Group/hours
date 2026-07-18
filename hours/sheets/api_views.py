@@ -174,27 +174,25 @@ class SheetApiView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if (
-            request.user.check_info()
-        ):  # if the user has entered needed personal information
-            sheet.submitted = True
-            # A fresh submission/re-submission starts the approval chain again.
-            sheet.manager_level_1_verified = False
-            sheet.manager_level_2_verified = False
-            sheet.supreme_verified = False
-            sheet.manager_level_1_verified_at = None
-            sheet.manager_level_2_verified_at = None
-            sheet.supreme_verified_at = None
-            sheet.manager_level_1_verified_by = None
-            sheet.manager_level_2_verified_by = None
-            sheet.supreme_verified_by = None
-            sheet.last_rejected_by = None
-            sheet.last_rejected_at = None
-            sheet.rejection_reason = ""
-            sheet.sync_legacy_verification_fields()
-            sheet.save()
-            return Response({"success": True}, status=status.HTTP_200_OK)
-        return Response({"flaw": True}, status=status.HTTP_200_OK)
+        # ponytail: personal-info gate (check_info) bypassed for now; restore the
+        # `if request.user.check_info():` wrapper + {"flaw": True} branch to re-enable.
+        sheet.submitted = True
+        # A fresh submission/re-submission starts the approval chain again.
+        sheet.manager_level_1_verified = False
+        sheet.manager_level_2_verified = False
+        sheet.supreme_verified = False
+        sheet.manager_level_1_verified_at = None
+        sheet.manager_level_2_verified_at = None
+        sheet.supreme_verified_at = None
+        sheet.manager_level_1_verified_by = None
+        sheet.manager_level_2_verified_by = None
+        sheet.supreme_verified_by = None
+        sheet.last_rejected_by = None
+        sheet.last_rejected_at = None
+        sheet.rejection_reason = ""
+        sheet.sync_legacy_verification_fields()
+        sheet.save()
+        return Response({"success": True}, status=status.HTTP_200_OK)
 
 
 class InfoApiView(APIView):
