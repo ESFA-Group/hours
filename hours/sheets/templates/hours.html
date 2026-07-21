@@ -1020,6 +1020,30 @@
         });
         window.spreadTable.hideIndex();
 
+        // Persian/Arabic first-keystroke fix: jexcel only opens a selected cell's editor when the
+        // first key is a Latin letter/digit/punctuation, so a non-ASCII first keystroke is swallowed
+        // (you'd have to type a Latin char, delete it, then type Persian). Its keydown listener is on
+        // document (bubble), so this capture-phase listener runs first: open the editor and seed the char.
+        // ponytail: applies to all non-ASCII input; a stray Persian char in a masked numeric cell just
+        // parse-rejects on close, same as a stray Latin letter would there.
+        const sheetEl = document.getElementById('spreadsheet');
+        if (!sheetEl.dataset.nonLatinEditFix) {
+            sheetEl.dataset.nonLatinEditFix = '1';
+            sheetEl.addEventListener('keydown', function (e) {
+                const t = window.spreadTable;
+                if (!t || t.edition) return;                            // no grid, or already editing → native input handles it
+                if (e.ctrlKey || e.metaKey || e.altKey) return;         // don't hijack shortcuts
+                if (e.key.length !== 1 || e.key.charCodeAt(0) < 128) return;  // only the keys jexcel drops (single non-ASCII char)
+                const cell = this.querySelector('td.highlight-selected.highlight');
+                if (!cell || cell.classList.contains('readonly')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                t.openEditor(cell, true);
+                const ed = cell.querySelector('input, textarea');
+                if (ed) { ed.value = e.key; ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }
+            }, true);
+        }
+
         const year = $("#year").val();
         const month = $("#month").val();
 
