@@ -41,20 +41,9 @@ class UserResource(resources.ModelResource):
 
     class Meta:
         model = User
-        # Explicitly exclude 'id' from import/export
-        exclude = ('id',)
-        fields = (
-            'username',
-            'first_name_p',
-            'last_name_p',
-            'staff_group_tag',
-            'verifier_group_tags',
-            'auto_hour_ID',
-            'manager_level_1',
-            'manager_level_2',
-            'payment_type',
-            'remote_percentage',
-        )
+        # every model field is exported/imported except these; export_order just
+        # pins the common ones first, the rest follow in model order
+        exclude = ('id', 'password', 'user_permissions', 'groups')
         export_order = (
             'username',
             'first_name_p',
