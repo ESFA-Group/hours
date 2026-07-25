@@ -471,7 +471,8 @@ class Sheet(models.Model):
 		pct = self.user.remote_percentage or 0
 		onsite_m = auto_m + forget_m + mission_m
 		allowed_remote_m = onsite_m * pct / 100
-		if remote_m > allowed_remote_m:
+		# ponytail: pct > 1000 is the "unlimited remote" escape hatch
+		if pct < 10000 and remote_m > allowed_remote_m:
 			warnings.append(
 				f"Remote hours ({self.minutes2hhmm(remote_m)}) exceed the allowed "
 				f"{pct}% of on-site hours (max {self.minutes2hhmm(int(allowed_remote_m))})"
