@@ -1,5 +1,7 @@
+import io
 import requests
 
+from django.core.management import call_command
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -65,6 +67,24 @@ class EsfaEyesApiView(APIView):
 		setattr(esfa_eyes_obj, field_name, current_field_data)
 		esfa_eyes_obj.save()
 		return esfa_eyes_obj
+
+
+class CheckSubmissionsApiView(APIView):
+	"""Superuser-only manual trigger for the check_submissions command (dry run)."""
+	permission_classes = [permissions.IsAdminUser]
+
+	def post(self, request):
+		if not request.user.is_superuser:
+			return Response({"title": "Access denied", "message": "Superusers only."}, status=status.HTTP_403_FORBIDDEN)
+
+		# ponytail: runs inline; move to a background task if it starts blocking the request
+		out = io.StringIO()
+		try:
+			call_command("check_submissions", "--dry-run", stdout=out, stderr=out)
+		except Exception as exc:
+			return Response({"title": "Command failed", "message": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+		return Response({"output": out.getvalue()}, status=status.HTTP_200_OK)
 
 
 class GlobalSalesApiView(APIView):

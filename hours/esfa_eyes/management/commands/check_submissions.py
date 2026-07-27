@@ -249,7 +249,7 @@ class Command(BaseCommand):
         for user_id, status in user_status.items():
             user_name = self._get_user_name(user_id)  # You'll need to implement this method
             overview_message += f"""
-    • *{user_name}* \\({status['field']}\\):
+    • *{self._escape_markdown_v2(user_name)}* \\({self._escape_markdown_v2(status['field'])}\\):
     \\- 🔴 : {status['require_update_count']}
     \\- 🟠 : {status['warning_count']}
     \\- 📋 Total responsible: {status['total_responsible']}
@@ -272,7 +272,7 @@ class Command(BaseCommand):
         
         overview_message += f"""
 
-    *⏰ Last Check:* {jdt.datetime.now().strftime('%Y_%m_%d %H:%M:%S')}
+    *⏰ Last Check:* {jdt.datetime.now().strftime('%Y-%m-%d %H:%M:%S').replace('-', '\\-')}
     """
         for admin_id in ADMIN_ID:
             success = self.send_telegram_message_with_retry(admin_id, overview_message)
@@ -281,11 +281,13 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.ERROR(f"ADMIN---Failed to send overview to admin {admin_id} after all retry attempts")
                 )
-        if not dry_run:
-            for boss_id in BOSS_ID:
-                success = self.send_telegram_message_with_retry(boss_id, overview_message)
-                if not success:
-                    logger.error(f"BOSS---Failed to send overview to boss {boss_id}")
+            if dry_run and success:
+                return # ONLY SEND TO ONE ADMIN
+
+        for boss_id in BOSS_ID:
+            success = self.send_telegram_message_with_retry(boss_id, overview_message)
+            if not success:
+                logger.error(f"BOSS---Failed to send overview to boss {boss_id}")
             
     def send_telegram_message_with_retry(self, chat_id, message, max_retries=10):
         for attempt in range(max_retries + 1):

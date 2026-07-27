@@ -30,6 +30,14 @@
             <strong>Yuan:</strong>
             <div id="yuan-holder" class="border rounded p-2 text-muted bg-light pe-none">N/a</div>
         </div>
+
+        {% if request.user.id == 43 %}
+        <div class="p-2anann ms-md-auto align-self-end">
+            <button id="check-submissions-btn" class="btn btn-outline-primary">
+                🤖 send alert (dry run)
+            </button>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Tab Navigation -->
@@ -129,4 +137,22 @@
 <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
 <script src="{% static 'esfa_eyes/js/components/sheet_loader.js' %}"></script>
 <script src="{% static 'esfa_eyes/js/templatesScripts/esfa_eyes_dashboard.js' %}"></script>
+{% if request.user.is_superuser %}
+<script>
+    document.getElementById('check-submissions-btn').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        try {
+            const res = await window.apiService.post('check_submissions', {});
+            if (!res.ok) {
+                await window.apiService.handleError(res, 'Check Submissions failed');
+            } else {
+                alert(res.data.output || 'Done.');
+            }
+        } finally {
+            btn.disabled = false;
+        }
+    });
+</script>
+{% endif %}
 {% endblock body %}

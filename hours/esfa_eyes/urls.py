@@ -14,4 +14,5 @@ urlpatterns = [
     path("api/detailed_sales", api_views.DetailedSalesApiView.as_view(), name="detailed_sales",),
     path("api/staff_info", api_views.StaffInfoApiView.as_view(), name="staff_info",),
     path("api/currencies", api_views.CurrenciesApiView.as_view(), name="currencies",),
+    path("api/check_submissions", api_views.CheckSubmissionsApiView.as_view(), name="check_submissions",),
 ]
