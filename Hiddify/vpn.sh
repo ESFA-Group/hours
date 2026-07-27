@@ -6,7 +6,7 @@ fi
 
 trap cleanup EXIT
 
-HiddifyCli run -c https://de11pooya.1qwertyuiopasdfghjklzxcvbnmmnbvcxzlkjhgfdsapoiuytrewq1234567890.com:2096/1qwertyuiopasdfghjklzxcvbnmmnbvcxzlkjhgfdsapoiuytrewq1234567890/ESFAGroup_2 &
+HiddifyCli run -c https://raw.githubusercontent.com/hiddify/hiddify-app/refs/heads/main/test.configs/mahsa#Mahsa &
 VPN_PID=$!
 
 sleep 5
