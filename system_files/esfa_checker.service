@@ -4,8 +4,6 @@ After=network.target
 
 [Service]
 Type=oneshot
-User=mrn
-Group=mrn
 WorkingDirectory=/home/mrn/hours/Hiddify
 ExecStart=/bin/bash /home/mrn/hours/Hiddify/vpn.sh
 
