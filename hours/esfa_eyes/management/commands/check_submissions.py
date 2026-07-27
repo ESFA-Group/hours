@@ -24,8 +24,8 @@ BOT_TOKEN= "8205869937:AAHcKkzCIZQYP6n55Mx6kG8yDrZT7NM-M7k"
 BOT_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/"
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 PROXIES = {
-    # 'http': 'http://127.0.0.1:2334',
-    # 'https': 'http://127.0.0.1:2334',
+    'http': 'http://127.0.0.1:2334',
+    'https': 'http://127.0.0.1:2334',
 }
 
 TITLEMAPPING = {
