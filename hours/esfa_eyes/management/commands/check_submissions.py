@@ -270,9 +270,10 @@ class Command(BaseCommand):
     \\- Status: {'🔴 Critical' if req_update > 0 else '🟠 Warning' if warnings > 0 else '✅ Good'}
     """
         
+        last_check = jdt.datetime.now().strftime('%Y-%m-%d %H:%M:%S').replace('-', '\\-')
         overview_message += f"""
 
-    *⏰ Last Check:* {jdt.datetime.now().strftime('%Y-%m-%d %H:%M:%S').replace('-', '\\-')}
+    *⏰ Last Check:* {last_check}
     """
         for admin_id in ADMIN_ID:
             success = self.send_telegram_message_with_retry(admin_id, overview_message)
