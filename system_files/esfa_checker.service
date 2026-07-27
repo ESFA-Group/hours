@@ -6,6 +6,7 @@ After=network.target
 Type=oneshot
 User=mrn
 Group=mrn
+WorkingDirectory=/home/mrn/hours/Hiddify
 ExecStart=/bin/bash /home/mrn/hours/Hiddify/vpn.sh
 
 [Install]
