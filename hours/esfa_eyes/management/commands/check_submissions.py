@@ -20,12 +20,12 @@ ESFAEYES_FIELD_TO_TELEGRAM_ID = {
 }
 BOSS_ID = [103813581]                                       # morsali
 ADMIN_ID = [293224143, 1320393742, 6372380391]
-BOT_TOKEN= "7985758239:AAECktRZy7htev_itYxdriN5YPJXyLgs4EI"
+BOT_TOKEN= "8205869937:AAHcKkzCIZQYP6n55Mx6kG8yDrZT7NM-M7k"
 BOT_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/"
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 PROXIES = {
-    'http': 'http://127.0.0.1:2334',
-    'https': 'http://127.0.0.1:2334',
+    # 'http': 'http://127.0.0.1:2334',
+    # 'https': 'http://127.0.0.1:2334',
 }
 
 TITLEMAPPING = {
@@ -84,6 +84,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Checking for overdue reports... Dry run: {dry_run}")
         if dry_run:
             self.dry_run()
+            self.alert(True)
             return
 
         self.alert()
@@ -162,8 +163,8 @@ class Command(BaseCommand):
     
     #########################################################################
     ################################ Public Method ################################
-    def alert(self):
-        if not self._is_inside_valid_hours():
+    def alert(self, dry_run = False):
+        if not dry_run and not self._is_inside_valid_hours():
             print("bot is sleeping...")
             return
         Eyes_report = EsfaEyes.objects.latest('year')
@@ -202,9 +203,9 @@ class Command(BaseCommand):
                     'warning_count': len(subfields_dictionary[field_name]["warning"]),
                     'total_responsible': len(Eyes_report[field_name])
                 }
-                    
-        self.send_warning_alerts_users(subfields_dictionary)
-        self.send_warning_alerts_admin(Eyes_report, subfields_dictionary, total_require_update, total_warning, user_status)
+        if not dry_run:
+            self.send_warning_alerts_users(subfields_dictionary)
+        self.send_warning_alerts_admin(Eyes_report, subfields_dictionary, total_require_update, total_warning, user_status, dry_run)
     
     def send_warning_alerts_users(self, subfields_dict):
         for field_name in subfields_dict:   # financial_info, international_finance_info, ...
@@ -231,7 +232,7 @@ class Command(BaseCommand):
                             self.style.ERROR(f"Failed to send message to {chat_id} after all retry attempts")
                         )
 
-    def send_warning_alerts_admin(self, Eyes_report, subfields_dict, total_require_update, total_warning, user_status):
+    def send_warning_alerts_admin(self, Eyes_report, subfields_dict, total_require_update, total_warning, user_status, dry_run = False):
         # Create comprehensive admin overview message
         overview_message = f"""*ESFA Eyes Status Report*
 
@@ -280,11 +281,11 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.ERROR(f"ADMIN---Failed to send overview to admin {admin_id} after all retry attempts")
                 )
-
-        for boss_id in BOSS_ID:
-            success = self.send_telegram_message_with_retry(boss_id, overview_message)
-            if not success:
-                logger.error(f"BOSS---Failed to send overview to boss {boss_id}")
+        if not dry_run:
+            for boss_id in BOSS_ID:
+                success = self.send_telegram_message_with_retry(boss_id, overview_message)
+                if not success:
+                    logger.error(f"BOSS---Failed to send overview to boss {boss_id}")
             
     def send_telegram_message_with_retry(self, chat_id, message, max_retries=10):
         for attempt in range(max_retries + 1):
