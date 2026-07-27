@@ -1,6 +1,8 @@
 import io
+import subprocess
 import requests
 
+from django.conf import settings
 from django.core.management import call_command
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -70,14 +72,26 @@ class EsfaEyesApiView(APIView):
 
 
 class CheckSubmissionsApiView(APIView):
-	"""Superuser-only manual trigger for the check_submissions command (dry run)."""
+	"""Superuser-only manual dry run of check_submissions, directly or via Hiddify/vpn_dry.sh (`vpn: true`)."""
 	permission_classes = [permissions.IsAdminUser]
 
 	def post(self, request):
 		if not request.user.is_superuser:
 			return Response({"title": "Access denied", "message": "Superusers only."}, status=status.HTTP_403_FORBIDDEN)
 
-		# ponytail: runs inline; move to a background task if it starts blocking the request
+		# ponytail: both run inline; move to a background task if they start blocking the request
+		if request.data.get("vpn"):
+			script = settings.BASE_DIR.parent / "Hiddify" / "vpn_dry.sh"
+			try:
+				proc = subprocess.run([str(script)], capture_output=True, text=True, timeout=300)
+			except Exception as exc:
+				return Response({"title": "Command failed", "message": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+			if proc.returncode != 0:
+				return Response({"title": "Command failed", "message": (proc.stderr or proc.stdout).strip()}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+			return Response({"output": proc.stdout + proc.stderr}, status=status.HTTP_200_OK)
+
 		out = io.StringIO()
 		try:
 			call_command("check_submissions", "--dry-run", stdout=out, stderr=out)

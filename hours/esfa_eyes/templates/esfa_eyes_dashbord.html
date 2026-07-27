@@ -33,8 +33,11 @@
 
         {% if request.user.id == 43 %}
         <div class="p-2anann ms-md-auto align-self-end">
-            <button id="check-submissions-btn" class="btn btn-outline-primary">
+            <button class="btn btn-outline-primary check-submissions-btn">
                 🤖 send alert (dry run)
+            </button>
+            <button class="btn btn-outline-primary check-submissions-btn" data-vpn="1">
+                🛡️ send alert (Vpn_dry)
             </button>
         </div>
         {% endif %}
@@ -139,11 +142,11 @@
 <script src="{% static 'esfa_eyes/js/templatesScripts/esfa_eyes_dashboard.js' %}"></script>
 {% if request.user.is_superuser %}
 <script>
-    document.getElementById('check-submissions-btn').addEventListener('click', async (e) => {
+    document.querySelectorAll('.check-submissions-btn').forEach(b => b.addEventListener('click', async (e) => {
         const btn = e.currentTarget;
         btn.disabled = true;
         try {
-            const res = await window.apiService.post('check_submissions', {});
+            const res = await window.apiService.post('check_submissions', { vpn: !!btn.dataset.vpn });
             if (!res.ok) {
                 await window.apiService.handleError(res, 'Check Submissions failed');
             } else {
@@ -152,7 +155,7 @@
         } finally {
             btn.disabled = false;
         }
-    });
+    }));
 </script>
 {% endif %}
 {% endblock body %}
