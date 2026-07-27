@@ -1,6 +1,6 @@
 #!/bin/bash
 # Usage: vpn.sh [extra args passed to check_submissions]
-CONFIG=/home/mrn/hours/Hiddify/mahsa.txt
+CONFIG=/home/mrn/hours/Hiddify/config.txt
 PROXY=http://127.0.0.1:2334
 
 cleanup() {
