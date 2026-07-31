@@ -1656,6 +1656,10 @@ def _can_reject_supreme(sheet, verifier):
     return sheet.submitted and verifier.is_SupremeHourVerifier
 
 
+def _can_force_submit_supreme(sheet, verifier):
+    return not sheet.submitted and verifier.is_SupremeHourVerifier
+
+
 def _sheet_summary(sheet, role):
     user = sheet.user
     auto_hours = 0
@@ -1809,12 +1813,12 @@ class HourVerifierAPIView(APIView):
                     sections["unsubmitted"].append(item)
                 continue
 
-            if sheet.is_fully_approved:
+            # Supreme sign-off alone makes a sheet ready for payment; the pending
+            # manager approvals are formalities they can still add (but not reject).
+            if sheet.supreme_verified:
                 sections["approved"].append(item)
-            elif not sheet.supreme_verified:
-                sections["currentQueue"].append(item)
             else:
-                sections["other"].append(item)
+                sections["currentQueue"].append(item)
 
         return {
             "mode": "supreme",
@@ -1823,7 +1827,7 @@ class HourVerifierAPIView(APIView):
                 "currentQueue": "Submitted / waiting for supreme action",
                 "other": "Other / rejected or still incomplete",
                 "unsubmitted": "Unsubmitted",
-                "approved": "Fully approved / ready for payment",
+                "approved": "Supreme approved / ready for payment",
             },
             "sequentialManagerLevel2": True,
         }
@@ -1874,6 +1878,7 @@ class HourVerifierAPIView(APIView):
                     "canRejectManagerLevel2": mode == "manager" and _can_reject_manager_level_2(sheet, verifier),
                     "canVerifySupreme": mode == "supreme" and _can_verify_supreme(sheet, verifier),
                     "canRejectSupreme": mode == "supreme" and _can_reject_supreme(sheet, verifier),
+                    "canForceSubmitSupreme": mode == "supreme" and _can_force_submit_supreme(sheet, verifier),
                     "canEditManagerLevel1Comment": can_edit_manager_1_comment,
                     "canEditManagerLevel2Comment": can_edit_manager_2_comment,
                 },
@@ -1921,6 +1926,26 @@ class HourVerifierAPIView(APIView):
 
         if action == "save_comments":
             sheet.save(update_fields=["manager_level_1_comment", "manager_level_2_comment"])
+            return Response({"success": True}, status=status.HTTP_200_OK)
+
+        # Must run before the submitted guard below, which would otherwise block it.
+        if action == "force_submit_supreme":
+            if mode != "supreme" or not _can_force_submit_supreme(sheet, verifier):
+                return Response({"error": "You cannot force-submit this sheet."}, status=status.HTTP_403_FORBIDDEN)
+            # ponytail: the employee-submit validations (forget_no_attendance_days /
+            # missing_description_days) are skipped on purpose - bypassing them is the
+            # whole point of "force". Manager approvals are still required afterwards.
+            now = timezone.now()
+            sheet.submitted = True
+            sheet.supreme_verified = True
+            sheet.supreme_verified_at = now
+            sheet.supreme_verified_by = verifier
+            # A forced sheet is no longer "rejected"; clear the stale rejection banner.
+            sheet.last_rejected_by = None
+            sheet.last_rejected_at = None
+            sheet.rejection_reason = ""
+            sheet.sync_legacy_verification_fields()
+            sheet.save()
             return Response({"success": True}, status=status.HTTP_200_OK)
 
         if not sheet.submitted:

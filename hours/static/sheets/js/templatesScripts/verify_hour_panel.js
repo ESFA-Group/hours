@@ -107,6 +107,7 @@ function clearSelectedUser() {
 	$("#comments-card").addClass("d-none");
 	$("#verify-btn").prop("disabled", true).text("Verify");
 	$("#reject-btn").prop("disabled", true).text("Reject");
+	$("#force-submit-btn").addClass("d-none");
 	$(".list-group-item").removeClass("active");
 	selectedUserId = null;
 	selectedRole = null;
@@ -383,6 +384,9 @@ async function selectUser(userId, role) {
 				$("#reject-btn").prop("disabled", true).data("action", "").text("Reject");
 			}
 
+			// Only true for unsubmitted sheets in the supreme panel.
+			$("#force-submit-btn").toggleClass("d-none", !(selectedDetail.permissions || {}).canForceSubmitSupreme);
+
 			$("#comments-card").removeClass("d-none");
 			$("#manager-level-1-comment")
 				.val(selectedDetail.managerLevel1Comment || "")
@@ -477,6 +481,11 @@ async function postSheetAction(action) {
 		reason = window.prompt("Enter rejection reason (optional):", "") || "";
 	}
 
+	if (action === "force_submit_supreme") {
+		const name = (selectedDetail && selectedDetail.userName) || "this person";
+		if (!window.confirm(`Force submit and supreme-approve the sheet of ${name}? The employee never submitted it and the usual submit checks are skipped.`)) return;
+	}
+
 	isUpdatingVerification = true;
 	const userIdBeforeRefresh = selectedUserId;
 	const roleBeforeRefresh = selectedRole;
@@ -560,5 +569,6 @@ $("document").ready(async function () {
 
 	$("#verify-btn").click(() => postSheetAction($("#verify-btn").data("action")));
 	$("#reject-btn").click(() => postSheetAction($("#reject-btn").data("action")));
+	$("#force-submit-btn").click(() => postSheetAction("force_submit_supreme"));
 	$("#save-comments-btn").click(saveComments);
 });

@@ -136,7 +136,7 @@ class HourApprovalWorkflowTests(TestCase):
     def test_supreme_can_verify_submitted_sheet(self):
         self._submit_sheet()
         self.client.force_authenticate(self.supreme)
-        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_supreme'}, format='json')
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_supreme', 'mode': 'supreme'}, format='json')
         self.assertEqual(response.status_code, 200)
         self.sheet.refresh_from_db()
         self.assertTrue(self.sheet.supreme_verified)
@@ -144,11 +144,58 @@ class HourApprovalWorkflowTests(TestCase):
     def test_supreme_can_reject_submitted_sheet(self):
         self._submit_sheet()
         self.client.force_authenticate(self.supreme)
-        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'reject_supreme', 'reason': 'اصلاح شود'}, format='json')
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'reject_supreme', 'reason': 'اصلاح شود', 'mode': 'supreme'}, format='json')
         self.assertEqual(response.status_code, 200)
         self.sheet.refresh_from_db()
         self.assertFalse(self.sheet.submitted)
         self.assertEqual(self.sheet.rejection_reason, 'اصلاح شود')
+
+    def test_supreme_can_force_submit_and_verify_unsubmitted_sheet(self):
+        self.client.force_authenticate(self.supreme)
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'force_submit_supreme', 'mode': 'supreme'}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.sheet.refresh_from_db()
+        self.assertTrue(self.sheet.submitted)
+        self.assertTrue(self.sheet.supreme_verified)
+        self.assertEqual(self.sheet.supreme_verified_by, self.supreme)
+        # Managers still have to approve before the sheet is ready for payment.
+        self.assertFalse(self.sheet.manager_level_1_verified)
+        self.assertFalse(self.sheet.is_fully_approved)
+
+    def test_manager_cannot_force_submit(self):
+        self.client.force_authenticate(self.manager_1)
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'force_submit_supreme'}, format='json')
+        self.assertEqual(response.status_code, 403)
+        self.sheet.refresh_from_db()
+        self.assertFalse(self.sheet.submitted)
+
+    def test_supreme_cannot_force_submit_already_submitted_sheet(self):
+        self._submit_sheet()
+        self.client.force_authenticate(self.supreme)
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'force_submit_supreme', 'mode': 'supreme'}, format='json')
+        self.assertEqual(response.status_code, 403)
+
+    def test_supreme_approval_alone_is_ready_for_payment(self):
+        self._submit_sheet()
+        self.client.force_authenticate(self.supreme)
+        self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_supreme', 'mode': 'supreme'}, format='json')
+
+        response = self.client.get(self._verify_url(), {'mode': 'supreme'})
+        approved = [item['userId'] for item in response.data['sections']['approved']]
+        self.assertIn(self.employee.id, approved)
+
+        # Managers may still sign off, but no longer reject.
+        self.client.force_authenticate(self.manager_1)
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'reject_manager_level_1', 'reason': 'x'}, format='json')
+        self.assertEqual(response.status_code, 403)
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_1'}, format='json')
+        self.assertEqual(response.status_code, 200)
+
+        self.client.force_authenticate(self.manager_2)
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'reject_manager_level_2', 'reason': 'x'}, format='json')
+        self.assertEqual(response.status_code, 403)
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_2'}, format='json')
+        self.assertEqual(response.status_code, 200)
 
     def test_nobody_can_verify_or_reject_unsubmitted_sheets(self):
         self.client.force_authenticate(self.manager_1)
