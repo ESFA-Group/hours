@@ -425,12 +425,13 @@ class Sheet(models.Model):
 			original_hours_converted = df["Hours"].apply(self.hhmm2minutes)
 			computed_hours = (
 				df["Auto Hours"] + df["Forget"] + df["Mission"] + df["Remote"] - df["Rest"]
-			)
+			).clip(lower=0)
 			df["Hours"] = original_hours_converted.where(sum_components == 0, computed_hours)
 		else:
+			# Clamp: Rest can be entered before attendance fills Auto Hours.
 			df["Hours"] = (
 				df["Auto Hours"] + df["Forget"] + df["Mission"] + df["Remote"] - df["Rest"]
-			)
+			).clip(lower=0)
 
 		df[projects] = (
 			df[projects]
@@ -594,8 +595,10 @@ class Sheet(models.Model):
 			mission_m = self.hhmm2minutes(data.get("Mission", "00:00"))
 			forget_m = self.hhmm2minutes(data.get("Forget", "00:00"))
 			rest_m = self.hhmm2minutes(data.get("Rest", "00:00"))
+			# Rest may be entered before attendance fills Auto Hours; clamp so a
+			# rest-only day reads 00:00 instead of a negative time.
 			data["Total"] = self.minutes2hhmm(
-				auto_m + forget_m + mission_m + rem_m - rest_m
+				max(0, auto_m + forget_m + mission_m + rem_m - rest_m)
 			)
 		
 		if should_normalize_weekday:
@@ -613,13 +616,10 @@ class Sheet(models.Model):
 		if len(self.data) > len(correct_weekdays):
 			self.data = self.data[: len(correct_weekdays)]  # Truncate excess entries
 		elif len(self.data) < len(correct_weekdays):
-			# Duplicate the last entry and increment the day value to fill in the missing data
-			for _ in range(len(self.data), len(correct_weekdays)):
-				last_entry = self.data[-1]
-				new_entry = last_entry.copy()
-				new_entry["Day"] += 1
-				new_entry["WeekDay"] = None  # We'll update WeekDay after this
-				self.data.append(new_entry)
+			# Append blank days; never copy the last day's hours forward.
+			blank = {key: "" for key in self.data[0]}
+			for entry in correct_weekdays[len(self.data):]:
+				self.data.append({**blank, **entry, "Total": "00:00"})
 
 		for entry in self.data:
 			entry["WeekDay"] = correct_weekdays_dict[entry["Day"]]

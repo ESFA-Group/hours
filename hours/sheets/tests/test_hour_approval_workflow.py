@@ -390,3 +390,38 @@ class SheetEmptyProtectionTests(TestCase):
         response = self.client.get(self._url())
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['data']), self.full_rows)
+
+    def test_get_heals_short_row_count(self):
+        # Legacy sheets exist with fewer rows than their month has days. Served
+        # as-is, the browser builds a short grid, the first save pads it on the
+        # server, and every later save is then rejected as "incomplete".
+        short = copy.deepcopy(self.sheet.data)[:-1]
+        Sheet.objects.filter(pk=self.sheet.pk).update(data=short)
+        response = self.client.get(self._url())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['data']), self.full_rows)
+        self.assertEqual(response.data['data'][0]['Auto Hours'], '08:00')
+
+    def test_rest_only_edit_on_blank_sheet_saves(self):
+        # The reported bug: a blank sheet with a stale row count refused Rest edits.
+        blank = Sheet.empty_sheet_data(self.year, self.month)
+        for row in blank:
+            row.update({'Auto Hours': '', 'Rest': '', 'Remote': ''})
+        Sheet.objects.filter(pk=self.sheet.pk).update(data=blank[:-1])
+
+        grid = copy.deepcopy(self.client.get(self._url()).data['data'])
+        self.assertEqual(len(grid), self.full_rows)
+        grid[4]['Rest'] = '01:00'
+
+        response = self._post({'saveSheet': True, 'data': grid})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get(self._url()).data['data'][4]['Rest'], '01:00')
+
+    def test_rest_without_auto_hours_is_not_negative(self):
+        grid = copy.deepcopy(self.sheet.data)
+        grid[4].update({'Auto Hours': '', 'Rest': '01:00', 'Remote': ''})
+        response = self._post({'saveSheet': True, 'data': grid})
+        self.assertEqual(response.status_code, 200)
+        self.sheet.refresh_from_db()
+        self.assertEqual(self.sheet.data[4]['Total'], '00:00')
+        self.assertGreaterEqual(self.sheet.total, 0)

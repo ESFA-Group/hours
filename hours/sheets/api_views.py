@@ -51,10 +51,13 @@ class SheetApiView(APIView):
         if created:
             sheet.setup_sheet()
 
-        # Self-heal sheets that somehow lost their rows (legacy/corrupt data, an old
-        # bug, etc.). Serving an empty grid would make the page unusable and could
-        # lead to an empty save, so rebuild a blank month for this period.
-        if not sheet.data:
+        # Self-heal sheets whose row count does not match the month (lost rows,
+        # legacy/corrupt data, an old bug). normalize_sheet() rewrites the row count
+        # on every save, so serving a grid at a different length than what will be
+        # stored makes every later save look "incomplete" to the guard in post().
+        if len(sheet.data or []) != len(
+            Sheet.empty_sheet_data(int(sheet.year), int(sheet.month))
+        ):
             sheet.normalize_sheet()
 
         serializer = SheetSerializer(sheet)
@@ -84,12 +87,13 @@ class SheetApiView(APIView):
             data = request.data.get("data", [])
             # Guard against accidentally emptying a sheet. The hours grid always has
             # exactly one row per day and there is no UI to add or remove rows, so a
-            # payload that is empty or has fewer rows than what is already stored is
-            # never a legitimate edit -- it almost always means a dropped connection,
-            # an incomplete page load, or a client-side bug. Reject it instead of
-            # overwriting good data.
-            existing_rows = len(sheet.data or [])
-            if not isinstance(data, list) or len(data) == 0 or len(data) < existing_rows:
+            # payload with fewer rows than the month has days is never a legitimate
+            # edit -- it almost always means a dropped connection, an incomplete page
+            # load, or a client-side bug. Reject it instead of overwriting good data.
+            # Compare against the month, not against len(sheet.data): the stored count
+            # is rewritten by normalize_sheet() and a stale one would lock the sheet.
+            expected_rows = len(Sheet.empty_sheet_data(int(year), int(month)))
+            if not isinstance(data, list) or len(data) < expected_rows:
                 return Response(
                     {
                         "error": (
@@ -343,7 +347,7 @@ class InfoApiView(APIView):
         mission_m = cls.hhmm2minutes(row.get("Mission", "00:00"))
         forget_m = cls.hhmm2minutes(row.get("Forget", "00:00"))
         rest_m = cls.hhmm2minutes(row.get("Rest", "00:00"))
-        computed = auto_m + forget_m + mission_m + remote_m - rest_m
+        computed = max(0, auto_m + forget_m + mission_m + remote_m - rest_m)
         # Old rows may have only Hours. Also keep submitted manual Hours when no
         # attendance/remote/rest data exists yet.
         if computed == 0 and "Hours" in row:
@@ -623,7 +627,7 @@ class MonthlyReportApiView(APIView):
             forget_m = sheet.hhmm2minutes(row.get("Forget", "00:00"))
             rest_m = sheet.hhmm2minutes(row.get("Rest", "00:00"))
             row["Total"] = sheet.minutes2hhmm(
-                auto_m + forget_m + mission_m + remote_m - rest_m
+                max(0, auto_m + forget_m + mission_m + remote_m - rest_m)
             )
 
     @classmethod
