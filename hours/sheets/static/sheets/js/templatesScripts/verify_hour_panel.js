@@ -478,7 +478,9 @@ async function postSheetAction(action) {
 
 	let reason = "";
 	if (action.startsWith("reject")) {
-		reason = window.prompt("Enter rejection reason (optional):", "") || "";
+		const input = window.prompt("Enter rejection reason (optional):", "");
+		if (input === null) return;
+		reason = input;
 	}
 
 	if (action === "force_submit_supreme") {
