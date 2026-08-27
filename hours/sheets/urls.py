@@ -7,6 +7,7 @@ app_name = "sheets"
 urlpatterns = [
     path("", RedirectView.as_view(url="home", permanent=True)),
     path("home", views.HomePageView.as_view(), name="home_page"),
+    path("media/<path:path>", views.MediaServeView.as_view(), name="media"),
     path("signup", login_views.signup, name="signup"),
     path("login", login_views.login, name="login"),
     path("change_password", login_views.change_password, name="change_password"),

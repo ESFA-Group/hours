@@ -1,5 +1,8 @@
 from django.views.generic.base import TemplateView, View
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, FileResponse, Http404
+from django.core.exceptions import PermissionDenied
+from django.conf import settings
+from pathlib import Path, PurePosixPath
 from django.utils.decorators import method_decorator
 from sheets.customDecorators import *
 from django.db.models import QuerySet
@@ -663,3 +666,42 @@ class ImportStatusView(View):
 	def get(self, request, task_id):
 		status_data = get_task_status(task_id)
 		return JsonResponse(status_data)
+
+@method_decorator(decorators, name="dispatch")
+class MediaServeView(View):
+	"""
+	Serve files from MEDIA_ROOT through Django.
+
+	django.conf.urls.static.static() only wires up media URLs when DEBUG is
+	True, so in production nothing routed /hours/media/<path> and the web
+	server answered with its own 404. These files are personal documents
+	(national ID cards, birth certificates, ...) so they must never be served
+	anonymously anyway - access is restricted to the owner of the file and to
+	staff/superusers.
+	"""
+
+	def get(self, request, path):
+		full_path = Path(settings.MEDIA_ROOT).joinpath(path)
+		media_root = Path(settings.MEDIA_ROOT).resolve()
+		try:
+			# resolve() also collapses any ".." the client sneaked into the path
+			resolved = full_path.resolve(strict=True)
+		except (OSError, ValueError):
+			raise Http404("Media file not found")
+		if media_root not in resolved.parents or not resolved.is_file():
+			raise Http404("Media file not found")
+
+		if not self.can_access(request.user, path):
+			raise PermissionDenied
+
+		return FileResponse(resolved.open("rb"))
+
+	@staticmethod
+	def can_access(user, path) -> bool:
+		if user.is_staff or user.is_superuser:
+			return True
+		# personal documents live under MEDIA_ROOT/personal/<username>/
+		parts = PurePosixPath(path).parts
+		if len(parts) >= 2 and parts[0] == "personal":
+			return parts[1] == user.username
+		return True
