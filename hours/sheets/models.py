@@ -200,6 +200,66 @@ def current_mont_days(month: int, isleap: bool) -> int:
 		days_num += 1
 	return days_num
 
+# Columns holding durations that must be canonical "hh:mm" on write. "Total" is
+# recomputed by normalize_sheet() and "Note Hours" is free-text, so neither is here.
+TIME_INPUT_COLUMNS = ("Auto Hours", "Rest", "Remote", "Mission", "Forget")
+
+
+def coerce_time_cell(value):
+	"""Normalize a duration cell to canonical "hh:mm", or None if it is not a duration.
+
+	Decimal input is read as decimal hours -- "0.5" is 30 minutes -- because the
+	jspreadsheet hh:mm mask renders a raw "0.5:00" back as "05:00", which is how
+	sheet 3362 was corrupted (Rest read as 5 hours in the browser, 0 on the server).
+	Lenient about shapes we have written ourselves (empty, the JSON int 0, "8", "8:5").
+
+	This is the WRITE-path validator. Sheet.hhmm2minutes stays lenient for reads.
+	"""
+	if value is None or value == "":
+		return "00:00"
+	if isinstance(value, bool):
+		return None
+	# Legacy rows store the JSON int 0 rather than "00:00" (255 such cells in
+	# production). Only an exact zero is unambiguous; a nonzero bare int is not.
+	if isinstance(value, int) and value == 0:
+		return "00:00"
+	if not isinstance(value, str):
+		return None
+
+	text = value.strip()
+	if not text:
+		return "00:00"
+
+	parts = text.split(":")
+	if len(parts) == 1:
+		hh, mm = parts[0], "0"
+	elif len(parts) == 2:
+		hh, mm = parts[0], (parts[1] or "0")
+	else:
+		return None
+
+	# "0.5" / "0.5:00" -- decimal hours. Only meaningful when the minutes half is
+	# absent or zero; "1.5:45" mixes two notations and is rejected.
+	if "." in hh:
+		try:
+			hours = float(hh)
+		except ValueError:
+			return None
+		if not mm.isdigit() or int(mm) != 0 or hours < 0:
+			return None
+		total = int(round(hours * 60))
+		if total > 999 * 60:
+			return None
+		return f"{total // 60:02d}:{total % 60:02d}"
+
+	if not (hh.isdigit() and mm.isdigit()):
+		return None
+	h, m = int(hh), int(mm)
+	if m > 59 or h > 999:
+		return None
+	return f"{h:02d}:{m:02d}"
+
+
 def get_persian_weekday(jalali_date):
 	"""Convert jalali date to Persian weekday name"""
 
@@ -361,6 +421,11 @@ class Sheet(models.Model):
 	def hhmm2minutes(self, string: str) -> int:
 		"""converter function
 		convert string with hh:mm fromat to minutes
+
+		Deliberately lenient: legacy sheets hold values like "0", "08:0", "16:" and
+		"-1:30" in the read-only "Hours"/"Total" columns, and every read path here
+		depends on those degrading to 0 rather than raising. Do NOT make this strict
+		-- coerce_time_cell() is the validator for the write path.
 		"""
 		try:
 			h, m = string.split(":")

@@ -604,10 +604,16 @@
         }
     }
 
+    // Strict on purpose, and matched to Sheet.hhmm2minutes in sheets/models.py:
+    // anything unparseable scores 0 in BOTH engines. Previously Number() made
+    // "0.5:00" worth 30 minutes here while Python scored it 0, so the browser
+    // showed a total the server never agreed with.
     function hhmm2minutes(str) {
         if (typeof str !== 'string' || !str.includes(":"))
             return 0
         const [h, m] = str.split(":");
+        if (!/^\d+$/.test(h) || !/^\d+$/.test(m))
+            return 0
         return Number(h) * 60 + Number(m)
     }
 
@@ -870,12 +876,27 @@
             }
         }
 
-        // Standard flow
+        // Standard flow. Note Hours is deliberately absent: it is a free-text
+        // annotation column (never converted to minutes) and already holds Persian
+        // sentences, so it must not be run through the time standardizer.
         if (x !== undefined && value !== undefined) {
-            const standardValue = TryStandartizeValue(value);
-            if ((x == AutoHourCol || x == RestCol || x == RemoteCol || x == MissionCol || x == ForgetCol || x == NoteHoursCol) && value !== standardValue) {
-                window.spreadTable.updateCell(x, y, standardValue);
-                return;
+            if (x == AutoHourCol || x == RestCol || x == RemoteCol || x == MissionCol || x == ForgetCol) {
+                const standardValue = TryStandartizeValue(value);
+                if (standardValue === null) {
+                    jSuites.notification({
+                        error: 1,
+                        name: "Error",
+                        title: "Invalid time",
+                        message: `"${value}" is not a valid time. Use hh:mm -- for half an hour type 0.5 or 00:30.`,
+                        timeout: 8000,
+                    });
+                    window.spreadTable.updateCell(x, y, '00:00');
+                    return;
+                }
+                if (value !== standardValue) {
+                    window.spreadTable.updateCell(x, y, standardValue);
+                    return;
+                }
             }
         }
 
@@ -929,16 +950,53 @@
         }
     }
 
+    // Returns a canonical "hh:mm" string, or null if the value is not a duration.
+    // Mirrors coerce_time_cell() in sheets/models.py -- keep the two in sync.
+    // A decimal is read as decimal hours ("0.5" -> "00:30"). That is the bug this
+    // guards: the old version turned "0.5" into "0.5:00" (padStart is a no-op on a
+    // 3-char string), which the hh:mm mask then displayed as "05:00" while the
+    // server scored it as 0 minutes.
     function TryStandartizeValue(value) {
+        if (typeof value === 'number')
+            return value === 0 ? '00:00' : null
+
         if (typeof value !== 'string')
             return value
 
-        const parts = value.split(':');
-        if (parts.length === 1) {
-            return value.padStart(2, '0') + ":00"
+        const text = value.trim();
+        if (text === '')
+            return '00:00'
+
+        const parts = text.split(':');
+        if (parts.length > 2)
+            return null
+
+        const hh = parts[0];
+        const mm = parts.length === 2 ? (parts[1] || '0') : '0';
+
+        // Decimal hours. Only meaningful when the minutes half is absent or zero;
+        // "1.5:45" mixes two notations and is rejected.
+        if (hh.includes('.')) {
+            if (!/^\d*\.\d+$/.test(hh) || !/^\d+$/.test(mm) || Number(mm) !== 0)
+                return null
+            const total = Math.round(Number(hh) * 60);
+            if (total > 999 * 60)
+                return null
+            return String(Math.floor(total / 60)).padStart(2, '0') + ':' +
+                String(total % 60).padStart(2, '0')
         }
 
-        return parts[0].padStart(2, '0') + ":" + parts[1].padEnd(2, '0')
+        if (!/^\d+$/.test(hh) || !/^\d+$/.test(mm))
+            return null
+
+        // Note: the historical padEnd on the minutes half is kept, so "8:5" still
+        // means 08:50. Changing that is deliberately out of scope here.
+        const minutes = parts.length === 2 ? Number(parts[1].padEnd(2, '0')) : 0;
+        if (minutes > 59 || Number(hh) > 999)
+            return null
+
+        return String(Number(hh)).padStart(2, '0') + ':' +
+            String(minutes).padStart(2, '0')
     }
 
     function onselectionHandler(worksheet, px, py, ux, uy, origin) {

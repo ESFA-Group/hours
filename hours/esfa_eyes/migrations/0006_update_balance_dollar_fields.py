@@ -1,7 +1,9 @@
 from django.db import migrations
-from esfa_eyes.models import EsfaEyes
-
 def update_balance_dollar_fields(apps, schema_editor):    
+    # Resolve the model through apps.get_model: importing the live model makes this
+    # historical migration query columns that later migrations add, which breaks a
+    # fresh database (test runs included).
+    EsfaEyes = apps.get_model("esfa_eyes", "EsfaEyes")
     dic_key_map = {
         "مقدار 1": "مقدار 1 (S1)",
         "مقدار 2": "مقدار 2 (S2)",

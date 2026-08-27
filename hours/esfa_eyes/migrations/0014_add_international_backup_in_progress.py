@@ -1,6 +1,5 @@
 from django.db import migrations
 from esfa_eyes.models import (
-    EsfaEyes,
     default_kavosh_series_sales_info,
     default_Captan_series_sales_info,
     default_MCM_series_sales_info,
@@ -8,6 +7,10 @@ from esfa_eyes.models import (
 
 
 def add_international_rows(apps, schema_editor):
+    # Resolve the model through apps.get_model: importing the live model makes this
+    # historical migration query columns that later migrations add, which breaks a
+    # fresh database (test runs included).
+    EsfaEyes = apps.get_model("esfa_eyes", "EsfaEyes")
     for record in EsfaEyes.objects.all():
         kavosh_defaults = default_kavosh_series_sales_info()
         if 'kavosh_series_sales_international_in_progress' not in record.kavosh_series_sales_info:

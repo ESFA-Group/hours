@@ -20,7 +20,7 @@ import io
 import re
 from io import BytesIO
 
-from sheets.models import Project, Sheet, User, Food_data, Report, DailyReportSetting, current_mont_days, get_persian_weekday
+from sheets.models import Project, Sheet, User, Food_data, Report, DailyReportSetting, current_mont_days, get_persian_weekday, TIME_INPUT_COLUMNS, coerce_time_cell
 from esfa_eyes.models import EsfaEyes
 from sheets.serializers import ProjectSerializer, SheetSerializer
 from openpyxl import Workbook
@@ -100,6 +100,42 @@ class SheetApiView(APIView):
                             "Sheet data looks incomplete, so it was not saved to avoid "
                             "overwriting your hours. Please reload the page and try again."
                         )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Canonicalize every duration cell before it can reach the grid.
+            # Values whose intent is unambiguous (blank, the legacy JSON int 0,
+            # "8", "0.5" decimal hours) are rewritten to "hh:mm"; anything else is
+            # rejected. This is what stops a "0.5:00" from being stored: the
+            # jspreadsheet hh:mm mask renders that back as "05:00", so the browser
+            # scored it as 30 minutes while Sheet.hhmm2minutes scored it as 0.
+            # "Total" is recomputed by normalize_sheet() below and "Note Hours" is
+            # a free-text annotation column, so neither is validated here.
+            invalid = []
+            for row in data:
+                if not isinstance(row, dict):
+                    continue
+                for col in TIME_INPUT_COLUMNS:
+                    if col not in row:
+                        continue
+                    fixed = coerce_time_cell(row[col])
+                    if fixed is None:
+                        invalid.append(
+                            {"day": row.get("Day"), "column": col, "value": row[col]}
+                        )
+                    else:
+                        row[col] = fixed
+            if invalid:
+                first = invalid[0]
+                return Response(
+                    {
+                        "error": (
+                            f"Invalid time value {first['value']!r} in "
+                            f"\"{first['column']}\" on day {first['day']}. "
+                            "Use hh:mm -- for half an hour type 0.5 or 00:30."
+                        ),
+                        "invalidCells": invalid,
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
@@ -319,6 +355,8 @@ class InfoApiView(APIView):
 
     @classmethod
     def hhmm2minutes(cls, value) -> int:
+        # Lenient by design (report/read path over legacy data); see the note on
+        # Sheet.hhmm2minutes. coerce_time_cell() validates the write path.
         try:
             if value is None:
                 return 0
