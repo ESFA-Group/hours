@@ -4,6 +4,7 @@ from import_export import resources, fields
 from import_export.widgets import ForeignKeyWidget
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from import_export.admin import ImportExportModelAdmin
+from import_export.forms import SelectableFieldsExportForm
 from sheets.models import *
 
 admin.site.site_url = "/hours"
@@ -70,6 +71,47 @@ class UserResource(resources.ModelResource):
             raise ValueError(f"payment_type '{payment_type}' is invalid. Allowed values: {allowed}")
 
 
+class UserExportForm(SelectableFieldsExportForm):
+    # still exportable, just not ticked when the export form opens; the user can
+    # tick any of them back on per export
+    UNCHECKED_BY_DEFAULT = {
+        'wage',
+        'base_payment',
+        'reduction1',
+        'reduction2',
+        'reduction3',
+        'food_reduction',
+        'addition1',
+        'addition2',
+        'comment',
+        'mobile1',
+        'mobile2',
+        'emergency_phone',
+        'address',
+        'laptop_info',
+        'dob',
+        'bank_name',
+        'card_number',
+        'account_number',
+        'SHEBA_number',
+        'personal_image',
+        'national_ID_front_image',
+        'national_ID_back_image',
+        'birth_cert_first_page',
+        'birth_cert_changes_page',
+        'student_card',
+        'military_service_card',
+    }
+
+    def _create_boolean_fields(self, resource, index):
+        boolean_fields = super()._create_boolean_fields(resource, index)
+        for field_name in self.UNCHECKED_BY_DEFAULT:
+            key = self.create_boolean_field_name(resource, field_name)
+            if key in self.fields:
+                self.fields[key].initial = False
+        return boolean_fields
+
+
 @admin.register(User)
 class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     # Your existing configurations
@@ -84,6 +126,7 @@ class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     
     # Import-export resource
     resource_class = UserResource
+    export_form_class = UserExportForm
     
     # Your existing restricted fields
     RESTRICTED_FIELDS = [
