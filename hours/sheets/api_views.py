@@ -1705,8 +1705,16 @@ def _can_force_submit_supreme(sheet, verifier):
 def _sheet_summary(sheet, role):
     user = sheet.user
     auto_hours = 0
+    remote_hours = 0
+    rest_hours = 0
+    forget_hours = 0
+    mission_hours = 0
     for row in sheet.data:
         auto_hours += sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
+        remote_hours += sheet.hhmm2minutes(row.get("Remote", "00:00"))
+        rest_hours += sheet.hhmm2minutes(row.get("Rest", "00:00"))
+        forget_hours += sheet.hhmm2minutes(row.get("Forget", "00:00"))
+        mission_hours += sheet.hhmm2minutes(row.get("Mission", "00:00"))
     warnings = sheet.get_warnings()
     is_warning = bool(warnings)
     return {
@@ -1726,6 +1734,10 @@ def _sheet_summary(sheet, role):
         "isSupremeVerified": sheet.supreme_verified,
         "isFullyApproved": sheet.is_fully_approved,
         "autoHours": auto_hours,
+        "remoteHours": remote_hours,
+        "restHours": rest_hours,
+        "forgetHours": forget_hours,
+        "missionHours": mission_hours,
         "isWarning": is_warning,
         "warnings": warnings,
         "totalHours": sheet.total,

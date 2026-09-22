@@ -7,30 +7,7 @@
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/spreadsheet_custom.css' %}">
-<style>
-    .approval-section-list {
-        max-height: 30vh;
-        overflow-y: auto;
-    }
-
-    .approval-status-line span {
-        margin-inline-start: 6px;
-    }
-
-    .verification-sheet-scroll {
-        width: 100%;
-        max-width: 100%;
-        overflow-x: auto;
-        overflow-y: visible;
-        padding-bottom: 12px;
-    }
-
-    .verification-sheet-scroll .jexcel_content,
-    .verification-sheet-scroll .jspreadsheet_content {
-        max-width: 100%;
-        overflow-x: auto !important;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'sheets/css/verify_panel.css' %}">
 {% endblock extra_css %}
 {% block body %}
 
@@ -106,6 +83,7 @@
                 <div>
                     <h4 id="selected-user-name">Select a person</h4>
                     <div id="selected-user-status" class="approval-status-line text-muted small"></div>
+                    <div id="selected-user-totals" class="mt-1"></div>
                 </div>
                 <div class="d-flex gap-2">
                     <button id="verify-btn" class="btn btn-success" disabled>Verify</button>

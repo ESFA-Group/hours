@@ -1,0 +1,121 @@
+/* Shared styling for the manager and supreme hour-verification panels. */
+
+.approval-section-list {
+    max-height: 30vh;
+    overflow-y: auto;
+}
+
+.approval-status-line span {
+    margin-inline-start: 6px;
+}
+
+.verification-sheet-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding-bottom: 12px;
+}
+
+.verification-sheet-scroll .jexcel_content,
+.verification-sheet-scroll .jspreadsheet_content {
+    max-width: 100%;
+    overflow-x: auto !important;
+}
+
+/* ---- User list cards ---- */
+
+.user-item .hours-summary {
+    font-variant-numeric: tabular-nums;
+    color: #495057;
+}
+
+.user-item .hours-summary b {
+    font-weight: 600;
+    color: #212529;
+}
+
+.user-item .hours-sep {
+    color: #adb5bd;
+    margin: 0 2px;
+}
+
+.hour-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.hour-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.hour-chip b {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.hour-chip-remote {
+    background-color: #e7f1ff;
+    border-color: #b6d4fe;
+    color: #0a58ca;
+}
+
+.hour-chip-mission {
+    background-color: #ede7fb;
+    border-color: #d1c4ef;
+    color: #59359a;
+}
+
+.hour-chip-forget {
+    background-color: #fff3cd;
+    border-color: #ffe69c;
+    color: #8a6100;
+}
+
+.hour-chip-rest {
+    background-color: #f8d7da;
+    border-color: #f1aeb5;
+    color: #b02a37;
+}
+
+.hour-chip-empty {
+    background-color: #f1f3f5;
+    border-color: #e0e3e7;
+    color: #868e96;
+    font-style: italic;
+}
+
+/* Keep the chips readable once a card is selected (blue) or flagged (amber). */
+.user-item.active .hours-summary,
+.user-item.active .hours-summary b,
+.user-item.active .hours-sep {
+    color: #fff;
+}
+
+.user-item.active .hour-chip {
+    background-color: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* ---- Selected-sheet totals strip (right pane header) ---- */
+
+#selected-user-totals .hour-chip {
+    font-size: 0.8rem;
+    padding: 2px 9px;
+}
+
+.hour-chip-total {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+    color: #343a40;
+}
