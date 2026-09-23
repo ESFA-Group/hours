@@ -380,17 +380,12 @@ class InfoApiView(APIView):
 
     @classmethod
     def row_hours(cls, row: dict, sheet: Sheet) -> int:
-        auto_m = cls.hhmm2minutes(row.get("Auto Hours", "00:00"))
-        remote_m = cls.hhmm2minutes(row.get("Remote", "00:00"))
-        mission_m = cls.hhmm2minutes(row.get("Mission", "00:00"))
-        forget_m = cls.hhmm2minutes(row.get("Forget", "00:00"))
-        rest_m = cls.hhmm2minutes(row.get("Rest", "00:00"))
-        computed = max(0, auto_m + forget_m + mission_m + remote_m - rest_m)
-        # Old rows may have only Hours. Also keep submitted manual Hours when no
-        # attendance/remote/rest data exists yet.
-        if computed == 0 and "Hours" in row:
+        mins = sheet.row_minutes(row)
+        # Old rows may have only Hours. Also keep submitted manual Hours when
+        # nothing was worked that day (Rest alone does not count), as transform() does.
+        if mins["Total"] + mins["Rest"] == 0 and "Hours" in row:
             return cls.hhmm2minutes(row.get("Hours", "00:00"))
-        return computed
+        return mins["Total"]
 
     @classmethod
     def get_info(cls, queryset: QuerySet) -> pd.Series:
@@ -659,14 +654,7 @@ class MonthlyReportApiView(APIView):
             row.setdefault("Note Hours", "")
             row.setdefault("Mission", "00:00")
             row.setdefault("Forget", "00:00")
-            auto_m = sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
-            remote_m = sheet.hhmm2minutes(row.get("Remote", "00:00"))
-            mission_m = sheet.hhmm2minutes(row.get("Mission", "00:00"))
-            forget_m = sheet.hhmm2minutes(row.get("Forget", "00:00"))
-            rest_m = sheet.hhmm2minutes(row.get("Rest", "00:00"))
-            row["Total"] = sheet.minutes2hhmm(
-                max(0, auto_m + forget_m + mission_m + remote_m - rest_m)
-            )
+            row["Total"] = sheet.minutes2hhmm(sheet.row_minutes(row)["Total"])
 
     @classmethod
     def get_sheet_sums(
@@ -1710,11 +1698,12 @@ def _sheet_summary(sheet, role):
     forget_hours = 0
     mission_hours = 0
     for row in sheet.data:
-        auto_hours += sheet.hhmm2minutes(row.get("Auto Hours", "00:00"))
-        remote_hours += sheet.hhmm2minutes(row.get("Remote", "00:00"))
-        rest_hours += sheet.hhmm2minutes(row.get("Rest", "00:00"))
-        forget_hours += sheet.hhmm2minutes(row.get("Forget", "00:00"))
-        mission_hours += sheet.hhmm2minutes(row.get("Mission", "00:00"))
+        mins = sheet.row_minutes(row)  # Rest here is only what it actually deducted
+        auto_hours += mins["Auto Hours"]
+        remote_hours += mins["Remote"]
+        rest_hours += mins["Rest"]
+        forget_hours += mins["Forget"]
+        mission_hours += mins["Mission"]
     warnings = sheet.get_warnings()
     is_warning = bool(warnings)
     return {

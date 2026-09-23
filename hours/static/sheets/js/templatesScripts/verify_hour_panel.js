@@ -104,6 +104,7 @@ function clearSelectedUser() {
 	$("#no-user-selected").show();
 	$("#selected-user-name").text("Select a person");
 	$("#selected-user-status").empty();
+	$("#selected-user-totals").empty();
 	$("#comments-card").addClass("d-none");
 	$("#verify-btn").prop("disabled", true).text("Verify");
 	$("#reject-btn").prop("disabled", true).text("Reject");
@@ -148,15 +149,16 @@ function minutes2hhmm(mins) {
 	return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
 }
 
+// Rest only offsets time worked that day: no effect on a day with no Auto Hours /
+// Remote / Mission / Forget, and never below zero. Mirrors Sheet.row_minutes in
+// sheets/models.py and rowMinutes() in hours.html -- keep the three in sync.
 function calculateRowTotalMinutes(row) {
-	const auto = hhmm2minutes(row["Auto Hours"] || "00:00");
-	const rest = hhmm2minutes(row["Rest"] || "00:00");
-	const remote = hhmm2minutes(row["Remote"] || "00:00");
-	const mission = hhmm2minutes(row["Mission"] || "00:00");
-	const forget = hhmm2minutes(row["Forget"] || "00:00");
-	let totalM = auto + forget + mission + remote - rest;
-	if (totalM < 0) totalM = 0;
-	return totalM;
+	let worked = 0;
+	["Auto Hours", "Remote", "Mission", "Forget"].forEach(col => {
+		worked += hhmm2minutes(row[col] || "00:00");
+	});
+	const rest = Math.min(hhmm2minutes(row["Rest"] || "00:00"), worked);
+	return worked - rest;
 }
 
 function recalculateTableTotals(tableData, updateSpreadsheet = true) {
@@ -301,6 +303,24 @@ function getRoleLabel(role) {
 	return "";
 }
 
+// Compact per-sheet breakdown shown under the Auto/Total line on each list card.
+// Zero-valued entries are dropped so a card only carries the numbers that matter.
+const BREAKDOWN_CHIPS = [
+	{ key: "remoteHours", label: "Remote", cls: "hour-chip-remote", title: "Remote hours" },
+	{ key: "missionHours", label: "Mission", cls: "hour-chip-mission", title: "Mission hours" },
+	{ key: "forgetHours", label: "Forget", cls: "hour-chip-forget", title: "Forgotten punches added" },
+	{ key: "restHours", label: "Rest", cls: "hour-chip-rest", title: "Rest hours deducted (Rest on days with nothing worked is ignored)", sign: "-" },
+];
+
+function getHoursBreakdown(user) {
+	const chips = BREAKDOWN_CHIPS
+		.filter(chip => (user[chip.key] || 0) > 0)
+		.map(chip => `<span class="hour-chip ${chip.cls}" title="${chip.title}">${chip.label}<b>${chip.sign || ''}${minutes2hhmm(user[chip.key])}</b></span>`)
+		.join("");
+	if (!chips) return '<div class="hour-chips text-muted"><span class="hour-chip hour-chip-empty">No remote / rest / forget</span></div>';
+	return `<div class="hour-chips">${chips}</div>`;
+}
+
 function getStatusIcons(user) {
 	let statusIcons = '';
 	if (user.isSubmitted) statusIcons += ' <span title="Submitted">☑️</span>';
@@ -318,6 +338,15 @@ function renderSelectedStatus(user) {
 	const supreme = user.supremeVerified ? "👑 Supreme approval" : "⏳ Supreme approval";
 	let rejected = user.rejectionReason ? `<span class="text-danger">Rejected: ${user.rejectionReason}</span>` : "";
 	$("#selected-user-status").html(`${submitted} <span>${m1}</span> <span>${m2}</span> <span>${supreme}</span> ${rejected}`);
+}
+
+function renderSelectedTotals(user) {
+	const summary = `<span class="hour-chip hour-chip-total" title="Auto hours">Auto<b>${minutes2hhmm(user.autoHours || 0)}</b></span>`
+		+ `<span class="hour-chip hour-chip-total" title="Total hours">Total<b>${minutes2hhmm(user.totalHours || 0)}</b></span>`;
+	const breakdown = BREAKDOWN_CHIPS
+		.map(chip => `<span class="hour-chip ${chip.cls}" title="${chip.title}">${chip.label}<b>${chip.sign || ''}${minutes2hhmm(user[chip.key] || 0)}</b></span>`)
+		.join("");
+	$("#selected-user-totals").html(`<div class="hour-chips">${summary}${breakdown}</div>`);
 }
 
 function resolveActions(detail) {
@@ -369,6 +398,7 @@ async function selectUser(userId, role) {
 			const warningIcon = selectedDetail.isWarning ? ' <span title="See warnings below">⚠️</span>' : '';
 			$("#selected-user-name").html(`${selectedDetail.userName} <small class="text-muted">${getRoleLabel(role)}</small>${warningIcon}`);
 			renderSelectedStatus(selectedDetail);
+			renderSelectedTotals(selectedDetail);
 			renderWarnings(selectedDetail.warnings);
 
 			const actions = resolveActions(selectedDetail);
@@ -423,7 +453,8 @@ function renderUserLists() {
 		}
 
 		filteredUsers.sort((a, b) => a.userName.localeCompare(b.userName)).forEach(user => {
-			const hoursInfo = `<small class="d-block">Auto: ${minutes2hhmm(user.autoHours || 0)} | Total: ${minutes2hhmm(user.totalHours || 0)}</small>`;
+			const hoursInfo = `<small class="hours-summary">Auto: <b>${minutes2hhmm(user.autoHours || 0)}</b> <span class="hours-sep">|</span> Total: <b>${minutes2hhmm(user.totalHours || 0)}</b></small>`;
+			const breakdownInfo = getHoursBreakdown(user);
 			const roleInfo = user.role ? `<small class="text-muted">${getRoleLabel(user.role)}</small>` : "";
 			const rejectedInfo = user.rejectionReason ? `<small class="d-block text-danger">Rejected: ${user.rejectionReason}</small>` : "";
 			const statusIcons = getStatusIcons(user);
@@ -437,10 +468,11 @@ function renderUserLists() {
                         <span class="fw-bold">${user.userName}${warningIcon}</span>
                         <div>${statusIcons}</div>
                     </div>
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between align-items-baseline">
                         ${hoursInfo}
                         ${roleInfo}
                     </div>
+                    ${breakdownInfo}
                     ${rejectedInfo}
                 </li>
             `);
@@ -478,7 +510,9 @@ async function postSheetAction(action) {
 
 	let reason = "";
 	if (action.startsWith("reject")) {
-		reason = window.prompt("Enter rejection reason (optional):", "") || "";
+		const input = window.prompt("Enter rejection reason (optional):", "");
+		if (input === null) return;
+		reason = input;
 	}
 
 	if (action === "force_submit_supreme") {

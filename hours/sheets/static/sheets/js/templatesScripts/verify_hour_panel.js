@@ -149,15 +149,16 @@ function minutes2hhmm(mins) {
 	return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
 }
 
+// Rest only offsets time worked that day: no effect on a day with no Auto Hours /
+// Remote / Mission / Forget, and never below zero. Mirrors Sheet.row_minutes in
+// sheets/models.py and rowMinutes() in hours.html -- keep the three in sync.
 function calculateRowTotalMinutes(row) {
-	const auto = hhmm2minutes(row["Auto Hours"] || "00:00");
-	const rest = hhmm2minutes(row["Rest"] || "00:00");
-	const remote = hhmm2minutes(row["Remote"] || "00:00");
-	const mission = hhmm2minutes(row["Mission"] || "00:00");
-	const forget = hhmm2minutes(row["Forget"] || "00:00");
-	let totalM = auto + forget + mission + remote - rest;
-	if (totalM < 0) totalM = 0;
-	return totalM;
+	let worked = 0;
+	["Auto Hours", "Remote", "Mission", "Forget"].forEach(col => {
+		worked += hhmm2minutes(row[col] || "00:00");
+	});
+	const rest = Math.min(hhmm2minutes(row["Rest"] || "00:00"), worked);
+	return worked - rest;
 }
 
 function recalculateTableTotals(tableData, updateSpreadsheet = true) {
@@ -308,7 +309,7 @@ const BREAKDOWN_CHIPS = [
 	{ key: "remoteHours", label: "Remote", cls: "hour-chip-remote", title: "Remote hours" },
 	{ key: "missionHours", label: "Mission", cls: "hour-chip-mission", title: "Mission hours" },
 	{ key: "forgetHours", label: "Forget", cls: "hour-chip-forget", title: "Forgotten punches added" },
-	{ key: "restHours", label: "Rest", cls: "hour-chip-rest", title: "Rest hours (deducted)", sign: "-" },
+	{ key: "restHours", label: "Rest", cls: "hour-chip-rest", title: "Rest hours deducted (Rest on days with nothing worked is ignored)", sign: "-" },
 ];
 
 function getHoursBreakdown(user) {

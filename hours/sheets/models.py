@@ -203,6 +203,8 @@ def current_mont_days(month: int, isleap: bool) -> int:
 # Columns holding durations that must be canonical "hh:mm" on write. "Total" is
 # recomputed by normalize_sheet() and "Note Hours" is free-text, so neither is here.
 TIME_INPUT_COLUMNS = ("Auto Hours", "Rest", "Remote", "Mission", "Forget")
+# Columns that add to a day's Total. Rest is the only one that subtracts.
+WORK_TIME_COLUMNS = ("Auto Hours", "Remote", "Mission", "Forget")
 
 
 def coerce_time_cell(value):
@@ -438,6 +440,20 @@ class Sheet(models.Model):
 		m = mins % 60
 		return f"{h:02d}:{m:02d}"
 
+	def row_minutes(self, row: dict) -> dict:
+		"""One day's minutes per column, with "Rest" reduced to what it really deducts.
+
+		Rest only offsets time worked that day: on a day with no Auto Hours /
+		Remote / Mission / Forget it has no effect, and it never takes a day below
+		zero. So Total == Auto Hours + Remote + Mission + Forget - Rest always holds.
+		Mirrored by rowMinutes() in hours.html and verify_hour_panel.js -- keep in sync.
+		"""
+		mins = {col: self.hhmm2minutes(row.get(col, "00:00")) for col in WORK_TIME_COLUMNS}
+		worked = sum(mins.values())
+		mins["Rest"] = min(self.hhmm2minutes(row.get("Rest", "00:00")), worked)
+		mins["Total"] = worked - mins["Rest"]
+		return mins
+
 	def parse_project_porp(self, string: str) -> int:
 		try:
 			return int(string.replace("%", "").strip()) / 100
@@ -482,21 +498,17 @@ class Sheet(models.Model):
 		for col in required + optional:
 			df[col] = df[col].apply(self.hhmm2minutes).fillna(0)
 
-		sum_components = (
-			df["Auto Hours"] + df["Remote"] + df["Mission"] + df["Forget"] + df["Rest"]
-		)
+		# Vectorised row_minutes(): Rest only offsets time worked that day.
+		worked = df["Auto Hours"] + df["Remote"] + df["Mission"] + df["Forget"]
+		computed_hours = worked - df["Rest"].clip(upper=worked)
 
 		if self.submitted and "Hours" in df:
+			# Legacy manual Hours stand on days with nothing worked (Rest alone
+			# does not count as data).
 			original_hours_converted = df["Hours"].apply(self.hhmm2minutes)
-			computed_hours = (
-				df["Auto Hours"] + df["Forget"] + df["Mission"] + df["Remote"] - df["Rest"]
-			).clip(lower=0)
-			df["Hours"] = original_hours_converted.where(sum_components == 0, computed_hours)
+			df["Hours"] = original_hours_converted.where(worked == 0, computed_hours)
 		else:
-			# Clamp: Rest can be entered before attendance fills Auto Hours.
-			df["Hours"] = (
-				df["Auto Hours"] + df["Forget"] + df["Mission"] + df["Remote"] - df["Rest"]
-			).clip(lower=0)
+			df["Hours"] = computed_hours
 
 		df[projects] = (
 			df[projects]
@@ -655,16 +667,9 @@ class Sheet(models.Model):
 				data["Mission"] = "00:00"
 			if "Forget" not in data:
 				data["Forget"] = "00:00"
-			auto_m = self.hhmm2minutes(data.get("Auto Hours", "00:00"))
-			rem_m = self.hhmm2minutes(data.get("Remote", "00:00"))
-			mission_m = self.hhmm2minutes(data.get("Mission", "00:00"))
-			forget_m = self.hhmm2minutes(data.get("Forget", "00:00"))
-			rest_m = self.hhmm2minutes(data.get("Rest", "00:00"))
-			# Rest may be entered before attendance fills Auto Hours; clamp so a
-			# rest-only day reads 00:00 instead of a negative time.
-			data["Total"] = self.minutes2hhmm(
-				max(0, auto_m + forget_m + mission_m + rem_m - rest_m)
-			)
+			# Rest may be entered before attendance fills Auto Hours; row_minutes
+			# ignores it then, so a rest-only day reads 00:00.
+			data["Total"] = self.minutes2hhmm(self.row_minutes(data)["Total"])
 		
 		if should_normalize_weekday:
 			self.normalize_sheet_weekday_data()

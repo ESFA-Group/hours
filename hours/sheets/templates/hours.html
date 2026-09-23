@@ -16,6 +16,42 @@
         justify-content: space-between;
         gap: 8px;
     }
+    /* Per-type breakdown under Working stats; colours match verify_panel.css chips. */
+    .hours-breakdown {
+        border-top: 1px solid #dee2e6;
+        padding-top: 8px;
+        font-size: 0.9rem;
+    }
+    .hours-breakdown-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 3px 0 3px 8px;
+        margin-bottom: 3px;
+        border-left: 3px solid #ced4da;
+        font-variant-numeric: tabular-nums;
+    }
+    .hours-breakdown-row .hb-label {
+        flex: 1;
+    }
+    .hours-breakdown-row .hb-days {
+        color: #868e96;
+        font-size: 0.8rem;
+    }
+    .hours-breakdown-row .hb-value {
+        font-weight: 600;
+        min-width: 56px;
+        text-align: right;
+    }
+    .hours-breakdown-row.is-zero {
+        opacity: 0.45;
+    }
+    .hb-attendance { border-left-color: #198754; }
+    .hb-remote     { border-left-color: #0a58ca; }
+    .hb-mission    { border-left-color: #59359a; }
+    .hb-forget     { border-left-color: #cc9a06; }
+    .hb-rest       { border-left-color: #b02a37; }
+    .hb-rest .hb-value { color: #b02a37; }
 </style>
 {% endblock extra_css %}
 {% block body %}
@@ -100,6 +136,34 @@
                                     <strong>No. of days worked:</strong>
                                     <strong id="worked-days-count"></strong>
                                 </p>
+                                <div class="hours-breakdown"
+                                     title="Total = Attendance + Remote + Mission + Forget − Rest">
+                                    <div class="hours-breakdown-row hb-attendance">
+                                        <span class="hb-label">Attendance</span>
+                                        <span class="hb-days" id="attendance-days"></span>
+                                        <span class="hb-value" id="attendance-hours"></span>
+                                    </div>
+                                    <div class="hours-breakdown-row hb-remote">
+                                        <span class="hb-label">Remote</span>
+                                        <span class="hb-days" id="remote-days"></span>
+                                        <span class="hb-value" id="remote-hours"></span>
+                                    </div>
+                                    <div class="hours-breakdown-row hb-mission">
+                                        <span class="hb-label">Mission</span>
+                                        <span class="hb-days" id="mission-days"></span>
+                                        <span class="hb-value" id="mission-hours"></span>
+                                    </div>
+                                    <div class="hours-breakdown-row hb-forget">
+                                        <span class="hb-label">Forget</span>
+                                        <span class="hb-days" id="forget-days"></span>
+                                        <span class="hb-value" id="forget-hours"></span>
+                                    </div>
+                                    <div class="hours-breakdown-row hb-rest">
+                                        <span class="hb-label">Rest (deducted)</span>
+                                        <span class="hb-days" id="rest-days"></span>
+                                        <span class="hb-value" id="rest-hours"></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -624,6 +688,22 @@
         return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
     }
 
+    // One day's minutes per column, with Rest reduced to what it really deducts:
+    // Rest only offsets time worked that day, so on a day with no Auto Hours /
+    // Remote / Mission / Forget it has no effect, and it never takes a day below
+    // zero. Mirrors Sheet.row_minutes in sheets/models.py -- keep the two in sync.
+    function rowMinutes(row) {
+        const mins = {};
+        let worked = 0;
+        ["Auto Hours", "Remote", "Mission", "Forget"].forEach(col => {
+            mins[col] = hhmm2minutes(row[col]);
+            worked += mins[col];
+        });
+        mins["Rest"] = Math.min(hhmm2minutes(row["Rest"]), worked);
+        mins["Total"] = worked - mins["Rest"];
+        return mins;
+    }
+
     // Attendance is a display-only string like "9:1-17:5__8:0-12:30". Zero-pad each
     // H:M so minutes read as :01 not :1. Cosmetic only -- not used in any calculation.
     function padAttendance(str) {
@@ -676,6 +756,30 @@
         $("#total-hours").text(`${totalH < 10 ? 0 : ''}${totalH}:${totalM < 10 ? 0 : ''}${totalM}`);
         $("#mean-hours").text(`${meanH < 10 ? 0 : ''}${meanH}:${meanM < 10 ? 0 : ''}${meanM}`);
         $("#worked-days-count").text(workedDaysCount);
+    }
+
+    // Column -> element-id prefix for the Working stats breakdown.
+    const HOURS_BREAKDOWN = [
+        { column: "Auto Hours", id: "attendance" },
+        { column: "Remote", id: "remote" },
+        { column: "Mission", id: "mission" },
+        { column: "Forget", id: "forget" },
+        { column: "Rest", id: "rest", sign: "−" },
+    ];
+
+    function updateHoursBreakdown(tableData) {
+        HOURS_BREAKDOWN.forEach(({ column, id, sign }) => {
+            let minutes = 0;
+            let days = 0;
+            tableData.forEach(row => {
+                const mins = rowMinutes(row)[column];
+                minutes += mins;
+                if (mins > 0) days += 1;
+            });
+            $(`#${id}-hours`).text(`${minutes && sign ? sign : ''}${minutes2hhmm(minutes)}`);
+            $(`#${id}-days`).text(days ? `${days} day${days === 1 ? '' : 's'}` : '');
+            $(`#${id}-hours`).closest(".hours-breakdown-row").toggleClass("is-zero", minutes === 0);
+        });
     }
 
     function updateChart(minutesByProject) {
@@ -858,14 +962,7 @@
 
             if (relevantChange || x == AutoHourCol) {  // also catch direct Auto Hours edits if any
                 for (let row = 0; row < tableData.length; row++) {
-                    const auto = hhmm2minutes(tableData[row]["Auto Hours"] || "00:00");
-                    const remote = hhmm2minutes(tableData[row]["Remote"] || "00:00");
-                    const mission = hhmm2minutes(tableData[row]["Mission"] || "00:00");
-                    const forget = hhmm2minutes(tableData[row]["Forget"] || "00:00");
-                    const rest = hhmm2minutes(tableData[row]["Rest"] || "00:00");
-                    const totalM = auto + forget + mission + remote - rest;
-
-                    if (totalM > 0) {
+                    if (rowMinutes(tableData[row])["Total"] > 0) {
                         const currentPercent = tableData[row][projects[0]] || "";
                         if (!currentPercent || currentPercent === "") {
                             window.spreadTable.setValueFromCoords(projectColIndex, row, "100", true);
@@ -907,14 +1004,13 @@
             const startRow = isStartupOrImport ? 0 : parseInt(y);
             const endRow = isStartupOrImport ? tableData.length - 1 : parseInt(y);
             for (let row = startRow; row <= endRow; row++) {
-                const auto = hhmm2minutes(window.spreadTable.getValueFromCoords(AutoHourCol, row));
-                const rest = hhmm2minutes(window.spreadTable.getValueFromCoords(RestCol, row));
-                const remote = hhmm2minutes(window.spreadTable.getValueFromCoords(RemoteCol, row));
-                const mission = hhmm2minutes(window.spreadTable.getValueFromCoords(MissionCol, row));
-                const forget = hhmm2minutes(window.spreadTable.getValueFromCoords(ForgetCol, row));
-                let totalM = auto + forget + mission + remote - rest;
-
-                if (totalM < 0) totalM = 0;
+                const totalM = rowMinutes({
+                    "Auto Hours": window.spreadTable.getValueFromCoords(AutoHourCol, row),
+                    "Rest": window.spreadTable.getValueFromCoords(RestCol, row),
+                    "Remote": window.spreadTable.getValueFromCoords(RemoteCol, row),
+                    "Mission": window.spreadTable.getValueFromCoords(MissionCol, row),
+                    "Forget": window.spreadTable.getValueFromCoords(ForgetCol, row),
+                })["Total"];
 
                 const currentTotal = window.spreadTable.getValueFromCoords(TotalCol, row);
                 const newTotalStr = minutes2hhmm(totalM);
@@ -942,6 +1038,7 @@
         const workedDaysCount = tableData.filter(row => hhmm2minutes(row["Total"]) > 0).length;
 
         updateHoursInfo(totalTime, meanTime, workedDaysCount);
+        updateHoursBreakdown(tableData);
         updateChart(minutesByProject);
         updatePaymentsValue();
 
