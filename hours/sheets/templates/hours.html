@@ -183,12 +183,8 @@
                                     <strong id="submitted-status">-</strong>
                                 </p>
                                 <p class="d-flex justify-content-between status-line">
-                                    <strong>Manager 1 approval:</strong>
-                                    <strong id="manager1-status">-</strong>
-                                </p>
-                                <p class="d-flex justify-content-between status-line">
-                                    <strong>Manager 2 approval:</strong>
-                                    <strong id="manager2-status">-</strong>
+                                    <strong>Payment status:</strong>
+                                    <strong id="ready-for-payment-status">-</strong>
                                 </p>
                                 <p class="d-flex justify-content-between status-line text-danger d-none" id="rejected-status-row">
                                     <strong>Rejected:</strong>
@@ -1285,8 +1281,8 @@
     function updateApprovalStatus(sheet) {
         const icon = value => value ? "✅" : "⏳";
         $("#submitted-status").text(sheet.submitted ? "✅ Submitted" : "⏳ Not submitted");
-        $("#manager1-status").text(`${icon(sheet.manager_level_1_verified)} Manager 1`);
-        $("#manager2-status").text(`${icon(sheet.manager_level_2_verified)} Manager 2`);
+        const readyForPayment = (sheet.manager_level_1_verified && sheet.manager_level_2_verified) || sheet.supreme_verified;
+        $("#ready-for-payment-status").text(readyForPayment ? "✅ Ready for payment" : "⏳ Waiting for verification");
 
         if (!sheet.submitted && (sheet.rejection_reason || sheet.last_rejected_at)) {
             const reason = sheet.rejection_reason ? sheet.rejection_reason : "";
