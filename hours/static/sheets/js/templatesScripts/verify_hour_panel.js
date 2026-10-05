@@ -312,13 +312,20 @@ const BREAKDOWN_CHIPS = [
 	{ key: "restHours", label: "Rest", cls: "hour-chip-rest", title: "Rest hours deducted (Rest on days with nothing worked is ignored)", sign: "-" },
 ];
 
+// Only the supreme panel receives paymentTypeLabel from the API.
+function getPaymentTypeChip(user) {
+	if (!user.paymentTypeLabel) return "";
+	return `<span class="hour-chip hour-chip-payment" title="Payment type">Payment<b>${user.paymentTypeLabel}</b></span>`;
+}
+
 function getHoursBreakdown(user) {
+	const paymentChip = getPaymentTypeChip(user);
 	const chips = BREAKDOWN_CHIPS
 		.filter(chip => (user[chip.key] || 0) > 0)
 		.map(chip => `<span class="hour-chip ${chip.cls}" title="${chip.title}">${chip.label}<b>${chip.sign || ''}${minutes2hhmm(user[chip.key])}</b></span>`)
 		.join("");
-	if (!chips) return '<div class="hour-chips text-muted"><span class="hour-chip hour-chip-empty">No remote / rest / forget</span></div>';
-	return `<div class="hour-chips">${chips}</div>`;
+	if (!chips) return `<div class="hour-chips text-muted">${paymentChip}<span class="hour-chip hour-chip-empty">No remote / rest / forget</span></div>`;
+	return `<div class="hour-chips">${paymentChip}${chips}</div>`;
 }
 
 function getStatusIcons(user) {
@@ -346,7 +353,7 @@ function renderSelectedTotals(user) {
 	const breakdown = BREAKDOWN_CHIPS
 		.map(chip => `<span class="hour-chip ${chip.cls}" title="${chip.title}">${chip.label}<b>${chip.sign || ''}${minutes2hhmm(user[chip.key] || 0)}</b></span>`)
 		.join("");
-	$("#selected-user-totals").html(`<div class="hour-chips">${summary}${breakdown}</div>`);
+	$("#selected-user-totals").html(`<div class="hour-chips">${summary}${breakdown}${getPaymentTypeChip(user)}</div>`);
 }
 
 function resolveActions(detail) {

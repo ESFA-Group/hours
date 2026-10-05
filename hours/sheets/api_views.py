@@ -1690,7 +1690,7 @@ def _can_force_submit_supreme(sheet, verifier):
     return not sheet.submitted and verifier.is_SupremeHourVerifier
 
 
-def _sheet_summary(sheet, role):
+def _sheet_summary(sheet, role, include_payment_type=False):
     user = sheet.user
     auto_hours = 0
     remote_hours = 0
@@ -1706,7 +1706,7 @@ def _sheet_summary(sheet, role):
         mission_hours += mins["Mission"]
     warnings = sheet.get_warnings()
     is_warning = bool(warnings)
-    return {
+    summary = {
         "userId": user.id,
         "userName": user.get_full_name(),
         "username": user.username,
@@ -1735,6 +1735,11 @@ def _sheet_summary(sheet, role):
         "lastRejectedAt": sheet.last_rejected_at.isoformat() if sheet.last_rejected_at else None,
         "rejectionReason": sheet.rejection_reason,
     }
+    if include_payment_type:
+        # Pay info is only for the supreme panel, not line managers.
+        summary["paymentType"] = sheet.payment_type
+        summary["paymentTypeLabel"] = sheet.get_payment_type_display()
+    return summary
 
 
 def _apply_rejection(sheet, verifier, reason):
@@ -1845,7 +1850,7 @@ class HourVerifierAPIView(APIView):
             "user__last_name_p", "user__first_name_p", "user__username"
         )
         for sheet in sheets:
-            item = _sheet_summary(sheet, "supreme")
+            item = _sheet_summary(sheet, "supreme", include_payment_type=True)
 
             if not sheet.submitted:
                 # Supreme rejection sets submitted=False, so include rejected
@@ -1904,7 +1909,11 @@ class HourVerifierAPIView(APIView):
             can_edit_manager_1_comment = (mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_1(sheet, verifier)
             can_edit_manager_2_comment = (mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_2(sheet, verifier)
 
-            data = _sheet_summary(sheet, request.query_params.get("role", ""))
+            data = _sheet_summary(
+                sheet,
+                request.query_params.get("role", ""),
+                include_payment_type=mode == "supreme",
+            )
             data.update({
                 "sheetData": sheet.data,
                 "autoHours": auto_hours,

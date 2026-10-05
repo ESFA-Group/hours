@@ -88,6 +88,12 @@
     color: #b02a37;
 }
 
+.hour-chip-payment {
+    background-color: #d1e7dd;
+    border-color: #a3cfbb;
+    color: #0a5c36;
+}
+
 .hour-chip-empty {
     background-color: #f1f3f5;
     border-color: #e0e3e7;
