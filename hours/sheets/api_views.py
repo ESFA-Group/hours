@@ -1845,7 +1845,7 @@ class HourVerifierAPIView(APIView):
         }
 
     def _supreme_sections(self, year, month):
-        sections = {"currentQueue": [], "other": [], "unsubmitted": [], "approved": []}
+        sections = {"currentQueue": [], "managersApproved": [], "other": [], "unsubmitted": [], "approved": []}
         sheets = self._base_sheets(year, month).order_by(
             "user__last_name_p", "user__first_name_p", "user__username"
         )
@@ -1865,6 +1865,8 @@ class HourVerifierAPIView(APIView):
             # manager approvals are formalities they can still add (but not reject).
             if sheet.supreme_verified:
                 sections["approved"].append(item)
+            elif sheet.manager_level_1_verified and sheet.manager_level_2_verified:
+                sections["managersApproved"].append(item)
             else:
                 sections["currentQueue"].append(item)
 
@@ -1873,6 +1875,7 @@ class HourVerifierAPIView(APIView):
             "sections": sections,
             "labels": {
                 "currentQueue": "Submitted / waiting for supreme action",
+                "managersApproved": "Managers approved / ready for payment",
                 "other": "Other / rejected or still incomplete",
                 "unsubmitted": "Unsubmitted",
                 "approved": "Supreme approved / ready for payment",

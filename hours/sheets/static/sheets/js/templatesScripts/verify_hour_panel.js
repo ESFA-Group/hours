@@ -4,7 +4,7 @@ const today = new JDate();
 const currentYear = today.getFullYear();
 const currentMonth = today.getMonth();
 const VERIFY_HOURS_MODE = window.VERIFY_HOURS_MODE || "manager";
-let approvalPayload = { sections: { currentQueue: [], other: [], unsubmitted: [], approved: [] }, labels: {} };
+let approvalPayload = { sections: { currentQueue: [], managersApproved: [], other: [], unsubmitted: [], approved: [] }, labels: {} };
 let selectedUserId = null;
 let selectedRole = null;
 let selectedDetail = null;
@@ -39,6 +39,7 @@ function flattenSections() {
 	const sections = approvalPayload.sections || {};
 	return [
 		...(sections.currentQueue || []),
+		...(sections.managersApproved || []),
 		...(sections.other || []),
 		...(sections.unsubmitted || []),
 		...(sections.approved || []),
@@ -63,7 +64,7 @@ async function loadData() {
 			if (!response.ok) return;
 			if (requestId !== latestLoadRequestId) return;
 
-			approvalPayload = response.data || { sections: { currentQueue: [], other: [], unsubmitted: [], approved: [] }, labels: {} };
+			approvalPayload = response.data || { sections: { currentQueue: [], managersApproved: [], other: [], unsubmitted: [], approved: [] }, labels: {} };
 			updateSectionLabels();
 			updateStaffGroupDropdown();
 			renderUserLists();
@@ -80,6 +81,7 @@ async function loadData() {
 function updateSectionLabels() {
 	const labels = approvalPayload.labels || {};
 	$("#current-queue-title").text(labels.currentQueue || "Needs your approval");
+	$("#managers-approved-title").text(labels.managersApproved || "Managers approved / ready for payment");
 	$("#other-title").text(labels.other || "Other / not ready");
 	$("#unsubmitted-title").text(labels.unsubmitted || "Unsubmitted");
 	$("#approved-title").text(labels.approved || "Approved by you");
@@ -441,7 +443,7 @@ async function selectUser(userId, role) {
 
 function renderUserLists() {
 	const selectedGroup = $("#staff_group").val();
-	const sections = approvalPayload.sections || { currentQueue: [], other: [], unsubmitted: [], approved: [] };
+	const sections = approvalPayload.sections || { currentQueue: [], managersApproved: [], other: [], unsubmitted: [], approved: [] };
 
 	const filterUsers = users => {
 		if (selectedGroup === "all") return users || [];
@@ -490,6 +492,8 @@ function renderUserLists() {
 	};
 
 	renderList(sections.currentQueue, "current-queue-list", "current-queue-count");
+	// Only the supreme panel has this section; jQuery no-ops on the missing elements elsewhere.
+	renderList(sections.managersApproved, "managers-approved-list", "managers-approved-count");
 	renderList(sections.other, "other-list", "other-count");
 	renderList(sections.unsubmitted, "unsubmitted-list", "unsubmitted-count");
 	renderList(sections.approved, "approved-list", "approved-count");

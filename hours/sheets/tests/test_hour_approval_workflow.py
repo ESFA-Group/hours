@@ -197,6 +197,31 @@ class HourApprovalWorkflowTests(TestCase):
         response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_2'}, format='json')
         self.assertEqual(response.status_code, 200)
 
+    def test_supreme_panel_separates_manager_approved_sheets(self):
+        self._submit_sheet()
+
+        def supreme_section_ids():
+            self.client.force_authenticate(self.supreme)
+            sections = self.client.get(self._verify_url(), {'mode': 'supreme'}).data['sections']
+            return {key: [item['userId'] for item in items] for key, items in sections.items()}
+
+        self.client.force_authenticate(self.manager_1)
+        self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_1'}, format='json')
+        sections = supreme_section_ids()
+        self.assertIn(self.employee.id, sections['currentQueue'])
+        self.assertNotIn(self.employee.id, sections['managersApproved'])
+
+        self.client.force_authenticate(self.manager_2)
+        self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_2'}, format='json')
+        sections = supreme_section_ids()
+        self.assertIn(self.employee.id, sections['managersApproved'])
+        self.assertNotIn(self.employee.id, sections['currentQueue'])
+
+        self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_supreme', 'mode': 'supreme'}, format='json')
+        sections = supreme_section_ids()
+        self.assertIn(self.employee.id, sections['approved'])
+        self.assertNotIn(self.employee.id, sections['managersApproved'])
+
     def test_nobody_can_verify_or_reject_unsubmitted_sheets(self):
         self.client.force_authenticate(self.manager_1)
         response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_1'}, format='json')
