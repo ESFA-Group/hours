@@ -27,6 +27,13 @@ class SheetAdmin(admin.ModelAdmin):
         'supreme_verified',
     ]
 
+    def get_readonly_fields(self, request, obj=None):
+        # addition_3_reward is derived on save; reward_base is superuser-only.
+        readonly = list(super().get_readonly_fields(request, obj)) + ['addition_3_reward']
+        if not request.user.is_superuser:
+            readonly.append('reward_base')
+        return readonly
+
 
 class UserResource(resources.ModelResource):
     manager_level_1 = fields.Field(
@@ -83,6 +90,7 @@ class UserExportForm(SelectableFieldsExportForm):
         'food_reduction',
         'addition1',
         'addition2',
+        'reward_base',
         'comment',
         'mobile1',
         'mobile2',
@@ -143,6 +151,7 @@ class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
         'is_KavoshProductionManager',
         'is_KiaProductionManager',
         'is_PaymentManager',
+        'reward_base',
         'user_permissions',
         'groups'
     ]

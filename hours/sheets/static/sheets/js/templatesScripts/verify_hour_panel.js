@@ -349,13 +349,29 @@ function renderSelectedStatus(user) {
 	$("#selected-user-status").html(`${submitted} <span>${m1}</span> <span>${m2}</span> <span>${supreme}</span> ${rejected}`);
 }
 
+// Money figures come pre-computed from the API (same values as the payment page);
+// nothing is calculated here.
+const MONEY_CHIPS = [
+	{ key: "wage", label: "Wage", title: "Hourly wage (R)" },
+	{ key: "totalPayment", label: "Total (R)", title: "Effective worked hours × wage" },
+	{ key: "rewardBase", label: "Reward Base", title: "Reward base (R)" },
+	{ key: "addition3Reward", label: "Addition 3", title: "Reward = Reward Base × Manager 2 performance score %" },
+];
+
+function formatMoney(value) {
+	return Number(value || 0).toLocaleString();
+}
+
 function renderSelectedTotals(user) {
 	const summary = `<span class="hour-chip hour-chip-total" title="Auto hours">Auto<b>${minutes2hhmm(user.autoHours || 0)}</b></span>`
 		+ `<span class="hour-chip hour-chip-total" title="Total hours">Total<b>${minutes2hhmm(user.totalHours || 0)}</b></span>`;
 	const breakdown = BREAKDOWN_CHIPS
 		.map(chip => `<span class="hour-chip ${chip.cls}" title="${chip.title}">${chip.label}<b>${chip.sign || ''}${minutes2hhmm(user[chip.key] || 0)}</b></span>`)
 		.join("");
-	$("#selected-user-totals").html(`<div class="hour-chips">${summary}${breakdown}${getPaymentTypeChip(user)}</div>`);
+	const money = MONEY_CHIPS
+		.map(chip => `<span class="hour-chip hour-chip-money" title="${chip.title}">${chip.label}<b>${formatMoney(user[chip.key])}</b></span>`)
+		.join("");
+	$("#selected-user-totals").html(`<div class="hour-chips">${summary}${breakdown}${getPaymentTypeChip(user)}${money}</div>`);
 }
 
 function resolveActions(detail) {
@@ -433,6 +449,12 @@ async function selectUser(userId, role) {
 			$("#manager-level-2-comment")
 				.val(selectedDetail.managerLevel2Comment || "")
 				.prop("disabled", !(selectedDetail.permissions || {}).canEditManagerLevel2Comment);
+			$("#performance-m1")
+				.val(selectedDetail.performanceM1 ?? "")
+				.prop("disabled", !(selectedDetail.permissions || {}).canEditPerformanceM1);
+			$("#performance-m2")
+				.val(selectedDetail.performanceM2 ?? "")
+				.prop("disabled", !(selectedDetail.permissions || {}).canEditPerformanceM2);
 
 			constructTable(selectedDetail.sheetData);
 		}, "Loading sheet...");
@@ -513,6 +535,32 @@ function getCommentPayload() {
 	if (!$("#manager-level-2-comment").prop("disabled")) {
 		payload.managerLevel2Comment = $("#manager-level-2-comment").val();
 	}
+	// Blank clears the rating (null). The server re-validates; this check only
+	// saves a round trip. Returns null when a value is invalid.
+	for (const [inputId, key, label] of [
+		["#performance-m1", "performanceM1", "Manager 1 performance score"],
+		["#performance-m2", "performanceM2", "Manager 2 performance score"],
+	]) {
+		const $input = $(inputId);
+		if ($input.prop("disabled")) continue;
+		const raw = String($input.val()).trim();
+		if (raw === "") {
+			payload[key] = null;
+			continue;
+		}
+		const value = Number(raw);
+		if (!Number.isInteger(value) || value < 1 || value > 100) {
+			jSuites.notification({
+				error: 1,
+				name: "Error",
+				title: "Invalid percentage",
+				message: `${label} must be a whole number from 1 to 100.`,
+				timeout: 4000,
+			});
+			return null;
+		}
+		payload[key] = value;
+	}
 	return payload;
 }
 
@@ -531,6 +579,9 @@ async function postSheetAction(action) {
 		if (!window.confirm(`Force submit and supreme-approve the sheet of ${name}? The employee never submitted it and the usual submit checks are skipped.`)) return;
 	}
 
+	const commentPayload = getCommentPayload();
+	if (!commentPayload) return;
+
 	isUpdatingVerification = true;
 	const userIdBeforeRefresh = selectedUserId;
 	const roleBeforeRefresh = selectedRole;
@@ -541,7 +592,7 @@ async function postSheetAction(action) {
 				userId: selectedUserId,
 				action: action,
 				reason: reason,
-				...getCommentPayload(),
+				...commentPayload,
 			}, {}, "Updating Verification Status");
 
 			if (!response.ok) return;
@@ -571,6 +622,8 @@ async function postSheetAction(action) {
 
 async function saveComments() {
 	if (!selectedUserId || isUpdatingVerification) return;
+	const commentPayload = getCommentPayload();
+	if (!commentPayload) return;
 	isUpdatingVerification = true;
 
 	try {
@@ -578,17 +631,19 @@ async function saveComments() {
 			const response = await apiService.post(getApiPath(), {
 				userId: selectedUserId,
 				action: "save_comments",
-				...getCommentPayload(),
+				...commentPayload,
 			}, {}, "Saving Comments");
 
 			if (!response.ok) return;
 			jSuites.notification({
 				name: "Success",
-				title: "Comments saved",
-				message: "Comments were saved.",
+				title: "Saved",
+				message: "Notes and performance were saved.",
 				timeout: 3000,
 			});
-		}, "Saving comments...");
+			// Re-fetch so Addition 3 shows the server-recalculated reward.
+			await selectUser(selectedUserId, selectedRole);
+		}, "Saving...");
 	} catch (error) {
 		console.error("Error saving comments:", error);
 	} finally {

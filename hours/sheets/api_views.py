@@ -761,12 +761,26 @@ class PaymentApiView(APIView):
         r2 = int(editted_row["reduction2"])
         add1 = int(editted_row["addition1"])
 
+        # Reward base is superuser-only. The table always posts the whole row, so a
+        # non-superuser's (unchanged) value is simply ignored rather than refused.
+        reward_base = None
+        if request.user.is_superuser and "rewardBase" in editted_row:
+            try:
+                reward_base = int(str(editted_row["rewardBase"]).replace(",", ""))
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": "Reward base must be a whole number."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         user = User.objects.get(pk=id)
         user.wage = wage
         user.base_payment = base
         user.reduction1 = r1
         user.reduction2 = r2
         user.addition1 = add1
+        if reward_base is not None:
+            user.reward_base = reward_base
         user.save()
         user_sheets = Sheet.objects.filter(user=id, year=year)
         for sheet in user_sheets:
@@ -776,6 +790,8 @@ class PaymentApiView(APIView):
                 sheet.reduction1 = r1
                 sheet.reduction2 = r2
                 sheet.addition1 = add1
+                if reward_base is not None:
+                    sheet.reward_base = reward_base
                 sheet.save()
 
         currentSheet = Sheet.objects.get(user=id, year=year, month=month)
@@ -1690,6 +1706,52 @@ def _can_force_submit_supreme(sheet, verifier):
     return not sheet.submitted and verifier.is_SupremeHourVerifier
 
 
+def _can_edit_performance_m1(sheet, verifier, mode):
+    # Direct assignment only: unlike comments, legacy group-tag verifiers acting
+    # as manager 1 must not rate performance.
+    if mode == "supreme":
+        return verifier.is_SupremeHourVerifier
+    return bool(sheet.user and sheet.user.manager_level_1_id == verifier.id)
+
+
+def _can_edit_performance_m2(sheet, verifier, mode):
+    if mode == "supreme":
+        return verifier.is_SupremeHourVerifier
+    return _is_manager_level_2(sheet, verifier)
+
+
+def _parse_performance_percentage(value):
+    """Integer 1-100, or None for a blank value (clears the rating).
+    Raises ValueError for anything else -- never clamps."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    if isinstance(value, bool):
+        raise ValueError
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError
+        value = int(value)
+    elif isinstance(value, str):
+        value = int(value.strip())  # rejects "85.5" / "abc"
+    elif not isinstance(value, int):
+        raise ValueError
+    if not 1 <= value <= 100:
+        raise ValueError
+    return value
+
+
+def _sheet_financials(sheet):
+    return {
+        "wage": sheet.wage,
+        # Same authoritative hours x wage figure as the payment page's Total (R).
+        "totalPayment": sheet.get_total_payment(),
+        "rewardBase": sheet.reward_base,
+        "performanceM1": sheet.performance_form_aspect_m1,
+        "performanceM2": sheet.performance_form_aspect_m2,
+        "addition3Reward": sheet.addition_3_reward,
+    }
+
+
 def _sheet_summary(sheet, role, include_payment_type=False):
     user = sheet.user
     auto_hours = 0
@@ -1917,6 +1979,8 @@ class HourVerifierAPIView(APIView):
                 request.query_params.get("role", ""),
                 include_payment_type=mode == "supreme",
             )
+            # Wage / reward figures are shown on both panels (detail view only).
+            data.update(_sheet_financials(sheet))
             data.update({
                 "sheetData": sheet.data,
                 "autoHours": auto_hours,
@@ -1936,6 +2000,8 @@ class HourVerifierAPIView(APIView):
                     "canForceSubmitSupreme": mode == "supreme" and _can_force_submit_supreme(sheet, verifier),
                     "canEditManagerLevel1Comment": can_edit_manager_1_comment,
                     "canEditManagerLevel2Comment": can_edit_manager_2_comment,
+                    "canEditPerformanceM1": _can_edit_performance_m1(sheet, verifier, mode),
+                    "canEditPerformanceM2": _can_edit_performance_m2(sheet, verifier, mode),
                 },
             })
             return Response(data, status=status.HTTP_200_OK)
@@ -1979,9 +2045,35 @@ class HourVerifierAPIView(APIView):
                 return Response({"error": "You cannot edit manager 2 comment."}, status=status.HTTP_403_FORBIDDEN)
             sheet.manager_level_2_comment = request.data.get("managerLevel2Comment", "")
 
+        # Performance ratings ride along the same way. Everything is checked
+        # before anything is saved, so a bad value never half-applies.
+        for key, field, can_edit in (
+            ("performanceM1", "performance_form_aspect_m1", _can_edit_performance_m1),
+            ("performanceM2", "performance_form_aspect_m2", _can_edit_performance_m2),
+        ):
+            if key not in request.data:
+                continue
+            label = "Manager 1 performance score" if key == "performanceM1" else "Manager 2 performance score"
+            if not can_edit(sheet, verifier, mode):
+                return Response({"error": f"You cannot edit {label}."}, status=status.HTTP_403_FORBIDDEN)
+            try:
+                value = _parse_performance_percentage(request.data.get(key))
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": f"{label} must be a whole number from 1 to 100."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            setattr(sheet, field, value)
+
         if action == "save_comments":
-            sheet.save(update_fields=["manager_level_1_comment", "manager_level_2_comment"])
-            return Response({"success": True}, status=status.HTTP_200_OK)
+            sheet.save(update_fields=[
+                "manager_level_1_comment",
+                "manager_level_2_comment",
+                "performance_form_aspect_m1",
+                "performance_form_aspect_m2",
+                "addition_3_reward",
+            ])
+            return Response({"success": True, **_sheet_financials(sheet)}, status=status.HTTP_200_OK)
 
         # Must run before the submitted guard below, which would otherwise block it.
         if action == "force_submit_supreme":

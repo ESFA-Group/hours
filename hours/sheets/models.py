@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 import pandas as pd
 import jdatetime as jdt
@@ -25,7 +26,10 @@ class User(AbstractUser):
 	reduction3 = models.IntegerField("reduction3", default=0)
 	food_reduction = models.IntegerField("food_reduction", default=0)
 	addition1 = models.IntegerField("addition", default=0)
-	addition2 = models.IntegerField("addition2", default=0)	
+	addition2 = models.IntegerField("addition2", default=0)
+	# default monthly reward; copied onto each Sheet, where M2's performance % turns
+	# it into addition_3_reward. Only superusers may edit it.
+	reward_base = models.IntegerField("reward_base", default=0)
 	comment = models.TextField("comment", default="", blank=True)
 	payment_type_choices = [
 		("const", "ثابت"),
@@ -174,6 +178,7 @@ class User(AbstractUser):
 			"food_reduction": self.food_reduction,
 			"addition1": self.addition1,
 			"addition2": self.addition2,
+			"rewardBase": self.reward_base,
 			"paymentType": self.payment_type,
 		}
 		return info
@@ -369,11 +374,41 @@ class Sheet(models.Model):
 	food_reduction = models.IntegerField("food_reduction", default=0)
 	addition1 = models.IntegerField("addition", default=0)
 	addition2 = models.IntegerField("addition2", default=0)
+	reward_base = models.IntegerField("reward_base", default=0)
+
+	# monthly performance assessments (1-100, null = not assessed yet). Only M2's
+	# percentage feeds the reward; M1's is stored and displayed.
+	performance_form_aspect_m1 = models.PositiveSmallIntegerField(
+		"performance_form_aspect_m1",
+		null=True,
+		blank=True,
+		validators=[MinValueValidator(1), MaxValueValidator(100)],
+	)
+	performance_form_aspect_m2 = models.PositiveSmallIntegerField(
+		"performance_form_aspect_m2",
+		null=True,
+		blank=True,
+		validators=[MinValueValidator(1), MaxValueValidator(100)],
+	)
+	# derived: recomputed on every save() from reward_base and M2's percentage
+	addition_3_reward = models.IntegerField("addition_3_reward", default=0)
 
 	def __str__(self):
 		return f"{self.user_name}_{self.year}_{self.month}"
 
+	def compute_addition_3_reward(self) -> int:
+		if not self.performance_form_aspect_m2:
+			return 0
+		return round(self.reward_base * self.performance_form_aspect_m2 / 100)
+
 	def save(self, *args, **kwargs):
+		# Like mean/total, the reward is stored but always derived here, so it can't
+		# go stale. Partial saves touching its inputs must persist it as well.
+		self.addition_3_reward = self.compute_addition_3_reward()
+		update_fields = kwargs.get("update_fields")
+		if update_fields is not None and {"reward_base", "performance_form_aspect_m2"} & set(update_fields):
+			kwargs["update_fields"] = list(set(update_fields) | {"addition_3_reward"})
+
 		if not len(self.data):
 			# Never persist a sheet with zero rows. Rebuild a blank grid for THIS
 			# sheet's own period (not "today") so months viewed out of season keep
@@ -401,6 +436,7 @@ class Sheet(models.Model):
 		self.food_reduction = self.user.food_reduction
 		self.addition1 = self.user.addition1
 		self.addition2 = self.user.addition2
+		self.reward_base = self.user.reward_base
 		self.payment_type = self.user.payment_type
 		self.save()
 
@@ -603,7 +639,7 @@ class Sheet(models.Model):
 				+ self.reduction3
 				+ self.food_reduction
 			)
-			+ (self.addition1 + self.addition2)
+			+ (self.addition1 + self.addition2 + self.addition_3_reward)
 		)
 		return final_payment
 
@@ -622,6 +658,10 @@ class Sheet(models.Model):
 			"food_reduction": self.food_reduction,
 			"addition1": self.addition1,
 			"addition2": self.addition2,
+			"rewardBase": self.reward_base,
+			"performanceM1": self.performance_form_aspect_m1,
+			"performanceM2": self.performance_form_aspect_m2,
+			"addition3Reward": self.addition_3_reward,
 			"finalPayment": self.get_final_payment(),
 			"complementaryPayment": self.get_complementary_payment(),
 			"paymentStatus": self.payment_status,
@@ -634,9 +674,12 @@ class Sheet(models.Model):
 			"complementaryPayment": self.get_complementary_payment(),
 			"food_reduction": self.food_reduction,
 			"paymentStatus": self.payment_status,
+			# Employee sees their reward and manager 2's score (not manager 1's).
+			"addition3Reward": self.addition_3_reward,
+			"performanceM2": self.performance_form_aspect_m2,
 		}
 		return info
-	
+
 	def normalize_sheet(self, should_normalize_weekday: bool = True):
 		# Defensive: never index into or persist an empty grid. Callers validate
 		# input, but if an empty list still reaches here, rebuild a blank month for

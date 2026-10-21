@@ -94,6 +94,13 @@
     color: #0a5c36;
 }
 
+/* Wage / Total (R) / Reward Base / Addition 3 -- one colour no hour chip uses. */
+.hour-chip-money {
+    background-color: #ffe5d0;
+    border-color: #fd9843;
+    color: #8a3a00;
+}
+
 .hour-chip-empty {
     background-color: #f1f3f5;
     border-color: #e0e3e7;

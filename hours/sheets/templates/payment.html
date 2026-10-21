@@ -11,6 +11,21 @@
     th, td{
         border: 2px solid black !important;
     }
+    /* compact payment-status dropdown so labels like "Only Complementary" fit */
+    #payment-table select.form-select {
+        font-size: 0.68rem;
+        padding: 0.25rem 1.3rem 0.25rem 0.35rem;
+        background-position: right 0.3rem center;
+        background-size: 12px 10px;
+    }
+    /* wrap long headers instead of cutting them to "Performanc..." */
+    #payment-table thead th .th-inner {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        padding: .4rem .3rem;
+        line-height: 1.2;
+    }
     </style>
 {% endblock extra_css %}
 
@@ -157,7 +172,7 @@
                class="table table-sm table-hover"
                style="table-layout: fixed;
                       text-align: center;
-                      min-width: 1600px">
+                      min-width: 2100px">
             <thead class="table-success">
                 <tr>
                     <th scope="col"
@@ -173,7 +188,7 @@
                         data-field="paymentStatus"
                         data-width-unit="%"
                         data-sortable="true"
-                        data-width="14"
+                        data-width="9"
                         data-formatter="statusFormatter">
                         Payment Status
                     </th>
@@ -264,6 +279,35 @@
                         data-width-unit="%"
                         data-formatter="moneyFormatter">
                         Addition2 (R)
+                    </th>
+                    <th scope="col"
+                        data-field="rewardBase"
+                        {% if request.user.is_superuser %}data-editable="true"{% endif %}
+                        data-width="8"
+                        data-width-unit="%"
+                        data-formatter="moneyFormatter">
+                        Reward Base (R)
+                    </th>
+                    <th scope="col"
+                        data-field="performanceM1"
+                        data-width="7"
+                        data-width-unit="%"
+                        data-formatter="percentFormatter">
+                        Manager 1 Performance (%)
+                    </th>
+                    <th scope="col"
+                        data-field="performanceM2"
+                        data-width="7"
+                        data-width-unit="%"
+                        data-formatter="percentFormatter">
+                        Manager 2 Performance (%)
+                    </th>
+                    <th scope="col"
+                        data-field="addition3Reward"
+                        data-width="8"
+                        data-width-unit="%"
+                        data-formatter="moneyFormatter">
+                        Addition 3 (Reward) (R)
                     </th>
                     <th scope="col"
                         data-field="complementaryPayment"
@@ -371,6 +415,11 @@
         return moneyFormat(value)
     }
 
+    // performance ratings are null until a manager sets them
+    function percentFormatter(value){
+        return value === null || value === undefined ? '—' : `${value}%`
+    }
+
     function statusFormatter(value, row) {
         const selectedIndex = parseInt(value); // Convert to integer if value is a string
         return `
@@ -405,14 +454,10 @@
     }
 
     async function fillTable(year, month){
-        $('#payment-table').bootstrapTable('removeAll');
         const data = await getTableData(year, month);
-        for(row of data){
-            $('#payment-table').bootstrapTable('insertRow', {
-                index: $('#payment-table').bootstrapTable('getOptions').totalRows,
-                row: row,
-            });
-        }
+        // One render for all rows. insertRow per row re-rendered the whole body
+        // (and re-bound every editable cell) each time, which is quadratic.
+        $('#payment-table').bootstrapTable('load', data || []);
     }
 
     function fillYears(year){
@@ -504,9 +549,12 @@
             },
             body: JSON.stringify({row: rowData}),
         })
-       .then(res => res.json())
        .then(res => {
-            Object.assign(rowData, res);      
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
+       .then(res => {
+            Object.assign(rowData, res);
             $("#payment-table").bootstrapTable('load', rowData);
             return true
         })
