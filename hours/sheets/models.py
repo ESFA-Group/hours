@@ -393,22 +393,33 @@ class Sheet(models.Model):
 	# derived: recomputed on every save() from reward_base and M2's percentage
 	addition_3_reward = models.IntegerField("addition_3_reward", default=0)
 
+	# A manager's notes + score are a one-time submission. While submitted_at is
+	# set that manager can't change them; a supreme verifier can edit them any
+	# time, or reject them (clears submitted_at) so the manager can resubmit.
+	manager_level_1_review_submitted_at = models.DateTimeField("manager_level_1_review_submitted_at", null=True, blank=True)
+	manager_level_2_review_submitted_at = models.DateTimeField("manager_level_2_review_submitted_at", null=True, blank=True)
+
+	# Who last changed each review field (shown on the supreme panel).
+	manager_level_1_comment_modified_by = models.ForeignKey(User, related_name="+", on_delete=models.SET_NULL, null=True, blank=True)
+	manager_level_1_comment_modified_at = models.DateTimeField(null=True, blank=True)
+	manager_level_2_comment_modified_by = models.ForeignKey(User, related_name="+", on_delete=models.SET_NULL, null=True, blank=True)
+	manager_level_2_comment_modified_at = models.DateTimeField(null=True, blank=True)
+	performance_form_aspect_m1_modified_by = models.ForeignKey(User, related_name="+", on_delete=models.SET_NULL, null=True, blank=True)
+	performance_form_aspect_m1_modified_at = models.DateTimeField(null=True, blank=True)
+	performance_form_aspect_m2_modified_by = models.ForeignKey(User, related_name="+", on_delete=models.SET_NULL, null=True, blank=True)
+	performance_form_aspect_m2_modified_at = models.DateTimeField(null=True, blank=True)
+
 	def __str__(self):
 		return f"{self.user_name}_{self.year}_{self.month}"
 
 	def compute_addition_3_reward(self) -> int:
 		if not self.performance_form_aspect_m2:
 			return 0
-		return round(self.reward_base * self.performance_form_aspect_m2 / 100)
+		# Same hours figure as get_total_payment(); reward_base is per worked hour.
+		hours = round(self.total / 60, 3)
+		return round(self.reward_base * self.performance_form_aspect_m2 / 100 * hours)
 
 	def save(self, *args, **kwargs):
-		# Like mean/total, the reward is stored but always derived here, so it can't
-		# go stale. Partial saves touching its inputs must persist it as well.
-		self.addition_3_reward = self.compute_addition_3_reward()
-		update_fields = kwargs.get("update_fields")
-		if update_fields is not None and {"reward_base", "performance_form_aspect_m2"} & set(update_fields):
-			kwargs["update_fields"] = list(set(update_fields) | {"addition_3_reward"})
-
 		if not len(self.data):
 			# Never persist a sheet with zero rows. Rebuild a blank grid for THIS
 			# sheet's own period (not "today") so months viewed out of season keep
@@ -422,6 +433,13 @@ class Sheet(models.Model):
 		df = self.transform()
 		self.mean = self.get_mean(df)
 		self.total = self.get_total(df)
+		# Like mean/total, the reward is stored but always derived here, so it can't
+		# go stale. It depends on total, so it is computed after it. Partial saves
+		# touching any of its inputs must persist it as well.
+		self.addition_3_reward = self.compute_addition_3_reward()
+		update_fields = kwargs.get("update_fields")
+		if update_fields is not None and {"reward_base", "performance_form_aspect_m2", "total", "data"} & set(update_fields):
+			kwargs["update_fields"] = list(set(update_fields) | {"addition_3_reward"})
 		super(Sheet, self).save(*args, **kwargs)
 
 	def setup_sheet(self):

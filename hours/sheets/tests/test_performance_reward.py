@@ -83,6 +83,10 @@ class PerformanceRewardTestBase(TestCase):
         payload = {'userId': self.employee.id, 'action': 'save_comments', 'mode': mode, **data}
         return self.client.post(f'{self._verify_url()}?mode={mode}', payload, format='json')
 
+    def _reload(self):
+        self.sheet.refresh_from_db()
+        return self.sheet
+
     def _detail(self, actor, mode):
         self.client.force_authenticate(actor)
         return self.client.get(self._verify_url(), {'mode': mode, 'userId': self.employee.id})
@@ -96,11 +100,11 @@ class RewardCalculationTests(PerformanceRewardTestBase):
         return self.sheet.addition_3_reward
 
     def test_normal_percentage(self):
-        self.assertEqual(self._set_m2(85), 17_000_000)
+        self.assertEqual(self._set_m2(85), 127_500_000)
 
     def test_minimum_and_maximum_percentage(self):
-        self.assertEqual(self._set_m2(1), 200_000)
-        self.assertEqual(self._set_m2(100), 20_000_000)
+        self.assertEqual(self._set_m2(1), 1_500_000)
+        self.assertEqual(self._set_m2(100), 150_000_000)
 
     def test_unset_m2_gives_no_reward(self):
         self.assertEqual(self._set_m2(None), 0)
@@ -110,7 +114,7 @@ class RewardCalculationTests(PerformanceRewardTestBase):
         self.sheet.performance_form_aspect_m1 = 100
         self.sheet.save()
         self.sheet.refresh_from_db()
-        self.assertEqual(self.sheet.addition_3_reward, 10_000_000)
+        self.assertEqual(self.sheet.addition_3_reward, 75_000_000)
 
     def test_model_validation_rejects_out_of_range(self):
         for bad in (0, 101):
@@ -125,26 +129,26 @@ class RewardCalculationTests(PerformanceRewardTestBase):
         self.sheet.reward_base = 10_000_000
         self.sheet.save()
         self.sheet.refresh_from_db()
-        self.assertEqual(self.sheet.addition_3_reward, 8_500_000)
+        self.assertEqual(self.sheet.addition_3_reward, 63_750_000)
 
     def test_recalculates_on_partial_save(self):
         self._set_m2(85)
         self.sheet.performance_form_aspect_m2 = 50
         self.sheet.save(update_fields=['performance_form_aspect_m2'])
         self.sheet.refresh_from_db()
-        self.assertEqual(self.sheet.addition_3_reward, 10_000_000)
+        self.assertEqual(self.sheet.addition_3_reward, 75_000_000)
 
         self.sheet.reward_base = 4_000_000
         self.sheet.save(update_fields=['reward_base'])
         self.sheet.refresh_from_db()
-        self.assertEqual(self.sheet.addition_3_reward, 2_000_000)
+        self.assertEqual(self.sheet.addition_3_reward, 15_000_000)
 
     def test_reward_is_added_to_final_payment_but_not_to_total(self):
         total_before = self.sheet.get_total_payment()
         final_before = self.sheet.get_final_payment()
         self._set_m2(85)
         self.assertEqual(self.sheet.get_total_payment(), total_before)
-        self.assertEqual(self.sheet.get_final_payment(), final_before + 17_000_000)
+        self.assertEqual(self.sheet.get_final_payment(), final_before + 127_500_000)
         self.assertEqual(
             self.sheet.get_complementary_payment(),
             self.sheet.get_final_payment() - self.sheet.base_payment,
@@ -165,10 +169,6 @@ class RewardCalculationTests(PerformanceRewardTestBase):
 
 
 class PerformancePermissionTests(PerformanceRewardTestBase):
-    def _reload(self):
-        self.sheet.refresh_from_db()
-        return self.sheet
-
     def test_m1_can_edit_m1_but_not_m2(self):
         self.assertEqual(self._post_perf(self.manager_1, 'manager', performanceM1=70).status_code, 200)
         self.assertEqual(self._reload().performance_form_aspect_m1, 70)
@@ -179,8 +179,8 @@ class PerformancePermissionTests(PerformanceRewardTestBase):
     def test_m2_can_edit_m2_but_not_m1(self):
         response = self._post_perf(self.manager_2, 'manager', performanceM2=85)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['addition3Reward'], 17_000_000)
-        self.assertEqual(self._reload().addition_3_reward, 17_000_000)
+        self.assertEqual(response.data['addition3Reward'], 127_500_000)
+        self.assertEqual(self._reload().addition_3_reward, 127_500_000)
         self.assertEqual(self._post_perf(self.manager_2, 'manager', performanceM1=85).status_code, 403)
         self.assertIsNone(self._reload().performance_form_aspect_m1)
 
@@ -202,7 +202,7 @@ class PerformancePermissionTests(PerformanceRewardTestBase):
         sheet = self._reload()
         self.assertEqual(sheet.performance_form_aspect_m1, 40)
         self.assertEqual(sheet.performance_form_aspect_m2, 55)
-        self.assertEqual(sheet.addition_3_reward, 11_000_000)
+        self.assertEqual(sheet.addition_3_reward, 82_500_000)
 
     def test_supreme_needs_the_supreme_panel(self):
         # Not an assigned manager, so the manager panel refuses them.
@@ -257,16 +257,17 @@ class PerformancePermissionTests(PerformanceRewardTestBase):
             self.assertEqual(response.status_code, 400, bad)
             sheet = self._reload()
             self.assertEqual(sheet.performance_form_aspect_m2, 85)
-            self.assertEqual(sheet.addition_3_reward, 17_000_000)
+            self.assertEqual(sheet.addition_3_reward, 127_500_000)
 
     def test_boundaries_and_numeric_strings_accepted(self):
+        # Supreme can save repeatedly; managers submit only once (see ReviewLockTests).
         for value, expected in ((1, 1), (100, 100), ('42', 42)):
-            self.assertEqual(self._post_perf(self.manager_2, 'manager', performanceM2=value).status_code, 200)
+            self.assertEqual(self._post_perf(self.supreme, 'supreme', performanceM2=value).status_code, 200)
             self.assertEqual(self._reload().performance_form_aspect_m2, expected)
 
     def test_blank_clears_rating(self):
         self._post_perf(self.manager_2, 'manager', performanceM2=85)
-        self.assertEqual(self._post_perf(self.manager_2, 'manager', performanceM2=None).status_code, 200)
+        self.assertEqual(self._post_perf(self.supreme, 'supreme', performanceM2=None).status_code, 200)
         sheet = self._reload()
         self.assertIsNone(sheet.performance_form_aspect_m2)
         self.assertEqual(sheet.addition_3_reward, 0)
@@ -292,6 +293,135 @@ class PerformancePermissionTests(PerformanceRewardTestBase):
         self.assertEqual(sheet.performance_form_aspect_m1, 77)
 
 
+class MandatoryScoreTests(PerformanceRewardTestBase):
+    def setUp(self):
+        super().setUp()
+        self.sheet.submitted = True
+        self.sheet.save()
+
+    def _verify(self, actor, action, **data):
+        self.client.force_authenticate(actor)
+        return self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': action, **data}, format='json')
+
+    def test_m1_cannot_verify_without_score(self):
+        response = self._verify(self.manager_1, 'verify_manager_level_1')
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(self._reload().manager_level_1_verified)
+        # Blank in the same request does not count either.
+        self.assertEqual(self._verify(self.manager_1, 'verify_manager_level_1', performanceM1='').status_code, 400)
+        self.assertFalse(self._reload().manager_level_1_verified)
+
+    def test_m1_can_verify_with_saved_score(self):
+        self.sheet.performance_form_aspect_m1 = 70
+        self.sheet.save()
+        self.assertEqual(self._verify(self.manager_1, 'verify_manager_level_1').status_code, 200)
+        self.assertTrue(self._reload().manager_level_1_verified)
+
+    def test_m2_cannot_verify_without_score(self):
+        self.sheet.manager_level_1_verified = True
+        self.sheet.save()
+        self.assertEqual(self._verify(self.manager_2, 'verify_manager_level_2').status_code, 400)
+        self.assertFalse(self._reload().manager_level_2_verified)
+        self.assertEqual(self._verify(self.manager_2, 'verify_manager_level_2', performanceM2=90).status_code, 200)
+        self.assertTrue(self._reload().manager_level_2_verified)
+
+    def test_legacy_group_verifier_is_not_blocked(self):
+        self.employee.manager_level_1 = None
+        self.employee.staff_group_tag = 7
+        self.employee.save()
+        legacy = self._user('legacy', is_HourVerifier=True, verifier_group_tags='7')
+        self.assertEqual(self._verify(legacy, 'verify_manager_level_1').status_code, 200)
+
+    def test_supreme_does_not_need_a_score(self):
+        response = self._verify(self.supreme, 'verify_supreme', mode='supreme')
+        self.assertEqual(response.status_code, 200)
+
+    def test_rejecting_does_not_need_a_score(self):
+        self.assertEqual(self._verify(self.manager_1, 'reject_manager_level_1', reason='x').status_code, 200)
+
+
+class ReviewLockTests(PerformanceRewardTestBase):
+    def test_manager_submits_once(self):
+        response = self._post_perf(self.manager_1, 'manager', managerLevel1Comment='good', performanceM1=70)
+        self.assertEqual(response.status_code, 200)
+        sheet = self._reload()
+        self.assertIsNotNone(sheet.manager_level_1_review_submitted_at)
+        self.assertEqual(self._detail(self.manager_1, 'manager').data['permissions']['canEditPerformanceM1'], False)
+
+        for data in ({'performanceM1': 90}, {'managerLevel1Comment': 'changed'}):
+            self.assertEqual(self._post_perf(self.manager_1, 'manager', **data).status_code, 403)
+        sheet = self._reload()
+        self.assertEqual(sheet.performance_form_aspect_m1, 70)
+        self.assertEqual(sheet.manager_level_1_comment, 'good')
+        # Manager 2's review is separate and still open.
+        self.assertIsNone(sheet.manager_level_2_review_submitted_at)
+        self.assertEqual(self._post_perf(self.manager_2, 'manager', performanceM2=80).status_code, 200)
+
+    def test_submission_needs_a_score(self):
+        response = self._post_perf(self.manager_1, 'manager', managerLevel1Comment='only a note')
+        self.assertEqual(response.status_code, 400)
+        sheet = self._reload()
+        self.assertIsNone(sheet.manager_level_1_review_submitted_at)
+        self.assertEqual(sheet.manager_level_1_comment, '')
+
+    def test_supreme_edits_anytime_and_audit_tracks_last_editor(self):
+        self._post_perf(self.manager_2, 'manager', managerLevel2Comment='ok', performanceM2=80)
+        audit = self._detail(self.supreme, 'supreme').data['reviewAudit']
+        self.assertEqual(audit['performanceM2']['by'], self.manager_2.get_full_name())
+        self.assertIsNotNone(audit['performanceM2']['at'])
+        self.assertIsNone(audit['performanceM1']['by'])
+
+        for value in (60, 65):
+            self.assertEqual(self._post_perf(self.supreme, 'supreme', performanceM2=value).status_code, 200)
+        sheet = self._reload()
+        self.assertEqual(sheet.performance_form_aspect_m2, 65)
+        self.assertEqual(sheet.performance_form_aspect_m2_modified_by, self.supreme)
+        # Unchanged comment keeps its original editor; supreme edits don't unlock.
+        self.assertEqual(sheet.manager_level_2_comment_modified_by, self.manager_2)
+        self.assertIsNotNone(sheet.manager_level_2_review_submitted_at)
+        # Managers don't get the audit.
+        self.assertIsNone(self._detail(self.manager_2, 'manager').data['reviewAudit'])
+
+    def test_supreme_reject_reopens_for_the_manager(self):
+        self._post_perf(self.manager_1, 'manager', performanceM1=70)
+        self.assertTrue(self._detail(self.supreme, 'supreme').data['permissions']['canRejectReviewM1'])
+
+        self.assertEqual(self._post_perf(self.manager_1, 'manager', action='reject_review_m1').status_code, 403)
+        self.client.force_authenticate(self.supreme)
+        response = self.client.post(f'{self._verify_url()}?mode=supreme', {
+            'userId': self.employee.id, 'action': 'reject_review_m1',
+        }, format='json')
+        self.assertEqual(response.status_code, 200)
+        sheet = self._reload()
+        self.assertIsNone(sheet.manager_level_1_review_submitted_at)
+        self.assertEqual(sheet.performance_form_aspect_m1, 70)  # kept as a starting point
+
+        self.assertEqual(self._post_perf(self.manager_1, 'manager', performanceM1=75).status_code, 200)
+        sheet = self._reload()
+        self.assertEqual(sheet.performance_form_aspect_m1, 75)
+        self.assertIsNotNone(sheet.manager_level_1_review_submitted_at)
+
+    def test_verify_with_review_locks_it(self):
+        self.sheet.submitted = True
+        self.sheet.save()
+        self.client.force_authenticate(self.manager_1)
+        response = self.client.post(self._verify_url(), {
+            'userId': self.employee.id, 'action': 'verify_manager_level_1', 'performanceM1': 77,
+        }, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(self._reload().manager_level_1_review_submitted_at)
+
+    def test_reject_sheet_without_review_does_not_lock(self):
+        self.sheet.submitted = True
+        self.sheet.save()
+        self.client.force_authenticate(self.manager_1)
+        response = self.client.post(self._verify_url(), {
+            'userId': self.employee.id, 'action': 'reject_manager_level_1', 'reason': 'x',
+        }, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(self._reload().manager_level_1_review_submitted_at)
+
+
 class FinancialDisplayTests(PerformanceRewardTestBase):
     def test_detail_returns_six_values_in_both_panels(self):
         self.sheet.performance_form_aspect_m1 = 60
@@ -305,7 +435,7 @@ class FinancialDisplayTests(PerformanceRewardTestBase):
             self.assertEqual(data['rewardBase'], 20_000_000)
             self.assertEqual(data['performanceM1'], 60)
             self.assertEqual(data['performanceM2'], 85)
-            self.assertEqual(data['addition3Reward'], 17_000_000)
+            self.assertEqual(data['addition3Reward'], 127_500_000)
 
     def test_employee_sheet_api_hides_ratings(self):
         self.client.force_authenticate(self.employee)
@@ -319,7 +449,7 @@ class FinancialDisplayTests(PerformanceRewardTestBase):
         self.sheet.save()
         self.client.force_authenticate(self.employee)
         data = self.client.get(reverse('sheets:api_public_payment', kwargs={'year': 1403, 'month': 1})).data
-        self.assertEqual(data['addition3Reward'], 17_000_000)
+        self.assertEqual(data['addition3Reward'], 127_500_000)
         self.assertEqual(data['performanceM2'], 85)
         self.assertNotIn('performanceM1', data)
         self.assertEqual(data['complementaryPayment'], self.sheet.get_complementary_payment())
@@ -341,7 +471,7 @@ class PaymentRewardTests(PerformanceRewardTestBase):
         self.assertEqual(row['rewardBase'], 20_000_000)
         self.assertIsNone(row['performanceM1'])
         self.assertEqual(row['performanceM2'], 85)
-        self.assertEqual(row['addition3Reward'], 17_000_000)
+        self.assertEqual(row['addition3Reward'], 127_500_000)
         self.assertEqual(row['finalPayment'], self.sheet.get_final_payment())
 
     def test_superuser_updates_reward_base_forward(self):
@@ -352,7 +482,7 @@ class PaymentRewardTests(PerformanceRewardTestBase):
         row['rewardBase'] = 30_000_000
         response = self.client.post(self._payment_url(), {'row': row}, format='json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['addition3Reward'], 15_000_000)
+        self.assertEqual(response.data['addition3Reward'], 112_500_000)
         self.employee.refresh_from_db()
         later.refresh_from_db()
         self.assertEqual(self.employee.reward_base, 30_000_000)

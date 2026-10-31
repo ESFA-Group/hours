@@ -15,6 +15,11 @@ const RemoteCol = 5;
 const MissionCol = 6;
 const ForgetCol = 7;
 const TotalCol = 8;
+const HIGHLIGHT_CELL_CLASSES = {
+	[RemoteCol]: "cell-remote",
+	[MissionCol]: "cell-mission",
+	[ForgetCol]: "cell-forget",
+};
 const TotalCellLetter = "I";
 // ********************************************************
 
@@ -274,6 +279,12 @@ function constructTable(data) {
 		tableWidth: "100%",
 		updateTable: function (el, cell, x, y, source, value, id) {
 			if (value == "Fri") cell.style.color = 'red';
+			// Make non-zero Remote / Mission / Forget cells stand out.
+			const highlightCls = HIGHLIGHT_CELL_CLASSES[x];
+			if (highlightCls) {
+				cell.classList.remove(...Object.values(HIGHLIGHT_CELL_CLASSES));
+				if (hhmm2minutes(String(value ?? "")) > 0) cell.classList.add(highlightCls);
+			}
 		}
 	});
 	window.spreadTable.hideIndex();
@@ -353,9 +364,8 @@ function renderSelectedStatus(user) {
 // nothing is calculated here.
 const MONEY_CHIPS = [
 	{ key: "wage", label: "Wage", title: "Hourly wage (R)" },
-	{ key: "totalPayment", label: "Total (R)", title: "Effective worked hours × wage" },
-	{ key: "rewardBase", label: "Reward Base", title: "Reward base (R)" },
-	{ key: "addition3Reward", label: "Addition 3", title: "Reward = Reward Base × Manager 2 performance score %" },
+	{ key: "totalPayment", label: "Wage Pay", title: "Effective worked hours × wage" },
+	{ key: "addition3Reward", label: "Reward Pay", title: "Based on the Manager 2 performance score and total worked hours" },
 ];
 
 function formatMoney(value) {
@@ -455,6 +465,7 @@ async function selectUser(userId, role) {
 			$("#performance-m2")
 				.val(selectedDetail.performanceM2 ?? "")
 				.prop("disabled", !(selectedDetail.permissions || {}).canEditPerformanceM2);
+			renderReviewState(selectedDetail);
 
 			constructTable(selectedDetail.sheetData);
 		}, "Loading sheet...");
@@ -527,6 +538,62 @@ function renderUserLists() {
 
 let isUpdatingVerification = false;
 
+// Each manager's notes + score are submitted once; only the supreme panel can
+// edit them afterwards or reject them back to the manager.
+const REVIEW_FIELD_KEYS = ["managerLevel1Comment", "performanceM1", "managerLevel2Comment", "performanceM2"];
+
+function renderReviewState(detail) {
+	const p = detail.permissions || {};
+	const review = detail.review || {};
+	[1, 2].forEach(level => {
+		const state = review[`managerLevel${level}`] || {};
+		const text = state.locked
+			? `🔒 Manager ${level} submitted${state.submittedAt ? ` on ${state.submittedAt}` : ""}`
+			: `✏️ Manager ${level} has not submitted yet`;
+		$(`#review-status-m${level}`).text(text).toggleClass("text-success", !!state.locked).toggleClass("text-muted", !state.locked);
+		$(`#reject-review-m${level}-btn`).toggleClass("d-none", !p[`canRejectReviewM${level}`]);
+	});
+
+	// Last editor of each field (only sent to the supreme panel).
+	const audit = detail.reviewAudit;
+	REVIEW_FIELD_KEYS.forEach(key => {
+		const entry = audit && audit[key];
+		let text = "";
+		if (audit) text = entry && entry.by ? `Last modified by ${entry.by}${entry.at ? ` · ${entry.at}` : ""}` : "Not modified yet";
+		$(`#audit-${key}`).text(text);
+	});
+
+	const canEditAny = p.canEditManagerLevel1Comment || p.canEditManagerLevel2Comment || p.canEditPerformanceM1 || p.canEditPerformanceM2;
+	$("#save-comments-btn").prop("disabled", !canEditAny);
+}
+
+async function rejectReview(level) {
+	if (!selectedUserId || isUpdatingVerification) return;
+	const name = (selectedDetail && selectedDetail.userName) || "this person";
+	if (!window.confirm(`Reject manager ${level} notes & performance for ${name}? Manager ${level} will be able to edit and submit them again.`)) return;
+	isUpdatingVerification = true;
+	try {
+		await GlobalLoader.wrap(async () => {
+			const response = await apiService.post(getApiPath(), {
+				userId: selectedUserId,
+				action: `reject_review_m${level}`,
+			}, {}, "Rejecting Notes & Performance");
+			if (!response.ok) return;
+			jSuites.notification({
+				name: "Success",
+				title: "Rejected",
+				message: `Manager ${level} can now edit notes & performance again.`,
+				timeout: 3000,
+			});
+			await selectUser(selectedUserId, selectedRole);
+		}, "Rejecting...");
+	} catch (error) {
+		console.error("Error rejecting review:", error);
+	} finally {
+		isUpdatingVerification = false;
+	}
+}
+
 function getCommentPayload() {
 	const payload = {};
 	if (!$("#manager-level-1-comment").prop("disabled")) {
@@ -579,8 +646,26 @@ async function postSheetAction(action) {
 		if (!window.confirm(`Force submit and supreme-approve the sheet of ${name}? The employee never submitted it and the usual submit checks are skipped.`)) return;
 	}
 
-	const commentPayload = getCommentPayload();
+	// A manager's review is a one-time submission, so it only rides along with
+	// verify (in the supreme panel edits are free and go with any action).
+	const sendReview = VERIFY_HOURS_MODE === "supreme" || action.startsWith("verify");
+	const commentPayload = sendReview ? getCommentPayload() : {};
 	if (!commentPayload) return;
+
+	// Managers must give their performance score before verifying (the server
+	// enforces this too). A disabled input means this user cannot rate.
+	const scoreInput = { verify_manager_level_1: "#performance-m1", verify_manager_level_2: "#performance-m2" }[action];
+	if (scoreInput && !$(scoreInput).prop("disabled") && String($(scoreInput).val()).trim() === "") {
+		jSuites.notification({
+			error: 1,
+			name: "Error",
+			title: "Performance score required",
+			message: "Enter your performance score (1 - 100) before verifying.",
+			timeout: 4000,
+		});
+		$(scoreInput).trigger("focus");
+		return;
+	}
 
 	isUpdatingVerification = true;
 	const userIdBeforeRefresh = selectedUserId;
@@ -624,6 +709,8 @@ async function saveComments() {
 	if (!selectedUserId || isUpdatingVerification) return;
 	const commentPayload = getCommentPayload();
 	if (!commentPayload) return;
+	if (VERIFY_HOURS_MODE !== "supreme"
+		&& !window.confirm("Notes & performance can be submitted only once. After this you cannot change them unless a supreme verifier rejects them. Submit now?")) return;
 	isUpdatingVerification = true;
 
 	try {
@@ -641,7 +728,7 @@ async function saveComments() {
 				message: "Notes and performance were saved.",
 				timeout: 3000,
 			});
-			// Re-fetch so Addition 3 shows the server-recalculated reward.
+			// Re-fetch so Reward Pay shows the server-recalculated reward.
 			await selectUser(selectedUserId, selectedRole);
 		}, "Saving...");
 	} catch (error) {
@@ -671,4 +758,6 @@ $("document").ready(async function () {
 	$("#reject-btn").click(() => postSheetAction($("#reject-btn").data("action")));
 	$("#force-submit-btn").click(() => postSheetAction("force_submit_supreme"));
 	$("#save-comments-btn").click(saveComments);
+	$("#reject-review-m1-btn").click(() => rejectReview(1));
+	$("#reject-review-m2-btn").click(() => rejectReview(2));
 });

@@ -93,7 +93,7 @@ class HourApprovalWorkflowTests(TestCase):
     def test_manager_level_1_can_verify_assigned_employee(self):
         self._submit_sheet()
         self.client.force_authenticate(self.manager_1)
-        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_1'}, format='json')
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_1', 'performanceM1': 80}, format='json')
         self.assertEqual(response.status_code, 200)
         self.sheet.refresh_from_db()
         self.assertTrue(self.sheet.manager_level_1_verified)
@@ -118,7 +118,7 @@ class HourApprovalWorkflowTests(TestCase):
         self.sheet.manager_level_1_verified = True
         self.sheet.save()
         self.client.force_authenticate(self.manager_2)
-        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_2'}, format='json')
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_2', 'performanceM2': 80}, format='json')
         self.assertEqual(response.status_code, 200)
         self.sheet.refresh_from_db()
         self.assertTrue(self.sheet.manager_level_2_verified)
@@ -188,13 +188,13 @@ class HourApprovalWorkflowTests(TestCase):
         self.client.force_authenticate(self.manager_1)
         response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'reject_manager_level_1', 'reason': 'x'}, format='json')
         self.assertEqual(response.status_code, 403)
-        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_1'}, format='json')
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_1', 'performanceM1': 80}, format='json')
         self.assertEqual(response.status_code, 200)
 
         self.client.force_authenticate(self.manager_2)
         response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'reject_manager_level_2', 'reason': 'x'}, format='json')
         self.assertEqual(response.status_code, 403)
-        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_2'}, format='json')
+        response = self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_2', 'performanceM2': 80}, format='json')
         self.assertEqual(response.status_code, 200)
 
     def test_supreme_panel_separates_manager_approved_sheets(self):
@@ -206,13 +206,13 @@ class HourApprovalWorkflowTests(TestCase):
             return {key: [item['userId'] for item in items] for key, items in sections.items()}
 
         self.client.force_authenticate(self.manager_1)
-        self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_1'}, format='json')
+        self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_1', 'performanceM1': 80}, format='json')
         sections = supreme_section_ids()
         self.assertIn(self.employee.id, sections['currentQueue'])
         self.assertNotIn(self.employee.id, sections['managersApproved'])
 
         self.client.force_authenticate(self.manager_2)
-        self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_2'}, format='json')
+        self.client.post(self._verify_url(), {'userId': self.employee.id, 'action': 'verify_manager_level_2', 'performanceM2': 80}, format='json')
         sections = supreme_section_ids()
         self.assertIn(self.employee.id, sections['managersApproved'])
         self.assertNotIn(self.employee.id, sections['currentQueue'])

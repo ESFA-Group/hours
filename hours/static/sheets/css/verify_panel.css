@@ -132,3 +132,22 @@
     border-color: #ced4da;
     color: #343a40;
 }
+
+/* Non-zero Remote / Mission / Forget cells in the sheet grid (same hues as the chips). */
+#spreadsheet td.cell-remote {
+    background-color: #cfe2ff;
+    color: #0a58ca;
+    font-weight: 600;
+}
+
+#spreadsheet td.cell-mission {
+    background-color: #dccffa;
+    color: #59359a;
+    font-weight: 600;
+}
+
+#spreadsheet td.cell-forget {
+    background-color: #ffe69c;
+    color: #8a6100;
+    font-weight: 600;
+}

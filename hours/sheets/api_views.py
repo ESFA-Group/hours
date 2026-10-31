@@ -1706,18 +1706,93 @@ def _can_force_submit_supreme(sheet, verifier):
     return not sheet.submitted and verifier.is_SupremeHourVerifier
 
 
-def _can_edit_performance_m1(sheet, verifier, mode):
+def _rates_as_manager_1(sheet, verifier):
     # Direct assignment only: unlike comments, legacy group-tag verifiers acting
     # as manager 1 must not rate performance.
-    if mode == "supreme":
-        return verifier.is_SupremeHourVerifier
     return bool(sheet.user and sheet.user.manager_level_1_id == verifier.id)
 
 
-def _can_edit_performance_m2(sheet, verifier, mode):
+# Each manager's notes + score form one review, submitted once (see Sheet model).
+REVIEW_LEVELS = {
+    1: {
+        "label": "Manager 1",
+        "comment_key": "managerLevel1Comment",
+        "comment_field": "manager_level_1_comment",
+        "score_key": "performanceM1",
+        "score_field": "performance_form_aspect_m1",
+        "submitted_field": "manager_level_1_review_submitted_at",
+        "is_commenter": _is_manager_level_1,
+        "is_rater": _rates_as_manager_1,
+    },
+    2: {
+        "label": "Manager 2",
+        "comment_key": "managerLevel2Comment",
+        "comment_field": "manager_level_2_comment",
+        "score_key": "performanceM2",
+        "score_field": "performance_form_aspect_m2",
+        "submitted_field": "manager_level_2_review_submitted_at",
+        "is_commenter": _is_manager_level_2,
+        "is_rater": _is_manager_level_2,
+    },
+}
+REVIEW_UPDATE_FIELDS = [
+    field
+    for cfg in REVIEW_LEVELS.values()
+    for field in (
+        cfg["comment_field"], f"{cfg['comment_field']}_modified_by", f"{cfg['comment_field']}_modified_at",
+        cfg["score_field"], f"{cfg['score_field']}_modified_by", f"{cfg['score_field']}_modified_at",
+        cfg["submitted_field"],
+    )
+]
+
+
+def _review_locked(sheet, level):
+    return getattr(sheet, REVIEW_LEVELS[level]["submitted_field"]) is not None
+
+
+def _can_edit_review(sheet, verifier, mode, level, part):
+    """part is "is_commenter" or "is_rater". Supreme may always edit; a manager
+    only until their review is submitted."""
     if mode == "supreme":
         return verifier.is_SupremeHourVerifier
-    return _is_manager_level_2(sheet, verifier)
+    return not _review_locked(sheet, level) and REVIEW_LEVELS[level][part](sheet, verifier)
+
+
+def _can_edit_performance_m1(sheet, verifier, mode):
+    return _can_edit_review(sheet, verifier, mode, 1, "is_rater")
+
+
+def _can_edit_performance_m2(sheet, verifier, mode):
+    return _can_edit_review(sheet, verifier, mode, 2, "is_rater")
+
+
+def _format_jalali_datetime(value):
+    if not value:
+        return None
+    return jdt.datetime.fromgregorian(datetime=timezone.localtime(value)).strftime("%Y/%m/%d %H:%M")
+
+
+def _review_audit(sheet):
+    """Last editor of each review field, keyed like the request payload."""
+    audit = {}
+    for cfg in REVIEW_LEVELS.values():
+        for key, field in ((cfg["comment_key"], cfg["comment_field"]), (cfg["score_key"], cfg["score_field"])):
+            by = getattr(sheet, f"{field}_modified_by")
+            audit[key] = {
+                "by": by.get_full_name() if by else None,
+                "at": _format_jalali_datetime(getattr(sheet, f"{field}_modified_at")),
+            }
+    return audit
+
+
+def _review_state(sheet):
+    return {
+        f"managerLevel{level}": {
+            "locked": _review_locked(sheet, level),
+            "submittedAt": _format_jalali_datetime(getattr(sheet, cfg["submitted_field"])),
+        }
+        for level, cfg in REVIEW_LEVELS.items()
+    }
 
 
 def _parse_performance_percentage(value):
@@ -1971,8 +2046,9 @@ class HourVerifierAPIView(APIView):
             warnings = sheet.get_warnings()
             is_warning = bool(warnings)
 
-            can_edit_manager_1_comment = (mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_1(sheet, verifier)
-            can_edit_manager_2_comment = (mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_2(sheet, verifier)
+            can_edit_manager_1_comment = _can_edit_review(sheet, verifier, mode, 1, "is_commenter")
+            can_edit_manager_2_comment = _can_edit_review(sheet, verifier, mode, 2, "is_commenter")
+            is_supreme_panel = mode == "supreme" and verifier.is_SupremeHourVerifier
 
             data = _sheet_summary(
                 sheet,
@@ -1990,6 +2066,9 @@ class HourVerifierAPIView(APIView):
                 "managerLevel1Comment": sheet.manager_level_1_comment,
                 "managerLevel2Comment": sheet.manager_level_2_comment,
                 "rejectionReason": sheet.rejection_reason,
+                "review": _review_state(sheet),
+                # Who last changed each note / score: supreme panel only.
+                "reviewAudit": _review_audit(sheet) if is_supreme_panel else None,
                 "permissions": {
                     "canVerifyManagerLevel1": mode == "manager" and _can_verify_manager_level_1(sheet, verifier),
                     "canRejectManagerLevel1": mode == "manager" and _can_reject_manager_level_1(sheet, verifier),
@@ -2002,6 +2081,8 @@ class HourVerifierAPIView(APIView):
                     "canEditManagerLevel2Comment": can_edit_manager_2_comment,
                     "canEditPerformanceM1": _can_edit_performance_m1(sheet, verifier, mode),
                     "canEditPerformanceM2": _can_edit_performance_m2(sheet, verifier, mode),
+                    "canRejectReviewM1": is_supreme_panel and _review_locked(sheet, 1),
+                    "canRejectReviewM2": is_supreme_panel and _review_locked(sheet, 2),
                 },
             })
             return Response(data, status=status.HTTP_200_OK)
@@ -2034,46 +2115,70 @@ class HourVerifierAPIView(APIView):
         if not self._can_view_sheet_for_mode(sheet, verifier, mode):
             return Response({"error": "You cannot manage this sheet in this panel."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Allow comment edits to be bundled with verify/reject actions or saved alone.
-        if "managerLevel1Comment" in request.data:
-            if not ((mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_1(sheet, verifier)):
-                return Response({"error": "You cannot edit manager 1 comment."}, status=status.HTTP_403_FORBIDDEN)
-            sheet.manager_level_1_comment = request.data.get("managerLevel1Comment", "")
-
-        if "managerLevel2Comment" in request.data:
-            if not ((mode == "supreme" and verifier.is_SupremeHourVerifier) or _is_manager_level_2(sheet, verifier)):
-                return Response({"error": "You cannot edit manager 2 comment."}, status=status.HTTP_403_FORBIDDEN)
-            sheet.manager_level_2_comment = request.data.get("managerLevel2Comment", "")
-
-        # Performance ratings ride along the same way. Everything is checked
-        # before anything is saved, so a bad value never half-applies.
-        for key, field, can_edit in (
-            ("performanceM1", "performance_form_aspect_m1", _can_edit_performance_m1),
-            ("performanceM2", "performance_form_aspect_m2", _can_edit_performance_m2),
-        ):
-            if key not in request.data:
+        # Notes + scores may be bundled with verify/reject actions or saved alone.
+        # Everything is checked before anything is applied, so a bad value never
+        # half-applies. For a manager, sending their review submits it once.
+        now = timezone.now()
+        review_changes = {}
+        submitted_levels = []
+        for level, cfg in REVIEW_LEVELS.items():
+            label = cfg["label"]
+            sent_comment = cfg["comment_key"] in request.data
+            sent_score = cfg["score_key"] in request.data
+            if not (sent_comment or sent_score):
                 continue
-            label = "Manager 1 performance score" if key == "performanceM1" else "Manager 2 performance score"
-            if not can_edit(sheet, verifier, mode):
-                return Response({"error": f"You cannot edit {label}."}, status=status.HTTP_403_FORBIDDEN)
-            try:
-                value = _parse_performance_percentage(request.data.get(key))
-            except (TypeError, ValueError):
+            if mode != "supreme" and _review_locked(sheet, level):
                 return Response(
-                    {"error": f"{label} must be a whole number from 1 to 100."},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {"error": f"{label} notes & performance were already submitted. Only a supreme verifier can reopen them."},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
-            setattr(sheet, field, value)
+            if sent_comment:
+                if not _can_edit_review(sheet, verifier, mode, level, "is_commenter"):
+                    return Response({"error": f"You cannot edit {label.lower()} comment."}, status=status.HTTP_403_FORBIDDEN)
+                review_changes[cfg["comment_field"]] = request.data.get(cfg["comment_key"]) or ""
+            if sent_score:
+                if not _can_edit_review(sheet, verifier, mode, level, "is_rater"):
+                    return Response({"error": f"You cannot edit {label} performance score."}, status=status.HTTP_403_FORBIDDEN)
+                try:
+                    review_changes[cfg["score_field"]] = _parse_performance_percentage(request.data.get(cfg["score_key"]))
+                except (TypeError, ValueError):
+                    return Response(
+                        {"error": f"{label} performance score must be a whole number from 1 to 100."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            if mode != "supreme":
+                # The score is part of the one-time submission for anyone allowed to rate.
+                score = review_changes.get(cfg["score_field"], getattr(sheet, cfg["score_field"]))
+                if cfg["is_rater"](sheet, verifier) and score is None:
+                    return Response(
+                        {"error": f"Enter the {label} performance score before submitting."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                submitted_levels.append(level)
+
+        for field, value in review_changes.items():
+            if getattr(sheet, field) != value:
+                setattr(sheet, field, value)
+                setattr(sheet, f"{field}_modified_by", verifier)
+                setattr(sheet, f"{field}_modified_at", now)
+        for level in submitted_levels:
+            setattr(sheet, REVIEW_LEVELS[level]["submitted_field"], now)
 
         if action == "save_comments":
-            sheet.save(update_fields=[
-                "manager_level_1_comment",
-                "manager_level_2_comment",
-                "performance_form_aspect_m1",
-                "performance_form_aspect_m2",
-                "addition_3_reward",
-            ])
+            sheet.save(update_fields=REVIEW_UPDATE_FIELDS + ["addition_3_reward"])
             return Response({"success": True, **_sheet_financials(sheet)}, status=status.HTTP_200_OK)
+
+        # Supreme rejects a manager's notes + score: unlock them so that manager
+        # can edit and resubmit. Values are kept as a starting point.
+        if action in ("reject_review_m1", "reject_review_m2"):
+            level = 1 if action == "reject_review_m1" else 2
+            if mode != "supreme" or not verifier.is_SupremeHourVerifier:
+                return Response({"error": "Only a supreme verifier can reject notes & performance."}, status=status.HTTP_403_FORBIDDEN)
+            if not _review_locked(sheet, level):
+                return Response({"error": f"{REVIEW_LEVELS[level]['label']} notes & performance are not submitted."}, status=status.HTTP_400_BAD_REQUEST)
+            setattr(sheet, REVIEW_LEVELS[level]["submitted_field"], None)
+            sheet.save(update_fields=REVIEW_UPDATE_FIELDS + ["addition_3_reward"])
+            return Response({"success": True}, status=status.HTTP_200_OK)
 
         # Must run before the submitted guard below, which would otherwise block it.
         if action == "force_submit_supreme":
@@ -2108,6 +2213,13 @@ class HourVerifierAPIView(APIView):
         if action == "verify_manager_level_1":
             if not _can_verify_manager_level_1(sheet, verifier):
                 return Response({"error": "You cannot verify this sheet as manager 1."}, status=status.HTTP_403_FORBIDDEN)
+            # Score is mandatory for whoever is allowed to give it. Legacy group-tag
+            # verifiers cannot rate, so they are not blocked.
+            if sheet.performance_form_aspect_m1 is None and _rates_as_manager_1(sheet, verifier):
+                return Response(
+                    {"error": "Enter the Manager 1 performance score before verifying."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             sheet.manager_level_1_verified = True
             sheet.manager_level_1_verified_at = now
             sheet.manager_level_1_verified_by = verifier
@@ -2124,6 +2236,11 @@ class HourVerifierAPIView(APIView):
         if action == "verify_manager_level_2":
             if not _can_verify_manager_level_2(sheet, verifier):
                 return Response({"error": "You cannot verify this sheet as manager 2."}, status=status.HTTP_403_FORBIDDEN)
+            if sheet.performance_form_aspect_m2 is None:
+                return Response(
+                    {"error": "Enter the Manager 2 performance score before verifying."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             sheet.manager_level_2_verified = True
             sheet.manager_level_2_verified_at = now
             sheet.manager_level_2_verified_by = verifier
