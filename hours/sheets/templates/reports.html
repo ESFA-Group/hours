@@ -240,7 +240,7 @@
                 const table = $("#monthly-table");
 
                 let headerRow = $("<tr>");
-                ["Name", "Verified Hours", ...ths].forEach(val => {
+                ["Staff Code", "Name", "Verified Hours", ...ths].forEach(val => {
                     headerRow.append($("<th>").text(val));
                 });
 
@@ -249,6 +249,7 @@
                 for (let [name, val] of Object.entries(data.hours)) {
                     let tr = $("<tr>");
 
+                    tr.append($("<th>").text(data.staffCodes[name] || ""));
                     tr.append(
                         $("<th>").text(`${name}${data.submittedUsers.includes(name) ? " ☑️" : ""}`)
                     );

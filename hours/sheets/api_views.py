@@ -239,7 +239,7 @@ class InfoApiView(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
-    INFO_SHEET_FIELDS = ["id", "user", "year", "month", "data", "total"]
+    INFO_SHEET_FIELDS = ["id", "user", "year", "month", "data", "total", "submitted"]
     NON_PROJECT_COLUMNS = {
         "Day", "WeekDay", "Hours", "Auto Hours", "Remote", "Mission", "Forget",
         "Rest", "Total", "Attendance", "Description", "Note Hours",
@@ -383,7 +383,7 @@ class InfoApiView(APIView):
         mins = sheet.row_minutes(row)
         # Old rows may have only Hours. Also keep submitted manual Hours when
         # nothing was worked that day (Rest alone does not count), as transform() does.
-        if mins["Total"] + mins["Rest"] == 0 and "Hours" in row:
+        if sheet.submitted and mins["Total"] + mins["Rest"] == 0 and "Hours" in row:
             return cls.hhmm2minutes(row.get("Hours", "00:00"))
         return mins["Total"]
 
@@ -438,7 +438,7 @@ class PublicMonthlyReportApiView(APIView):
         iterable = sheets.iterator(chunk_size=200) if hasattr(sheets, "iterator") else sheets
         for sheet in iterable:
             active_users += 1
-            sheet_sum = cls.get_sum(sheet)
+            sheet_sum = MonthlyReportApiView.round_row(pd.Series(cls.get_sum(sheet), dtype="float64")).to_dict()
             for key, value in sheet_sum.items():
                 projects_sum[key] = projects_sum.get(key, 0) + value
 
@@ -530,7 +530,7 @@ class MonthlyReportApiView(APIView):
         return list(
             User.objects
             .filter(is_active=True)
-            .values("id", "first_name", "last_name", "wage")
+            .values("id", "first_name", "last_name", "wage", "staff_code")
         )
 
     @classmethod
@@ -617,6 +617,9 @@ class MonthlyReportApiView(APIView):
 
         res = {
             "hours": hours,
+            "staffCodes": {
+                user_name_map[r["id"]]: r["staff_code"] for r in active_user_rows
+            },
             # "payments": payments,
             "usersNum": len(active_user_rows),
             "sheetsNum": len(sheets_list),
@@ -663,7 +666,9 @@ class MonthlyReportApiView(APIView):
         sheetless_users: QuerySet,
         user_name_map=None,
         user_wage_map=None,
+        formatter=None,
     ) -> dict:
+        formatter = formatter or cls.minute_formatter
         user_name_map = user_name_map or {}
         user_wage_map = user_wage_map or {}
         projects = [p["name"] for p in Project.objects.values("name")]
@@ -681,7 +686,7 @@ class MonthlyReportApiView(APIView):
         for sheet in sheets:
             cls.normalize_sheet_data_for_report(sheet)
             sheet_sum = cls.get_sum(sheet)
-            sheet_sum = projects_empty.add(sheet_sum, fill_value=0)
+            sheet_sum = cls.round_row(projects_empty.add(sheet_sum, fill_value=0))
             projects_sum = projects_sum.add(sheet_sum, fill_value=0)
             if user_name_map:
                 full_name = user_name_map.get(sheet.user_id, "Deleted User")
@@ -689,7 +694,7 @@ class MonthlyReportApiView(APIView):
             else:
                 full_name = sheet.user.get_full_name() if sheet.user else "Deleted User"
                 wage = sheet.user.wage if sheet.user else 0
-            hours[full_name] = sheet_sum.apply(cls.minute_formatter).to_dict()
+            hours[full_name] = sheet_sum.apply(formatter).to_dict()
             payments[full_name] = sheet_sum.apply(
                 lambda x: int(x / 60 * wage)
             ).to_dict()
@@ -697,8 +702,23 @@ class MonthlyReportApiView(APIView):
             full_name = cls.report_row_name(user)
             hours[full_name] = projects_empty.to_dict()
             payments[full_name] = 0
-        hours["Total"] = projects_sum.apply(cls.minute_formatter).to_dict()
+        hours["Total"] = projects_sum.apply(formatter).to_dict()
         return hours, payments
+
+    @classmethod
+    def round_row(cls, row: pd.Series) -> pd.Series:
+        """Whole minutes per cell. Project cells are percentage * minutes, so they are
+        fractional; flooring each one separately made a row's projects add up to less
+        than its Total (50% + 50% of 13239 shown as 6619 + 6619). Largest-remainder
+        rounding keeps sum(projects) == round(sum of exact projects)."""
+        row = row.copy()
+        projects = row.drop("Total")
+        floors = projects // 1
+        extra = int(round(projects.sum() - floors.sum()))
+        floors[(projects - floors).sort_index().nlargest(extra).index] += 1  # sort: same tie-break on every page
+        row[floors.index] = floors
+        row["Total"] = round(row["Total"])
+        return row.astype(int)
 
     @classmethod
     def get_sum(self, sheet: Sheet) -> pd.Series:

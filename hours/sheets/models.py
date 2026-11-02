@@ -91,6 +91,7 @@ class User(AbstractUser):
 
 	# group tags for verification
 	staff_group_tag = models.PositiveSmallIntegerField("staff_group_tag", default=1)
+	staff_code = models.CharField("staff_code", max_length=20, blank=True, default="")
 	verifier_group_tags = models.CharField("verifier_group_tags", max_length=255, blank=True, default="", help_text="Comma-separated tags this verifier can see")
 
 	# personal info
@@ -510,7 +511,7 @@ class Sheet(models.Model):
 
 	def parse_project_porp(self, string: str) -> int:
 		try:
-			return int(string.replace("%", "").strip()) / 100
+			return float(string.replace("%", "").strip()) / 100
 		except:
 			return 0
 

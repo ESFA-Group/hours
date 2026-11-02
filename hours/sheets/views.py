@@ -28,6 +28,7 @@ import io
 import json
 import jdatetime as jdt
 import openpyxl
+import xlsxwriter.utility
 from io import BytesIO
 
 from sheets.models import Sheet, User
@@ -269,6 +270,7 @@ class MainReportView(View):
 			for row in active_user_rows
 		}
 		user_wage_map = {row["id"]: row.get("wage", 0) or 0 for row in active_user_rows}
+		staff_codes = {user_name_map[r["id"]]: r["staff_code"] for r in active_user_rows}
 		sheet_user_ids = {sheet.user_id for sheet in sheets if sheet.user_id}
 		sheetless_users = [
 			row for row in active_user_rows if row["id"] not in sheet_user_ids
@@ -279,6 +281,8 @@ class MainReportView(View):
 			sheetless_users,
 			user_name_map=user_name_map,
 			user_wage_map=user_wage_map,
+			# Excel stores durations as fractions of a day; "[h]:mm" displays them.
+			formatter=lambda minutes: minutes / 1440,
 		)
 		hours_df = pd.DataFrame(hours).transpose()
 		hours_df = hours_df.reindex(np.roll(hours_df.index, 1))
@@ -286,8 +290,8 @@ class MainReportView(View):
 
 		buffer = io.BytesIO()
 		writer = pd.ExcelWriter(buffer, engine="xlsxwriter")
-		hours_df.to_excel(writer, sheet_name="hours")
-		payments_df.to_excel(writer, sheet_name="payments")
+		self.write_report_sheet(writer, hours_df, "hours", "[h]:mm", staff_codes)
+		self.write_report_sheet(writer, payments_df, "payments", "#,##0", staff_codes)
 		writer.close()
 
 		response = HttpResponse(
@@ -299,6 +303,24 @@ class MainReportView(View):
 		)
 		return response
 
+	@staticmethod
+	def write_report_sheet(writer, df, sheet_name, num_format, staff_codes):
+		"""Projects, then Total, then a live =SUM() of the projects, all as real numbers
+		so Excel's status bar sums any selection."""
+		df = df.fillna(0)
+		df = df[[c for c in df.columns if c != "Total"] + ["Total"]].astype(float)
+		df.to_excel(writer, sheet_name=sheet_name, startcol=1)  # column A = staff code
+		ws = writer.sheets[sheet_name]
+		fmt = writer.book.add_format({"num_format": num_format})
+		ws.set_column(2, len(df.columns) + 2, 12, fmt)
+		col = len(df.columns) + 2
+		last_project = xlsxwriter.utility.xl_col_to_name(len(df.columns))
+		ws.write(0, 0, "Staff Code")
+		ws.write(0, col, "Manual Total")
+		for r, name in enumerate(df.index, start=1):
+			ws.write(r, 0, staff_codes.get(name, ""))
+			ws.write_formula(r, col, f"=SUM(C{r + 1}:{last_project}{r + 1})", fmt)
+
 
 @method_decorator([project_report_manager_required], name="dispatch")
 class UsersMonthlyReportView(View):
@@ -306,7 +328,7 @@ class UsersMonthlyReportView(View):
 	def get(self, request):
 
 		year = request.GET.get("year")
-		users = User.objects.values("id", "first_name", "last_name")
+		users = User.objects.filter(is_active=True).values("id", "first_name", "last_name")
 		data = dict()
 		for u in users:
 			sheets = Sheet.objects.filter(year=year, user_id=u["id"]).values("month", "total")

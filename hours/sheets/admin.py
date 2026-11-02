@@ -57,6 +57,7 @@ class UserResource(resources.ModelResource):
             'first_name_p',
             'last_name_p',
             'staff_group_tag',
+            'staff_code',
             'verifier_group_tags',
             'auto_hour_ID',
             'manager_level_1',
@@ -129,7 +130,7 @@ class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     autocomplete_fields = ['manager_level_1', 'manager_level_2']
     
     # Add these for better import/export experience
-    list_display = ('username', 'last_name_p', 'first_name_p', 'staff_group_tag', 'manager_level_1', 'manager_level_2', 'payment_type')
+    list_display = ('username', 'last_name_p', 'first_name_p', 'staff_code', 'staff_group_tag', 'manager_level_1', 'manager_level_2', 'payment_type')
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'payment_type')
     
     # Import-export resource
