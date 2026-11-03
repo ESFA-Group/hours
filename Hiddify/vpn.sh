@@ -27,5 +27,4 @@ if ! curl -s --max-time 5 --proxy "$PROXY" -o /dev/null https://api.telegram.org
 	exit 1
 fi
 
-cd /home/mrn/hours/hours
-/home/mrn/hours/venv/bin/python manage.py check_submissions "$@"
+docker compose -f /home/mrn/hours/docker-compose.yml exec -T web python manage.py check_submissions "$@"

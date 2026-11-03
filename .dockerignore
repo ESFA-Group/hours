@@ -1,0 +1,12 @@
+.git
+.venv
+graphify-out
+Hiddify
+data
+hours/*.sqlite3
+hours/media
+hours/static
+hours/error.log
+hours/hours/local.py
+**/__pycache__
+debug_data.xlsx

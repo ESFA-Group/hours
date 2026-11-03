@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    # host network: gunicorn binds host 127.0.0.1:8000 for nginx, and check_submissions reaches the Hiddify proxy at 127.0.0.1:2334
+    network_mode: host
+    user: "1000:1000"
+    volumes:
+      - ./data:/data
+      - ./data/local.py:/app/hours/hours/local.py:ro
