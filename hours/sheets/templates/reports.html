@@ -235,6 +235,13 @@
 
                 // Total column should be the last column
                 ths = ths.filter(i => i.toLowerCase() !== "total");
+
+                // Hide project columns nobody logged time on this month
+                // (covers deactivated projects with no hours too).
+                const isZero = v => !v || String(v).split(":").every(p => Number(p) === 0);
+                const rows = Object.values(data.hours);
+                ths = ths.filter(col => !rows.every(r => isZero(r[col])));
+
                 ths.push("Total");
 
                 const table = $("#monthly-table");

@@ -32,7 +32,17 @@ import xlsxwriter.utility
 from io import BytesIO
 
 from sheets.models import Sheet, User
-from sheets.api_views import MonthlyReportApiView
+from sheets.api_views import MonthlyReportApiView, InfoApiView
+import copy
+
+
+def drop_zero_columns(df: pd.DataFrame, keep=("Total", "total")) -> pd.DataFrame:
+	"""Drop columns that sum to zero across every row (e.g. projects nobody worked on)."""
+	zero = [
+		c for c in df.columns
+		if c not in keep and pd.to_numeric(df[c], errors="coerce").fillna(0).eq(0).all()
+	]
+	return df.drop(columns=zero)
 
 class JSONResponseMixin:
 	"""
@@ -238,10 +248,26 @@ class DetailedReportView(View):
 			for row in active_user_rows
 		}
 
+		sheets = list(sheets)
+		# A project column is kept only if someone logged time on it this month.
+		project_totals = pd.Series(dtype="float64")
+		for sheet in sheets:
+			tmp = copy.copy(sheet)
+			tmp.data = copy.deepcopy(sheet.data)  # normalize mutates; keep export raw
+			MonthlyReportApiView.normalize_sheet_data_for_report(tmp)
+			project_totals = project_totals.add(
+				MonthlyReportApiView.get_sum(tmp), fill_value=0
+			)
+		used_projects = set(project_totals[project_totals != 0].index)
+
 		buffer = io.BytesIO()
 		writer = pd.ExcelWriter(buffer, engine="xlsxwriter")
 		for sheet in sheets:
 			df = pd.DataFrame(sheet.data)
+			df = df.drop(columns=[
+				c for c in df.columns
+				if c not in InfoApiView.NON_PROJECT_COLUMNS and c not in used_projects
+			])
 			sheet_name = user_name_map.get(sheet.user_id, "Deleted User")[:31]
 			df.to_excel(writer, sheet_name=sheet_name)
 		writer.close()
@@ -287,6 +313,11 @@ class MainReportView(View):
 		hours_df = pd.DataFrame(hours).transpose()
 		hours_df = hours_df.reindex(np.roll(hours_df.index, 1))
 		payments_df = pd.DataFrame(payments).transpose()
+		hours_df = drop_zero_columns(hours_df)
+		payments_df = payments_df.drop(
+			columns=[c for c in payments_df.columns if c not in hours_df.columns],
+			errors="ignore",
+		)
 
 		buffer = io.BytesIO()
 		writer = pd.ExcelWriter(buffer, engine="xlsxwriter")
@@ -339,6 +370,7 @@ class UsersMonthlyReportView(View):
 		df = pd.DataFrame(data)
 		df = df.transpose()
 		df = df[sorted(df)]
+		df = drop_zero_columns(df)
 		df["total"] = df.sum(axis=1)
 
 		buffer = io.BytesIO()
@@ -375,6 +407,7 @@ class ProjectsYearlyReportView(View):
 
 		df = pd.DataFrame(d)
 		df = df.transpose()
+		df = drop_zero_columns(df)
 		df["total"] = df.sum(axis=1)
 		df.loc["total"] = df.sum()
 

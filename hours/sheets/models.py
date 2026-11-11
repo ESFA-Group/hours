@@ -807,6 +807,9 @@ class Project(models.Model):
 		null=True,
 	)
 	name = models.CharField("name", max_length=150)
+	# Inactive projects can't be picked in the hours sheet, but past hours on
+	# them still show up in reports.
+	is_active = models.BooleanField("active", default=True)
 
 	def __str__(self):
 		return f"{self.family.name}-{self.name}"

@@ -177,6 +177,9 @@ class UserAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     ordering = ["family__name"]
+    list_display = ["__str__", "family", "is_active"]
+    list_editable = ["is_active"]
+    list_filter = ["is_active", "family"]
 
 @admin.register(Food_data)
 class Food_dataAdmin(admin.ModelAdmin):

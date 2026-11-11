@@ -35,7 +35,7 @@ def camel_to_snake(s: str) -> str:
 
 class ProjectListApiView(ListAPIView):
 
-    queryset = Project.objects.all()
+    queryset = Project.objects.filter(is_active=True)
     serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticated]
 
