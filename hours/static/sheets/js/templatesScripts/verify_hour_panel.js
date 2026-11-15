@@ -360,16 +360,46 @@ function renderSelectedStatus(user) {
 	$("#selected-user-status").html(`${submitted} <span>${m1}</span> <span>${m2}</span> <span>${supreme}</span> ${rejected}`);
 }
 
-// Money figures come pre-computed from the API (same values as the payment page);
-// nothing is calculated here.
+// Money chips come pre-computed from the API (same values as the payment page).
+// Only the Addition 3 preview under the score inputs is estimated client-side.
 const MONEY_CHIPS = [
 	{ key: "wage", label: "Wage", title: "Hourly wage (R)" },
 	{ key: "totalPayment", label: "Wage Pay", title: "Effective worked hours × wage" },
-	{ key: "addition3Reward", label: "Reward Pay", title: "Based on the Manager 2 performance score and total worked hours" },
+	{ key: "addition3Reward", label: "Reward Pay", title: "Based on the Manager 2 performance score and total worked hours", supremeOnly: true },
 ];
 
 function formatMoney(value) {
 	return Number(value || 0).toLocaleString();
+}
+
+// Mirrors Sheet.compute_addition_3_reward(): reward_base * pct / 100 * hours.
+// Returns null for a blank / invalid score.
+function computeAddition3(rawValue) {
+	if (!selectedDetail || String(rawValue ?? "").trim() === "") return null;
+	const pct = Number(rawValue);
+	if (!Number.isInteger(pct) || pct < 1 || pct > 100) return null;
+	return Math.round((selectedDetail.rewardBase || 0) * pct / 100 * (selectedDetail.rewardHours || 0));
+}
+
+// Live "what would Addition 3 be" line under each score input. Both managers see
+// both; only Manager 2's score sets the real Addition 3.
+function renderAddition3Preview() {
+	const noBase = selectedDetail && !selectedDetail.rewardBase;
+	[
+		["#performance-m1", "#addition3-preview-m1", "Addition 3 at this score", ""],
+		["#performance-m2", "#addition3-preview-m2", "Addition 3", ""],
+	].forEach(([inputId, previewId, label, note]) => {
+		const $preview = $(previewId);
+		if (!$preview.length) return;
+		if (noBase) {
+			$preview.html(`${label}: <b>0</b> R <span class="text-warning">(no reward base set for this person)</span>`);
+			return;
+		}
+		const amount = computeAddition3($(inputId).val());
+		$preview.html(amount === null
+			? `${label}: <b>—</b>`
+			: `${label}: <b>${formatMoney(amount)}</b> R${note ? ` <span class="text-muted">(${note})</span>` : ""}`);
+	});
 }
 
 function renderSelectedTotals(user) {
@@ -379,6 +409,7 @@ function renderSelectedTotals(user) {
 		.map(chip => `<span class="hour-chip ${chip.cls}" title="${chip.title}">${chip.label}<b>${chip.sign || ''}${minutes2hhmm(user[chip.key] || 0)}</b></span>`)
 		.join("");
 	const money = MONEY_CHIPS
+		.filter(chip => !chip.supremeOnly || window.VERIFY_HOURS_MODE === "supreme")
 		.map(chip => `<span class="hour-chip hour-chip-money" title="${chip.title}">${chip.label}<b>${formatMoney(user[chip.key])}</b></span>`)
 		.join("");
 	$("#selected-user-totals").html(`<div class="hour-chips">${summary}${breakdown}${getPaymentTypeChip(user)}${money}</div>`);
@@ -465,6 +496,7 @@ async function selectUser(userId, role) {
 			$("#performance-m2")
 				.val(selectedDetail.performanceM2 ?? "")
 				.prop("disabled", !(selectedDetail.permissions || {}).canEditPerformanceM2);
+			renderAddition3Preview();
 			renderReviewState(selectedDetail);
 
 			constructTable(selectedDetail.sheetData);
@@ -710,7 +742,7 @@ async function saveComments() {
 	const commentPayload = getCommentPayload();
 	if (!commentPayload) return;
 	if (VERIFY_HOURS_MODE !== "supreme"
-		&& !window.confirm("Notes & performance can be submitted only once. After this you cannot change them unless a supreme verifier rejects them. Submit now?")) return;
+		&& !window.confirm("Notes & performance can be submitted only once. After this you cannot change them. Submit now?")) return;
 	isUpdatingVerification = true;
 
 	try {
@@ -758,6 +790,7 @@ $("document").ready(async function () {
 	$("#reject-btn").click(() => postSheetAction($("#reject-btn").data("action")));
 	$("#force-submit-btn").click(() => postSheetAction("force_submit_supreme"));
 	$("#save-comments-btn").click(saveComments);
+	$("#performance-m1, #performance-m2").on("input", renderAddition3Preview);
 	$("#reject-review-m1-btn").click(() => rejectReview(1));
 	$("#reject-review-m2-btn").click(() => rejectReview(2));
 });

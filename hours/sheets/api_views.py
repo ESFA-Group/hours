@@ -1845,6 +1845,8 @@ def _sheet_financials(sheet):
         "performanceM1": sheet.performance_form_aspect_m1,
         "performanceM2": sheet.performance_form_aspect_m2,
         "addition3Reward": sheet.addition_3_reward,
+        # Hours figure compute_addition_3_reward() uses, for the panel's live preview.
+        "rewardHours": round(sheet.total / 60, 3),
     }
 
 

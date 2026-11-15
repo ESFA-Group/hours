@@ -433,10 +433,11 @@
     // Reward is already counted inside Payment 2; this row only shows it on its own.
     function updateReward(value, performanceM2) {
         document.getElementById('reward-payment').textContent = (value || 0).toLocaleString('en-US');
-        const text = performanceM2 == null
-            ? "Manager 2 has not rated this month yet."
-            : `Manager 2 satisfaction: ${performanceM2}%`;
         const btn = document.getElementById('reward-info-btn');
+        // No rating yet: hide the info button instead of saying so.
+        btn.classList.toggle('d-none', performanceM2 == null);
+        if (performanceM2 == null) return;
+        const text = `Manager 2 satisfaction: ${performanceM2}%`;
         bootstrap.Popover.getOrCreateInstance(btn, { trigger: 'hover focus', placement: 'top', content: text })
             .setContent({ '.popover-body': text });
     }
