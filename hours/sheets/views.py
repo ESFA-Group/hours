@@ -606,6 +606,8 @@ class PaymentExcelExportView(View):
 			payment_info = {
 				"userID": sheet.user_id,
 				"user": sheet.user.get_full_name(),
+				"firstNamePersian": sheet.user.first_name_p,
+				"lastNamePersian": sheet.user.last_name_p,
 				"bankName": sheet.user.bank_name,
 			}
 			payment_info.update(sheet.get_payment_info())

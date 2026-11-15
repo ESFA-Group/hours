@@ -765,6 +765,7 @@ class PaymentApiView(APIView):
                 {
                     "userID": user.id,
                     "user": user.get_full_name(),
+                    "staffCode": user.staff_code,
                     "bankName": user.bank_name,
                 }
             )
