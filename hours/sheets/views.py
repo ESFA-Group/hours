@@ -5,6 +5,7 @@ from django.conf import settings
 from pathlib import Path, PurePosixPath
 from django.utils.decorators import method_decorator
 from sheets.customDecorators import *
+from django.db import transaction
 from django.db.models import QuerySet
 from django.core.files.storage import default_storage
 from django.core.management import call_command
@@ -642,50 +643,49 @@ class PaymentExcelImportView(View):
 
 		not_found_name = []
 
-		for index, row in df.iterrows():
-			user_id = row["userID"]
-			wage = row["wage"]
-			base = row["basePayment"]
-			r1 = row["reduction1"]
-			r2 = row["reduction2"]
-			add1 = row["addition1"]
-			row = row.to_dict()
-			try:
-				current_sheet = Sheet.objects.get(
-					user_id=user_id, year=year, month=month
-				)
-			except:
-				not_found_name.append(
-					{"name": row["user_name"], "user_id": row["user_id"]}
-				)
-				continue
-			current_sheet.wage = wage
-			current_sheet.base_payment = base
-			current_sheet.reduction1 = r1
-			current_sheet.reduction2 = r2
-			current_sheet.reduction3 = row["reduction3"]
-			current_sheet.food_reduction = row["food_reduction"]
-			current_sheet.addition1 = add1
-			current_sheet.addition2 = row["addition2"]
-			current_sheet.payment_status = row["paymentStatus"]
-			current_sheet.save()
+		# One query for every sheet this upload can touch, instead of a lookup per row.
+		sheet_ids = set(
+			Sheet.objects.filter(year=year, month=month, user__isnull=False)
+			.values_list("user_id", flat=True)
+		)
 
-			user = User.objects.get(pk=user_id)
-			user.wage = wage
-			user.base_payment = base
-			user.reduction1 = r1
-			user.reduction2 = r2
-			user.addition1 = add1
-			user.save()
+		# Everything below goes in ONE transaction. Previously each row did ~3+
+		# separate saves (each Sheet.save() also re-ran the pandas transform), and
+		# with SQLite every autocommit is an fsync -- instant on a local SSD but
+		# minutes in total on the server's disk.
+		# The payment fields don't feed mean/total/addition_3_reward, so plain
+		# queryset updates are safe and skip Sheet.save()'s recompute.
+		with transaction.atomic():
+			for _, row in df.iterrows():
+				row = row.to_dict()
+				try:
+					user_id = int(row["userID"])
+				except (KeyError, TypeError, ValueError):
+					user_id = None
+				if user_id not in sheet_ids:
+					not_found_name.append(
+						{"name": row.get("user", ""), "user_id": row.get("userID")}
+					)
+					continue
 
-			user_sheets = Sheet.objects.filter(user=user, year=year, month__gte=month)
-			for sheet in user_sheets:
-				sheet.wage = wage
-				sheet.base_payment = base
-				sheet.reduction1 = r1
-				sheet.reduction2 = r2
-				sheet.addition1 = add1
-				sheet.save()
+				# Carried forward to the user and their later sheets this year.
+				shared = {
+					"wage": row["wage"],
+					"base_payment": row["basePayment"],
+					"reduction1": row["reduction1"],
+					"reduction2": row["reduction2"],
+					"addition1": row["addition1"],
+				}
+
+				Sheet.objects.filter(user_id=user_id, year=year, month=month).update(
+					**shared,
+					reduction3=row["reduction3"],
+					food_reduction=row["food_reduction"],
+					addition2=row["addition2"],
+					payment_status=row["paymentStatus"],
+				)
+				User.objects.filter(pk=user_id).update(**shared)
+				Sheet.objects.filter(user_id=user_id, year=year, month__gt=month).update(**shared)
 
 		response_data = {
 			"message": "success",
