@@ -1,65 +1,50 @@
-# Deploying "hours" on a new server
+# Deploying "hours" (hours.esfagroup.com)
 
-Stack: Docker (gunicorn + Django) behind the **host's nginx**. The Telegram checker and the SQLite backups run on the host (systemd timers) and use the host's Hiddify VPN.
+Server: **esfagroup-01**, user `deploy` (uid 1000), checkout in `/opt/hours`. The app is a Docker container (gunicorn + Django, port 8000) behind the shared **nginx-proxy + acme-companion** stack in `/opt/proxy` (Docker network `proxy`), which also gets the Let's Encrypt certificate. The site lives at the **root** of the domain (no `/hours/` prefix). The old address `kavosh.online/hours/...` is redirected here by the Kavosh nginx config (kavosh repo, `deploy/nginx-vhost.conf`).
 
-All paths below assume the server user is `mrn` (uid 1000) and the repo lives in `/home/mrn/hours`. If your user differs, change `user:` in `docker-compose.yml` and the paths in `system_files/*.service`.
+The Telegram checker and the SQLite backups run on the host (systemd timers). The checker goes through the host's Hiddify VPN, because Telegram is not reachable directly from the server.
 
 ```
-/home/mrn/hours/
+/opt/hours/                            (git checkout)
 ├── Dockerfile, docker-compose.yml     (from git)
-├── data/                              (NOT in git: all state lives here)
+├── .env                               NOT in git: HOURS_DOMAIN etc. (from .env.example)
+├── data/                              NOT in git: all state lives here
 │   ├── db.sqlite3
 │   ├── media/
 │   ├── error.log
-│   └── local.py                       (production settings and secrets)
-└── backups/                           (written by the backup timer)
+│   └── local.py                       production settings and secrets (mounted read-only)
+└── backups/                           written by the backup timer
 ```
 
 ---
 
-## 1. Prepare the server
+## 1. Prepare the server (once, needs sudo)
 
 ```bash
-# base packages (Ubuntu/Debian)
-sudo apt-get update
-sudo apt-get install -y git nginx sqlite3 curl docker.io docker-compose-v2
-sudo usermod -aG docker mrn            # log out and back in afterwards
-docker --version && docker compose version
+sudo install -d -o deploy -g deploy /opt/hours
+sudo apt-get install -y sqlite3                    # used by system_files/db_backup.sh
+sudo install -m 755 HiddifyCli /usr/local/bin/      # Hiddify CLI binary (only needed for Telegram alerts)
 ```
 
-**Docker Hub blocked / slow (common in Iran):** turn on the VPN, or add a registry mirror and restart Docker:
-
-```bash
-echo '{"registry-mirrors": ["https://docker.arvancloud.ir"]}' | sudo tee /etc/docker/daemon.json
-sudo systemctl restart docker
-```
-
-**Hiddify (only needed for Telegram alerts):** install `HiddifyCli` so it's on root's `PATH` (e.g. `/usr/local/bin/HiddifyCli`). The checker timer runs as root. Test it:
-
-```bash
-HiddifyCli run -c /home/mrn/hours/Hiddify/config.txt &   # then, in another shell:
-curl --proxy http://127.0.0.1:2334 -I https://api.telegram.org
-```
+The `proxy` network must already exist (`/opt/proxy`).
 
 ## 2. Get the code
 
 ```bash
-cd /home/mrn
-git clone <repo-url> hours
-cd hours
-mkdir -p data backups
+git clone <repo-url> /opt/hours      # or from a git bundle
+cd /opt/hours
+mkdir -p data/media backups
+cp .env.example .env && chmod 600 .env
 ```
 
 ## 3. Bring the data
 
-**Moving from the old server** (stop the old app first, so nothing writes while you copy):
+**Moving from another server** (stop the old app first, so nothing writes while you copy):
 
 ```bash
 # on the OLD server: consistent DB snapshot (safe even if the app is running)
-sqlite3 /home/mrn/hours/hours/db.sqlite3 ".backup /tmp/db.sqlite3"
-# copy to the NEW server
-scp /tmp/db.sqlite3 mrn@NEW:/home/mrn/hours/data/db.sqlite3
-rsync -a /home/mrn/hours/hours/media/ mrn@NEW:/home/mrn/hours/data/media/
+sqlite3 <old>/db.sqlite3 ".backup /tmp/db.sqlite3"
+# copy to /opt/hours/data/db.sqlite3 and the media folder to /opt/hours/data/media/
 ```
 
 **Fresh install with no data:** skip the copy. The container creates an empty DB on first start; then create an admin with:
@@ -67,15 +52,14 @@ rsync -a /home/mrn/hours/hours/media/ mrn@NEW:/home/mrn/hours/data/media/
 
 ## 4. Production settings: `data/local.py`
 
-This file is mounted into the container (read-only) and is never committed. Generate a key with
-`python3 -c "import secrets; print(secrets.token_urlsafe(50))"`.
+Never committed. Generate a key with `python3 -c "import secrets; print(secrets.token_urlsafe(50))"`.
 
 ```python
 SECRET_KEY = "<generated key>"
 DEBUG = False
-ALLOWED_HOSTS = ["your.domain", "127.0.0.1"]
-CSRF_TRUSTED_ORIGINS = ["https://your.domain"]
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")   # needs the nginx header below
+ALLOWED_HOSTS = ["hours.esfagroup.com"]
+CSRF_TRUSTED_ORIGINS = ["https://hours.esfagroup.com"]
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")   # nginx-proxy sends this header
 
 DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": "/data/db.sqlite3"}}
 MEDIA_ROOT = "/data/media/"
@@ -87,86 +71,71 @@ LOGGING = {
 }
 ```
 
-Then make `data/` writable by the container user (uid in `docker-compose.yml`, default 1000):
+Then make `data/` writable by the container user (uid 1000 = `deploy`):
 
 ```bash
-sudo chown -R 1000:1000 data
-chmod 600 data/local.py
+chown -R 1000:1000 data && chmod 600 data/local.py .env
 ```
 
-## 5. Build and start
+## 5. nginx-proxy settings for this host
+
+Uploads (photos, Excel) and slow imports need more than nginx's defaults (1 MB, 60 s). `vhost.d` is a volume of the proxy stack, so this survives restarts:
 
 ```bash
-docker compose up -d --build
-docker compose logs -f web          # expect "Listening at: http://127.0.0.1:8000"
-curl -I http://127.0.0.1:8000/hours/
+docker exec nginx-proxy sh -c 'printf "client_max_body_size 50m;\nproxy_read_timeout 300s;\n" > /etc/nginx/vhost.d/hours.esfagroup.com'
+docker exec nginx-proxy nginx -s reload
 ```
 
-On every start the container runs `migrate`, then gunicorn (3 workers, 300 s timeout, bound to `127.0.0.1:8000`). `restart: unless-stopped` brings it back after reboots, as long as Docker is enabled (`sudo systemctl enable docker`).
+nginx-proxy only picks up a new `vhost.d/<host>` file when it regenerates its config (on container start/stop events), so create it **before** the first `docker compose up`, or `docker compose restart web` afterwards.
 
-> If the port is already taken, the old gunicorn is still running. Stop it first: `sudo systemctl disable --now <old-service>`.
+Do **not** add a `location /media/` alias: media goes through Django's `MediaServeView`, which keeps personal documents (ID cards, ...) private to their owner and staff. Static files are served by WhiteNoise inside the container.
 
-## 6. nginx
+## 6. Image, build and start
 
-`/etc/nginx/sites-available/hours`:
-
-```nginx
-server {
-    listen 80;
-    server_name your.domain;
-    client_max_body_size 50m;                    # photo / Excel uploads
-
-    location /hours/media/ { alias /home/mrn/hours/data/media/; }
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 300s;                 # matches gunicorn --timeout
-    }
-}
-```
-
-`/static/` needs no separate block: WhiteNoise inside the container serves it.
+Docker Hub is blocked from esfagroup-01, so either build elsewhere and ship the image:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/hours /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-# HTTPS: sudo apt-get install -y certbot python3-certbot-nginx && sudo certbot --nginx -d your.domain
+docker compose build web
+docker save hours:latest | gzip | ssh esfagroup-01 'gunzip | docker load'
 ```
 
-If nginx can't read the media directory, run `chmod o+x /home/mrn /home/mrn/hours /home/mrn/hours/data`.
-
-## 7. Scheduled jobs (host systemd)
+or set `BASE_IMAGE` in `.env` to a mirror (e.g. `docker.arvancloud.ir/python:3.12-slim`) and build on the server. Then:
 
 ```bash
-cd /home/mrn/hours/system_files
+docker compose up -d                 # add --build when building on the server
+docker compose logs -f web           # expect "Listening at: http://0.0.0.0:8000"
+```
+
+On every start the container runs `migrate`, then gunicorn (3 workers, 300 s timeout). acme-companion requests the certificate on first start (DNS must already point here). `restart: unless-stopped` brings it back after reboots.
+
+## 7. Scheduled jobs (host systemd, needs sudo)
+
+```bash
+cd /opt/hours/system_files
 sudo cp esfa_backup.service esfa_backup.timer esfa_checker.service esfa_checker.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now esfa_backup.timer esfa_checker.timer
-chmod +x /home/mrn/hours/Hiddify/vpn.sh /home/mrn/hours/Hiddify/vpn_dry.sh
 ```
 
 | Timer | When | What |
 |---|---|---|
 | `esfa_backup` | daily 02:30 | tiered gzip backups of `data/db.sqlite3` into `backups/{daily,weekly,monthly}` |
-| `esfa_checker` | every 4 h | starts the VPN, then runs `check_submissions` inside the container |
+| `esfa_checker` | every 4 h | starts the VPN, then runs `check_submissions` in a one-off `checker` container on the host network |
 
 Test both once by hand:
 
 ```bash
 sudo systemctl start esfa_backup.service && ls backups/daily     # a new .gz appears
-/home/mrn/hours/Hiddify/vpn_dry.sh                               # dry run, no messages sent
+sudo /opt/hours/Hiddify/vpn_dry.sh                               # dry run, no messages sent
 ```
 
 ## 8. Smoke test
 
-- Open `https://your.domain/hours/` and log in.
+- Open `https://hours.esfagroup.com/` and log in.
 - Open a month sheet (static files and the API work).
-- View a user's uploaded photo (media via nginx).
+- View a user's uploaded photo (media through Django).
 - Run a small Excel import (background task and status polling).
+- `https://kavosh.online/hours/home` redirects to `https://hours.esfagroup.com/home`.
 - `docker compose logs web` and `data/error.log` have no errors.
 
 ---
@@ -175,7 +144,9 @@ sudo systemctl start esfa_backup.service && ls backups/daily     # a new .gz app
 
 ```bash
 # update the app
-cd /home/mrn/hours && git pull && docker compose up -d --build
+cd /opt/hours && git pull
+# rebuild (or build + ship, section 6), then:
+docker compose up -d
 
 # logs / shell / manage.py
 docker compose logs -f web
@@ -187,14 +158,14 @@ docker compose restart web
 docker compose down
 ```
 
-**Rollback:** `git checkout <previous-commit> && docker compose up -d --build`. Migrations that already ran are not undone, so restore a DB backup too if the release changed the schema.
+**Rollback:** `git checkout <previous-commit>`, rebuild, `docker compose up -d`. Migrations that already ran are not undone, so restore a DB backup too if the release changed the schema.
 
 **Restore a backup:**
 
 ```bash
 docker compose stop web
 gunzip -c backups/daily/db_<stamp>.sqlite3.gz > data/db.sqlite3
-sudo chown 1000:1000 data/db.sqlite3
+chown 1000:1000 data/db.sqlite3
 docker compose start web
 ```
 
@@ -202,13 +173,13 @@ docker compose start web
 
 | Symptom | Likely cause |
 |---|---|
-| `pull access denied` / timeout on build | Docker Hub unreachable: use the VPN or a registry mirror (step 1) |
+| `pull access denied` / timeout on build | Docker Hub unreachable: ship the image or use `BASE_IMAGE` with a mirror (section 6) |
 | Container exits at once | `docker compose logs web`; usually a bad `data/local.py` or an unwritable `data/` |
-| `Address already in use` | old gunicorn still running on port 8000 |
 | 400 Bad Request | domain missing from `ALLOWED_HOSTS` |
-| 403 CSRF failed on login (HTTPS) | `CSRF_TRUSTED_ORIGINS` or the `X-Forwarded-Proto` header is missing |
-| 502 from nginx | container not running, or gunicorn not on `127.0.0.1:8000` |
-| Uploaded photos 404 | nginx `alias` path wrong, or `data/media` is not readable by nginx |
+| 403 CSRF failed on login | `CSRF_TRUSTED_ORIGINS` or `SECURE_PROXY_SSL_HEADER` missing in `data/local.py` |
+| 502 / 503 from nginx-proxy | container not running or not on the `proxy` network; for 503 also check `HOURS_DOMAIN` in `.env` |
+| No certificate / browser warning | DNS did not point here when the container started; `docker logs nginx-proxy-acme`, then `docker compose restart web` |
+| 413 on upload | the `vhost.d/hours.esfagroup.com` file from section 5 is missing |
 | Telegram alerts never arrive | Hiddify not running or no `HiddifyCli` on root's PATH; run `vpn_dry.sh` by hand |
 | "Dry run via VPN" button in the UI fails | expected: HiddifyCli runs on the host, not in the container; use the plain dry run or run `vpn_dry.sh` on the host |
 

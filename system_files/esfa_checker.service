@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/mrn/hours/Hiddify
-ExecStart=/bin/bash /home/mrn/hours/Hiddify/vpn.sh
+WorkingDirectory=/opt/hours/Hiddify
+ExecStart=/bin/bash /opt/hours/Hiddify/vpn.sh
 
 [Install]
 WantedBy=multi-user.target

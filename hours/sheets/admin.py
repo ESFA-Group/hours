@@ -7,7 +7,7 @@ from import_export.admin import ImportExportModelAdmin
 from import_export.forms import SelectableFieldsExportForm
 from sheets.models import *
 
-admin.site.site_url = "/hours"
+admin.site.site_url = "/"
 
 
 admin.site.register(ProjectFamily)

@@ -1,10 +1,39 @@
+# hours behind the shared nginx-proxy + acme-companion stack (/opt/proxy, network "proxy").
+# Needs .env next to this file (see .env.example) and data/ (db.sqlite3, media/, local.py). See DEPLOY.md.
+
+x-app: &app
+  build:
+    context: .
+    args:
+      BASE_IMAGE: ${BASE_IMAGE:-python:3.12-slim}
+  image: hours:latest
+  user: "1000:1000"
+  volumes:
+    - ./data:/data
+    - ./data/local.py:/app/hours/hours/local.py:ro
+
 services:
   web:
-    build: .
+    <<: *app
     restart: unless-stopped
-    # host network: gunicorn binds host 127.0.0.1:8000 for nginx, and check_submissions reaches the Hiddify proxy at 127.0.0.1:2334
+    environment:
+      VIRTUAL_HOST: ${HOURS_DOMAIN:?set HOURS_DOMAIN in .env}
+      VIRTUAL_PORT: "8000"
+      LETSENCRYPT_HOST: ${HOURS_DOMAIN}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-}
+    # No "ports:" on purpose: only nginx-proxy reaches the app, over the shared proxy network.
+    networks:
+      - proxy
+
+  # One-off job for the Telegram checker (Hiddify/vpn.sh runs it from a host systemd timer).
+  # Host network so check_submissions reaches HiddifyCli's proxy on the host's 127.0.0.1:2334.
+  checker:
+    <<: *app
+    profiles: ["tools"]
     network_mode: host
-    user: "1000:1000"
-    volumes:
-      - ./data:/data
-      - ./data/local.py:/app/hours/hours/local.py:ro
+    command: python manage.py check_submissions
+
+networks:
+  proxy:
+    external: true
+    name: proxy

@@ -10,3 +10,6 @@ hours/error.log
 hours/hours/local.py
 **/__pycache__
 debug_data.xlsx
+.env
+backups
+system_files

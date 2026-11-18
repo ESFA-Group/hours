@@ -730,7 +730,7 @@ class MediaServeView(View):
 	Serve files from MEDIA_ROOT through Django.
 
 	django.conf.urls.static.static() only wires up media URLs when DEBUG is
-	True, so in production nothing routed /hours/media/<path> and the web
+	True, so in production nothing routed /media/<path> and the web
 	server answered with its own 404. These files are personal documents
 	(national ID cards, birth certificates, ...) so they must never be served
 	anonymously anyway - access is restricted to the owner of the file and to

@@ -46,7 +46,7 @@ async function getRequest(url) {
 }
 
 async function getFoodDataDBT(year = ACTIVE_YEAR, month = ACTIVE_MONTH) {
-	const url = `/hours/api/FoodData/${year}/${month}`;
+	const url = `/api/FoodData/${year}/${month}`;
 	return await getRequest(url)
 }
 
@@ -237,7 +237,7 @@ async function fillFoodTable() {
 }
 
 async function getFoodData() {
-	const url = `/hours/api/order_food/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
+	const url = `/api/order_food/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
 	try {
 		let res = await fetch(url);
 		return await res.json();
@@ -263,7 +263,7 @@ async function submitSelectedFoods() {
 
 
 function saveFoodData(data) {
-	const url = `/hours/api/order_food/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
+	const url = `/api/order_food/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
 
 	fetch(url, {
 		method: 'post',

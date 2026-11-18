@@ -21,3 +21,5 @@ Hiddify/data
 Hiddify/webui
 Hiddify/cache.db
 data/
+.env
+backups/

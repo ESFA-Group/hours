@@ -15,8 +15,8 @@
 set -euo pipefail
 
 # --- config -----------------------------------------------------------------
-DB="${ESFA_DB_PATH:-/home/mrn/hours/hours/db.sqlite3}"
-BACKUP_ROOT="${ESFA_BACKUP_DIR:-/home/mrn/hours/backups}"
+DB="${ESFA_DB_PATH:-/opt/hours/data/db.sqlite3}"
+BACKUP_ROOT="${ESFA_BACKUP_DIR:-/opt/hours/backups}"
 
 DAILY_KEEP=3
 WEEKLY_KEEP=4

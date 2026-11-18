@@ -71,7 +71,7 @@ async function postRequest(url, data, errTitle = "Updating Sheet") {
 				error: 1,
 				name: 'Error',
 				title: errTitle + " | " + response.status,
-				message: response.statusText + " at " + url.replace("/hours/api/", ""),
+				message: response.statusText + " at " + url.replace("/api/", ""),
 			});
 		}
 	} catch (err) {
@@ -106,7 +106,7 @@ async function putRequest(url, data) {
 }
 
 async function get_report() {
-	const url = `/hours/api/daily_report_user/${ACTIVE_YEAR}/${ACTIVE_MONTH}/${ACTIVE_DAY}`;
+	const url = `/api/daily_report_user/${ACTIVE_YEAR}/${ACTIVE_MONTH}/${ACTIVE_DAY}`;
 	let report = await getRequest(url);
 	_REPORT = report;
 	return report;
@@ -184,7 +184,7 @@ async function submitForm() {
 		return
 	}
 	const content = $('#report_content').val();
-	const url = `/hours/api/daily_report_user/${ACTIVE_YEAR}/${ACTIVE_MONTH}/${ACTIVE_DAY}`;
+	const url = `/api/daily_report_user/${ACTIVE_YEAR}/${ACTIVE_MONTH}/${ACTIVE_DAY}`;
 
 	return await postRequest(url, { content });
 }
