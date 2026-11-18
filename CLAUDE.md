@@ -16,7 +16,7 @@ Run everything from the `hours/` directory:
 
 ```bash
 cd hours
-../.venv/bin/python manage.py runserver            # dev server (site mounted at /hours/)
+../.venv/bin/python manage.py runserver            # dev server (site at the root, /)
 ../.venv/bin/python manage.py livereload           # optional, in a second terminal (django-livereload-server)
 
 # Tests (Django test runner; tests live in sheets/tests/)
@@ -39,7 +39,7 @@ cd hours
 
 ## Architecture
 
-Two Django apps, both mounted under the `/hours/` URL prefix (`hours/hours/urls.py`):
+Two Django apps, both mounted at the site root (`hours/hours/urls.py`); production is https://hours.esfagroup.com (see DEPLOY.md). The old `/hours/` prefix was removed, and `kavosh.online/hours/...` redirects here:
 
 ### `sheets` — timesheets, payments, food, daily reports (the core app)
 

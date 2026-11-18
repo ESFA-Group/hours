@@ -205,4 +205,4 @@ class APIService {
 
 
 // Create a global instance
-window.apiService = new APIService('/hours/api/'); // Base URL for your Django API
+window.apiService = new APIService('/api/'); // Base URL for your Django API

@@ -67,7 +67,7 @@ async function postRequest(url, data, errTitle = "Updating Sheet", jsonify = tru
 				error: 1,
 				name: 'Error',
 				title: errTitle + " | " + response.status,
-				message: response.statusText + " at " + url.replace("/hours/api/", ""),
+				message: response.statusText + " at " + url.replace("/api/", ""),
 			});
 		}
 	} catch (err) {
@@ -103,12 +103,12 @@ async function putRequest(url, data) {
 //#endregion
 
 async function get_reports_by_users() {
-	const url = `/hours/api/daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
+	const url = `/api/daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
 	return await getRequest(url);
 }
 
 async function get_reporting_limit() {
-	const url = `/hours/api/daily_report_setting_management`;
+	const url = `/api/daily_report_setting_management`;
 	let res = await getRequest(url);
 	return res;
 }
@@ -175,7 +175,7 @@ async function saveReportingLimitModeDBT(valueNumber) {
 		limitation = true
 	}
 
-	const url = `/hours/api/daily_report_setting_management`;
+	const url = `/api/daily_report_setting_management`;
 	await postRequest(url, { "no_limit_submission": limitation });
 }
 
@@ -290,7 +290,7 @@ async function handleReportSubmit(day) {
 		data.supervisor_comment_hide_for_user = $(`#supervisor_hide_user_checkbox_${day}`).prop('checked');
 	}
 
-	const url = `/hours/api/daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
+	const url = `/api/daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
 
 	await postRequest(url, data)
 	enable_btns(day)
@@ -346,7 +346,7 @@ function load_user_reports(userName, reports) {
 }
 
 async function export_reports() {
-	const exportUrl = `/hours/api/export_daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
+	const exportUrl = `/api/export_daily_report_management/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
 	let response = await postRequest(exportUrl, {}, "Exporting Reports", false)
 	if (!response) {
 		return

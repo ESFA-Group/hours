@@ -108,7 +108,7 @@ class Command(BaseCommand):
 {formatted_persian_require_to_update_subfields}
 ‏🟠
 {formatted_persian_warning_subfields}
-[Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)"""
+[Update in *ESFA Eyes*](https://hours\\.esfagroup\\.com/esfa_eyes_dashbord)"""
 
         self.send_telegram_message_with_retry(ADMIN_ID[0], message)
     
@@ -222,7 +222,7 @@ class Command(BaseCommand):
 {formatted_persian_require_to_update_subfields} 
 ‏🟠
 {formatted_persian_warning_subfields} 
-[Update in *ESFA Eyes*](https://kavosh\\.online/hours/esfa_eyes_dashbord)
+[Update in *ESFA Eyes*](https://hours\\.esfagroup\\.com/esfa_eyes_dashbord)
 """
                 for chat_id in ESFAEYES_FIELD_TO_TELEGRAM_ID[field_name]:
                     success = self.send_telegram_message_with_retry(chat_id, message)

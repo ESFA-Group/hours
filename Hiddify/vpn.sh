@@ -1,6 +1,6 @@
 #!/bin/bash
 # Usage: vpn.sh [extra args passed to check_submissions]
-CONFIG=/home/mrn/hours/Hiddify/config.txt
+CONFIG=/opt/hours/Hiddify/config.txt
 PROXY=http://127.0.0.1:2334
 
 cleanup() {
@@ -27,4 +27,4 @@ if ! curl -s --max-time 5 --proxy "$PROXY" -o /dev/null https://api.telegram.org
 	exit 1
 fi
 
-docker compose -f /home/mrn/hours/docker-compose.yml exec -T web python manage.py check_submissions "$@"
+docker compose -f /opt/hours/docker-compose.yml run --rm checker python manage.py check_submissions "$@"
