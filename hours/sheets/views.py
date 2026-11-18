@@ -609,6 +609,7 @@ class PaymentExcelExportView(View):
 				"user": sheet.user.get_full_name(),
 				"firstNamePersian": sheet.user.first_name_p,
 				"lastNamePersian": sheet.user.last_name_p,
+				"staffCode": sheet.user.staff_code,
 				"bankName": sheet.user.bank_name,
 			}
 			payment_info.update(sheet.get_payment_info())
