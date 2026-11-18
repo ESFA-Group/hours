@@ -119,8 +119,10 @@ sudo systemctl enable --now esfa_backup.timer esfa_checker.timer
 
 | Timer | When | What |
 |---|---|---|
-| `esfa_backup` | daily 02:30 | tiered gzip backups of `data/db.sqlite3` into `backups/{daily,weekly,monthly}` |
-| `esfa_checker` | every 4 h | starts the VPN, then runs `check_submissions` in a one-off `checker` container on the host network |
+| `esfa_backup` | daily 02:30 Tehran | tiered gzip backups of `data/db.sqlite3` into `backups/{daily,weekly,monthly}` |
+| `esfa_checker` | every 4 h from 00:00 Tehran (sends nothing on Fridays or before 06:00) | starts the VPN, then runs `check_submissions` in a one-off `checker` container on the host network |
+
+The timers name `Asia/Tehran` explicitly because the server clock is UTC.
 
 Test both once by hand:
 

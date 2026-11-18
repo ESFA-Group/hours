@@ -2,7 +2,8 @@
 Description=Run ESFA Submission Checker every 4 hours
 
 [Timer]
-OnCalendar=*-*-* 00/4:00:00
+# Every 4 hours on Tehran time (the server runs on UTC).
+OnCalendar=*-*-* 00/4:00:00 Asia/Tehran
 Persistent=true
 Unit=esfa_checker.service
 
