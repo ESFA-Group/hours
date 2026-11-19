@@ -598,11 +598,23 @@
         // Persist the column picker choice in the browser, so it survives
         // month changes and page reloads.
         const COLUMNS_KEY = 'paymentTableHiddenColumns';
+        const FULL_MIN_WIDTH = 2100; // px needed when every column is shown
+        // Shrink the table's min-width in proportion to the hidden columns,
+        // so the remaining ones don't stretch and force a horizontal scroll.
+        function applyMinWidth(){
+            const $t = $("#payment-table");
+            const w = cols => cols.reduce((a, c) => a + (parseFloat(c.width) || 0), 0);
+            const total = w($t.bootstrapTable('getVisibleColumns').concat($t.bootstrapTable('getHiddenColumns')));
+            const shown = w($t.bootstrapTable('getVisibleColumns'));
+            if (total > 0) $t.css('min-width', Math.round(FULL_MIN_WIDTH * shown / total) + 'px');
+        }
         try {
             const hidden = JSON.parse(localStorage.getItem(COLUMNS_KEY) || '[]');
             hidden.forEach(f => $("#payment-table").bootstrapTable('hideColumn', f));
         } catch (e) {}
+        applyMinWidth();
         $("#payment-table").on('column-switch.bs.table column-switch-all.bs.table', function(){
+            applyMinWidth();
             try {
                 const hidden = $("#payment-table").bootstrapTable('getHiddenColumns')
                     .map(c => c.field)
