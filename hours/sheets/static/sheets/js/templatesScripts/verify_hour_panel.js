@@ -364,7 +364,7 @@ function renderSelectedStatus(user) {
 // Only the Addition 3 preview under the score inputs is estimated client-side.
 const MONEY_CHIPS = [
 	{ key: "wage", label: "Wage", title: "Hourly wage (R)" },
-	{ key: "totalPayment", label: "Wage Pay", title: "Effective worked hours × wage" },
+	{ key: "totalPayment", label: "Wage Pay", title: "Effective worked hours × wage + base payment" },
 	{ key: "addition3Reward", label: "Reward Pay", title: "Based on the Manager 2 performance score and total worked hours", supremeOnly: true },
 ];
 

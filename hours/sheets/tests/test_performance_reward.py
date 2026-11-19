@@ -445,8 +445,8 @@ class FinancialDisplayTests(PerformanceRewardTestBase):
         for actor, mode in ((self.manager_1, 'manager'), (self.supreme, 'supreme')):
             data = self._detail(actor, mode).data
             self.assertEqual(data['wage'], 100_000)
-            self.assertEqual(data['totalPayment'], self.sheet.get_total_payment())
-            self.assertEqual(data['totalPayment'], 7.5 * 100_000)  # 07:30 worked, not 450 minutes
+            self.assertEqual(data['totalPayment'], self.sheet.get_total_payment() + self.sheet.base_payment)
+            self.assertEqual(data['totalPayment'], 7.5 * 100_000 + self.sheet.base_payment)  # 07:30 worked, not 450 minutes
             self.assertEqual(data['rewardBase'], 20_000_000)
             self.assertEqual(data['performanceM1'], 60)
             self.assertEqual(data['performanceM2'], 85)

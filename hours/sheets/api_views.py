@@ -1839,8 +1839,9 @@ def _parse_performance_percentage(value):
 def _sheet_financials(sheet):
     return {
         "wage": sheet.wage,
-        # Same authoritative hours x wage figure as the payment page's Total (R).
-        "totalPayment": sheet.get_total_payment(),
+        # Verify page "Wage Pay": hours x wage + base payment. Display only --
+        # get_total_payment()/get_final_payment() are unchanged.
+        "totalPayment": sheet.get_total_payment() + sheet.base_payment,
         "addition2": sheet.addition2,
         "rewardBase": sheet.reward_base,
         "performanceM1": sheet.performance_form_aspect_m1,
