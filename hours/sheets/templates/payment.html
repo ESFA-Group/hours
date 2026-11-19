@@ -169,6 +169,7 @@
         <table id="payment-table"
                data-click-to-select="true"
                data-search="true"
+               data-show-columns="true"
                class="table table-sm table-hover"
                style="table-layout: fixed;
                       text-align: center;
@@ -649,6 +650,10 @@
                     .replace("monthHolder", month),
                 method: "POST"});
             $form.append($("<input type='hidden' name='csrfmiddlewaretoken'>").val("{{csrf_token}}"));
+            const visibleFields = $("#payment-table").bootstrapTable("getVisibleColumns")
+                .map(c => c.field)
+                .filter(f => f && f !== "state");
+            $form.append($("<input type='hidden' name='columns'>").val(JSON.stringify(visibleFields)));
             $("body").append($form);
             $form.submit();
         });

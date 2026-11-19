@@ -618,6 +618,19 @@ class PaymentExcelExportView(View):
 
 		df = pd.DataFrame(payments_info)
 
+		# Follow the column selection made on the payment page. userID is always
+		# kept so the file can still be re-imported; the Persian name columns
+		# travel with the "user" column.
+		try:
+			selected = json.loads(request.POST.get("columns", "[]"))
+		except (ValueError, TypeError):
+			selected = []
+		if selected:
+			keep = set(selected) | {"userID"}
+			if "user" in keep:
+				keep |= {"firstNamePersian", "lastNamePersian"}
+			df = df[[c for c in df.columns if c in keep]]
+
 		buffer = io.BytesIO()
 		writer = pd.ExcelWriter(buffer, engine="xlsxwriter")
 		df.to_excel(writer, sheet_name="hours", index=False)
