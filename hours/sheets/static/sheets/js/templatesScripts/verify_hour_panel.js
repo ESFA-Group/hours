@@ -372,19 +372,20 @@ function formatMoney(value) {
 	return Number(value || 0).toLocaleString();
 }
 
-// Mirrors Sheet.compute_addition_3_reward(): reward_base * pct / 100 * hours.
+// Mirrors Sheet.compute_addition_3_reward(): addition2 * pct + reward_base * pct * hours.
 // Returns null for a blank / invalid score.
 function computeAddition3(rawValue) {
 	if (!selectedDetail || String(rawValue ?? "").trim() === "") return null;
 	const pct = Number(rawValue);
 	if (!Number.isInteger(pct) || pct < 1 || pct > 100) return null;
-	return Math.round((selectedDetail.rewardBase || 0) * pct / 100 * (selectedDetail.rewardHours || 0));
+	const p = pct / 100;
+	return Math.round((selectedDetail.addition2 || 0) * p + (selectedDetail.rewardBase || 0) * p * (selectedDetail.rewardHours || 0));
 }
 
 // Live "what would Addition 3 be" line under each score input. Both managers see
 // both; only Manager 2's score sets the real Addition 3.
 function renderAddition3Preview() {
-	const noBase = selectedDetail && !selectedDetail.rewardBase;
+	const noBase = selectedDetail && !selectedDetail.rewardBase && !selectedDetail.addition2;
 	[
 		["#performance-m1", "#addition3-preview-m1", "Addition 3 at this score", ""],
 		["#performance-m2", "#addition3-preview-m2", "Addition 3", ""],

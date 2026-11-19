@@ -131,6 +131,21 @@ class RewardCalculationTests(PerformanceRewardTestBase):
         self.sheet.refresh_from_db()
         self.assertEqual(self.sheet.addition_3_reward, 63_750_000)
 
+    def test_addition2_is_scaled_by_m2_percentage(self):
+        self._set_m2(85)
+        self.sheet.addition2 = 10_000_000
+        self.sheet.save(update_fields=['addition2'])
+        self.sheet.refresh_from_db()
+        # 10M * 85% + 20M * 85% * 7.5h
+        self.assertEqual(self.sheet.addition_3_reward, 8_500_000 + 127_500_000)
+
+    def test_addition2_not_paid_on_top_of_reward(self):
+        self._set_m2(50)
+        final_before = self.sheet.get_final_payment()
+        self.sheet.addition2 = 10_000_000
+        self.sheet.save()
+        self.assertEqual(self.sheet.get_final_payment(), final_before + 5_000_000)
+
     def test_recalculates_on_partial_save(self):
         self._set_m2(85)
         self.sheet.performance_form_aspect_m2 = 50

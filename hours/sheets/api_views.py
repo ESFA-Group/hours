@@ -1841,6 +1841,7 @@ def _sheet_financials(sheet):
         "wage": sheet.wage,
         # Same authoritative hours x wage figure as the payment page's Total (R).
         "totalPayment": sheet.get_total_payment(),
+        "addition2": sheet.addition2,
         "rewardBase": sheet.reward_base,
         "performanceM1": sheet.performance_form_aspect_m1,
         "performanceM2": sheet.performance_form_aspect_m2,

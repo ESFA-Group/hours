@@ -391,7 +391,7 @@ class Sheet(models.Model):
 		blank=True,
 		validators=[MinValueValidator(1), MaxValueValidator(100)],
 	)
-	# derived: recomputed on every save() from reward_base and M2's percentage
+	# derived: recomputed on every save() from addition2, reward_base and M2's percentage
 	addition_3_reward = models.IntegerField("addition_3_reward", default=0)
 
 	# A manager's notes + score are a one-time submission. While submitted_at is
@@ -416,9 +416,11 @@ class Sheet(models.Model):
 	def compute_addition_3_reward(self) -> int:
 		if not self.performance_form_aspect_m2:
 			return 0
-		# Same hours figure as get_total_payment(); reward_base is per worked hour.
+		# addition2 * pct + reward_base * pct * hours. Same hours figure as
+		# get_total_payment(); reward_base is per worked hour.
+		pct = self.performance_form_aspect_m2 / 100
 		hours = round(self.total / 60, 3)
-		return round(self.reward_base * self.performance_form_aspect_m2 / 100 * hours)
+		return round(self.addition2 * pct + self.reward_base * pct * hours)
 
 	def save(self, *args, **kwargs):
 		if not len(self.data):
@@ -439,7 +441,7 @@ class Sheet(models.Model):
 		# touching any of its inputs must persist it as well.
 		self.addition_3_reward = self.compute_addition_3_reward()
 		update_fields = kwargs.get("update_fields")
-		if update_fields is not None and {"reward_base", "performance_form_aspect_m2", "total", "data"} & set(update_fields):
+		if update_fields is not None and {"addition2", "reward_base", "performance_form_aspect_m2", "total", "data"} & set(update_fields):
 			kwargs["update_fields"] = list(set(update_fields) | {"addition_3_reward"})
 		super(Sheet, self).save(*args, **kwargs)
 
@@ -658,7 +660,8 @@ class Sheet(models.Model):
 				+ self.reduction3
 				+ self.food_reduction
 			)
-			+ (self.addition1 + self.addition2 + self.addition_3_reward)
+			# addition2 is paid only through addition_3_reward (scaled by M2's %).
+			+ (self.addition1 + self.addition_3_reward)
 		)
 		return final_payment
 
