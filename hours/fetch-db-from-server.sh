@@ -1,27 +1,31 @@
 #!/bin/bash
+# Download a consistent snapshot of the production SQLite database.
+# Uses the "esfagroup-01" alias from ~/.ssh/config (key-based login, no password).
+# Run from the hours/ directory; the backup is saved next to this script.
+set -euo pipefail
 
-# Simple SQLite Database Download Script
-SERVER_IP="185.211.58.47"
-SERVER_PASSWORD="Mrn.2277"
-SERVER_USER="mrn"
-DB_PATH="/home/mrn/hours/hours/db.sqlite3"
+SERVER="esfagroup-01"
+DB_PATH="/opt/hours/data/db.sqlite3"
+REMOTE_TMP="/tmp/db_snapshot_$$.sqlite3"
 
-# Create backup with timestamp
+cd "$(dirname "$0")"
+
 timestamp=$(date +%Y%m%d_%H%M%S)
 backup_file="db_backup_${timestamp}.sqlite3"
 
-echo "Downloading database..."
+echo "Creating snapshot on server..."
+# .backup is safe while the app is running (a plain file copy could catch a write)
+ssh "$SERVER" "sqlite3 '$DB_PATH' \".backup '$REMOTE_TMP'\""
 
-# Download the SQLite database directly
-sshpass -p "${SERVER_PASSWORD}" scp -o StrictHostKeyChecking=no \
-    "${SERVER_USER}@${SERVER_IP}:${DB_PATH}" \
-    "./${backup_file}"
+echo "Downloading database..."
+scp "$SERVER:$REMOTE_TMP" "./${backup_file}"
+
+# The database holds personal data: don't leave the snapshot on the server
+ssh "$SERVER" "rm -f '$REMOTE_TMP'"
 
 chmod 664 "$backup_file"
-chown $USER:$USER "$backup_file"
 
 echo "Database downloaded: ${backup_file}"
 
-# If you want to replace the existing db.sqlite3 file, uncomment the following lines:
-# sudo chmod 664 db.sqlite3
-# sudo chown $USER:$USER db.sqlite3
+# To use it as your local database, uncomment:
+# cp "$backup_file" db.sqlite3
