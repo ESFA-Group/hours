@@ -643,6 +643,7 @@ class PaymentExcelImportView(View):
 		df.fillna(0, inplace=True)
 
 		not_found_name = []
+		bad_reward_base = []
 
 		# One query for every sheet this upload can touch, instead of a lookup per row.
 		sheet_ids = set(
@@ -688,9 +689,25 @@ class PaymentExcelImportView(View):
 				User.objects.filter(pk=user_id).update(**shared)
 				Sheet.objects.filter(user_id=user_id, year=year, month__gt=month).update(**shared)
 
+				# Reward base is superuser-only (same rule as the payment table save).
+				# It feeds addition_3_reward, so affected sheets go through save() to
+				# recompute it instead of a plain queryset update.
+				if request.user.is_superuser and "rewardBase" in row:
+					try:
+						reward_base = int(str(row["rewardBase"]).replace(",", "").split(".")[0] or 0)
+					except (TypeError, ValueError):
+						bad_reward_base.append({"name": row.get("user", ""), "user_id": user_id})
+						continue
+					User.objects.filter(pk=user_id).update(reward_base=reward_base)
+					for sheet in Sheet.objects.filter(user_id=user_id, year=year, month__gte=month):
+						if sheet.reward_base != reward_base:
+							sheet.reward_base = reward_base
+							sheet.save()
+
 		response_data = {
 			"message": "success",
 			"users_not_found": not_found_name,
+			"invalid_reward_base": bad_reward_base,
 		}
 
 		return JsonResponse(response_data)
