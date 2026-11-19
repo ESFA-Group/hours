@@ -365,6 +365,7 @@ function renderSelectedStatus(user) {
 const MONEY_CHIPS = [
 	{ key: "wage", label: "Wage", title: "Hourly wage (R)" },
 	{ key: "totalPayment", label: "Wage Pay", title: "Effective worked hours × wage + base payment" },
+	{ key: "rewardBase", label: "Reward Base", title: "Reward base per worked hour (R)", supremeOnly: true },
 	{ key: "addition3Reward", label: "Reward Pay", title: "Based on the Manager 2 performance score and total worked hours", supremeOnly: true },
 ];
 
