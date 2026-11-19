@@ -595,6 +595,22 @@
         });
         $(".bi.bi-download").addClass(["fa", "fa-download"]); // to show the download icon
 
+        // Persist the column picker choice in the browser, so it survives
+        // month changes and page reloads.
+        const COLUMNS_KEY = 'paymentTableHiddenColumns';
+        try {
+            const hidden = JSON.parse(localStorage.getItem(COLUMNS_KEY) || '[]');
+            hidden.forEach(f => $("#payment-table").bootstrapTable('hideColumn', f));
+        } catch (e) {}
+        $("#payment-table").on('column-switch.bs.table column-switch-all.bs.table', function(){
+            try {
+                const hidden = $("#payment-table").bootstrapTable('getHiddenColumns')
+                    .map(c => c.field)
+                    .filter(f => f && f !== 'state');
+                localStorage.setItem(COLUMNS_KEY, JSON.stringify(hidden));
+            } catch (e) {}
+        });
+
         fillTable(currentYear, currentMonth);
 
         $("#year, #month").change(function(){
