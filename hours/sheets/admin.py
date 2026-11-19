@@ -181,7 +181,8 @@ class ProjectAdmin(admin.ModelAdmin):
     list_editable = ["is_active"]
     list_filter = ["is_active", "family"]
 
-@admin.register(Food_data)
+# hidden: food feature — admin registration disabled, model/code kept
+# @admin.register(Food_data)
 class Food_dataAdmin(admin.ModelAdmin):
     ordering = ["-year", "-month"]
 

@@ -67,6 +67,7 @@
                     </a>
                 </div>
 
+                {% comment "hidden: food card" %}
                 <div class="col-lg-4 col-md-6 mb-2 card-container">
                     <a href="{% url 'sheets:food_form' %}" class="card-link">
                         <div class="card mx-3" style="width: 19rem;">
@@ -81,6 +82,7 @@
                         </div>
                     </a>
                 </div>
+                {% endcomment %}
 
                 <div class="col-lg-4 col-md-6 mb-2 card-container">
                     <a href="{% url 'sheets:daily_report' %}" class="card-link">
@@ -159,11 +161,13 @@
                     style="width: 150px; background-color: #d0590a; border-color: #d0590a; color: white;"
                     >Supreme Verify Hours</a>
                 {% endif %}
+                {% comment "hidden: food data button" %}
                 {% if request.user.is_FoodManager %}
                     <a class="btn btn-info mx-1"
                     href="{% url 'sheets:food_data' %}"
                     style="width: 150px">Food Data</a>
                 {% endif %}
+                {% endcomment %}
                 {% if request.user.is_MainReportManager or request.user.is_SubReportManager %}
                     <a class="btn btn-warning mx-1"
                     href="{% url 'sheets:daily_report_management' %}"

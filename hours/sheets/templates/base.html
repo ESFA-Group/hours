@@ -156,11 +156,13 @@
                                 <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
                                    href="{% url 'sheets:hours' %}">Hours</a>
                             </li>
+                            {% comment "hidden: food nav link" %}
                             <li class="nav-item">
                                 {% url 'sheets:food_form' as temp_url %}
                                 <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
                                    href="{% url 'sheets:food_form' %}">Foods</a>
                             </li>
+                            {% endcomment %}
                             <li class="nav-item">
                                 {% url 'sheets:daily_report' as temp_url %}
                                 <a class="nav-link {% if request.path == temp_url %}active{% endif %}"
@@ -210,6 +212,7 @@
                                 </li>
                             {% endif %}
 
+                            {% comment "hidden: food data nav link" %}
                             {% if request.user.is_FoodManager %}
                                 <li class="nav-item">
                                     {% url 'sheets:food_data' as temp_url %}
@@ -217,6 +220,7 @@
                                     href="{% url 'sheets:food_data' %}">Food Data</a>
                                 </li>
                             {% endif %}
+                            {% endcomment %}
                             
                             {% if request.user.is_MainReportManager or request.user.is_SubReportManager %}
                                 <li class="nav-item">
