@@ -173,7 +173,7 @@
                class="table table-sm table-hover"
                style="table-layout: fixed;
                       text-align: center;
-                      min-width: 2100px">
+                      min-width: 2600px">
             <thead class="table-success">
                 <tr>
                     <th scope="col"
@@ -213,6 +213,46 @@
                         data-width="7"
                         data-width-unit="%">
                         Bank
+                    </th>
+                    <th scope="col"
+                        data-field="attendanceHours"
+                        data-sortable="true"
+                        data-sorter="hhmmSorter"
+                        data-width="5"
+                        data-width-unit="%">
+                        Attendance (h)
+                    </th>
+                    <th scope="col"
+                        data-field="remoteHours"
+                        data-sortable="true"
+                        data-sorter="hhmmSorter"
+                        data-width="5"
+                        data-width-unit="%">
+                        Remote (h)
+                    </th>
+                    <th scope="col"
+                        data-field="missionHours"
+                        data-sortable="true"
+                        data-sorter="hhmmSorter"
+                        data-width="5"
+                        data-width-unit="%">
+                        Mission (h)
+                    </th>
+                    <th scope="col"
+                        data-field="forgetHours"
+                        data-sortable="true"
+                        data-sorter="hhmmSorter"
+                        data-width="5"
+                        data-width-unit="%">
+                        Forget (h)
+                    </th>
+                    <th scope="col"
+                        data-field="restHours"
+                        data-sortable="true"
+                        data-sorter="hhmmSorter"
+                        data-width="5"
+                        data-width-unit="%">
+                        Rest (h)
                     </th>
                     <th scope="col"
                         data-field="wage"
@@ -425,6 +465,12 @@
         return moneyFormat(value)
     }
 
+    // "hh:mm" month totals: compare as minutes, not as text ("100:00" > "20:00")
+    function hhmmSorter(a, b){
+        const m = v => { const [h, mm] = String(v || '0:0').split(':'); return (+h || 0) * 60 + (+mm || 0); };
+        return m(a) - m(b);
+    }
+
     // performance ratings are null until a manager sets them
     function percentFormatter(value){
         return value === null || value === undefined ? '—' : `${value}%`
@@ -598,7 +644,7 @@
         // Persist the column picker choice in the browser, so it survives
         // month changes and page reloads.
         const COLUMNS_KEY = 'paymentTableHiddenColumns';
-        const FULL_MIN_WIDTH = 2100; // px needed when every column is shown
+        const FULL_MIN_WIDTH = 2600; // px needed when every column is shown
         // Shrink the table's min-width in proportion to the hidden columns,
         // so the remaining ones don't stretch and force a horizontal scroll.
         function applyMinWidth(){

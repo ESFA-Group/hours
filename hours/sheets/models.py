@@ -688,7 +688,24 @@ class Sheet(models.Model):
 			"complementaryPayment": self.get_complementary_payment(),
 			"paymentStatus": self.payment_status,
 		}
+		info.update(self.get_hours_summary())
 		return info
+
+	def get_hours_summary(self) -> dict:
+		"""Month totals as "hh:mm" for the payment table. Rest is what it really
+		deducts (see row_minutes), and Attendance is the Auto Hours column."""
+		sums = {col: 0 for col in (*WORK_TIME_COLUMNS, "Rest")}
+		for row in self.data or []:
+			for col, mins in self.row_minutes(row).items():
+				if col in sums:
+					sums[col] += mins
+		return {
+			"attendanceHours": self.minutes2hhmm(sums["Auto Hours"]),
+			"remoteHours": self.minutes2hhmm(sums["Remote"]),
+			"missionHours": self.minutes2hhmm(sums["Mission"]),
+			"forgetHours": self.minutes2hhmm(sums["Forget"]),
+			"restHours": self.minutes2hhmm(sums["Rest"]),
+		}
 
 	def get_public_payment_info(self) -> dict:
 		info = {
