@@ -69,6 +69,21 @@
         font-variant-numeric: tabular-nums;
     }
 
+    /* Description: per-line auto direction (Persian lines RTL, English lines LTR). */
+    #spreadsheet td.desc-cell,
+    #spreadsheet textarea.desc-editor {
+        unicode-bidi: plaintext;
+        text-align: start !important;
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+    #spreadsheet textarea.desc-editor {
+        min-height: 90px;
+        resize: vertical;
+        font-family: inherit;
+        padding: 4px 6px;
+    }
+
     /* Touch screens: finger-sized rows, and no iOS text-selection/callout on long-press.
        The cell being edited must keep user-select, or iOS won't let you type in its input. */
     @media (pointer: coarse) {
@@ -1205,6 +1220,18 @@
     // Runs before jexcel focuses the new editor, so the attributes apply on the first open.
     function onCreateEditorHandler(el, cell, x, y, editor) {
         const col = window.spreadTable && window.spreadTable.options.columns[x];
+        if (col && col.title === 'Description' && editor && editor.tagName === 'TEXTAREA') {
+            // Mixed Persian/English: each line picks its own direction from its first strong char.
+            editor.setAttribute('dir', 'auto');
+            editor.classList.add('desc-editor');
+            const grow = () => {
+                editor.style.height = 'auto';
+                editor.style.height = Math.max(editor.scrollHeight, 90) + 'px';
+            };
+            editor.addEventListener('input', grow);
+            setTimeout(grow, 0);   // after jexcel puts the value in
+            return;
+        }
         if (!col || col.type !== 'numeric' || !editor || editor.tagName !== 'INPUT') return;
         // Number keypad on phones. Which digits the keypad *shows* is up to the phone's keyboard;
         // lang/dir nudge it toward English, and the listener below guarantees the cell only ever
@@ -1249,7 +1276,8 @@
             { type: 'numeric', title: 'Forget', mask: 'hh:mm', width: 80, readOnly: readOnlyAll },
             { type: 'numeric', title: 'Total', mask: 'hh:mm', width: 80, readOnly: true },
             { type: 'numeric', title: 'Note Hours', mask: 'hh:mm', width: 120, readOnly: readOnlyAll },
-            { type: 'textarea', title: 'Description', width: 150, readOnly: readOnlyAll },
+            // wordWrap: multi-line cell + <textarea> editor; Enter adds a line (see keydown fix below)
+            { type: 'textarea', title: 'Description', width: 280, wordWrap: true, align: 'left', readOnly: readOnlyAll },
         ];
 
         // old sheets had an extra "Hours" column which is now split into Auto Hours, Rest, and Remote
@@ -1301,6 +1329,10 @@
             tableHeight: isNarrowLayout() ? Math.max(360, window.innerHeight - 90) + "px" : "150vh",
             //tableWidth: "500px",
             updateTable: function (el, cell, x, y, source, value, id) {
+                if (columns[x] && columns[x].title === 'Description') {
+                    cell.setAttribute('dir', 'auto');
+                    cell.classList.add('desc-cell');
+                }
                 if (value == "Fri") {
                     cell.style.color = 'red';
                 }
@@ -1315,6 +1347,16 @@
         // ponytail: applies to all non-ASCII input; a stray Persian char in a masked numeric cell just
         // parse-rejects on close, same as a stray Latin letter would there.
         const sheetEl = document.getElementById('spreadsheet');
+        // Description editor: plain Enter inserts a new line (jexcel would commit the cell and only
+        // allows Alt+Enter). Stopping propagation here (capture, before jexcel's document listener)
+        // leaves the textarea's default newline. Ctrl/Shift+Enter, Tab or clicking away still commit.
+        if (!sheetEl.dataset.descEnterFix) {
+            sheetEl.dataset.descEnterFix = '1';
+            sheetEl.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+                if (e.target.classList && e.target.classList.contains('desc-editor')) e.stopPropagation();
+            }, true);
+        }
         if (!sheetEl.dataset.nonLatinEditFix) {
             sheetEl.dataset.nonLatinEditFix = '1';
             sheetEl.addEventListener('keydown', function (e) {
