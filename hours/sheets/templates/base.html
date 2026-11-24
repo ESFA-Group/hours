@@ -54,6 +54,31 @@
             -moz-appearance: textfield;
             appearance: auto;
         }
+        /* jSuites toasts: always bottom-left, and never block the page.
+           jsuites.css's phone rule (<=800px) adds top:0 + width:100% on top of the base bottom:0,
+           which stretched the (transparent) wrapper over the whole screen at z-index 10000 and
+           swallowed every tap until the toast closed. Only the visible card takes touches now. */
+        .jnotification {
+            top: auto !important;
+            bottom: 0;
+            left: 0;
+            right: auto;
+            width: auto !important;
+            max-width: 100%;
+            padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+            pointer-events: none;
+        }
+        .jnotification-container {
+            pointer-events: auto;
+        }
+        @media (max-width: 800px) {
+            .jnotification-container {
+                width: min(340px, calc(100vw - 20px));
+            }
+            /* jSuites slides phone toasts in from the top; slide them up from the bottom instead. */
+            .jnotification.slide-top-in { animation-name: slide-bottom-in; }
+            .jnotification.slide-top-out { animation-name: slide-bottom-out; }
+        }
 
         .global-page-loader {
             position: fixed;

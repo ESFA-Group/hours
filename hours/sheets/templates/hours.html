@@ -52,6 +52,59 @@
     .hb-forget     { border-left-color: #cc9a06; }
     .hb-rest       { border-left-color: #b02a37; }
     .hb-rest .hb-value { color: #b02a37; }
+
+    /* Grid column: divider only when it sits beside the sidebar (lg+), not when stacked on phones. */
+    .hours-grid-col {
+        overflow-x: auto;
+    }
+    @media (min-width: 992px) {
+        .hours-grid-col {
+            border-left: 1px solid;
+            padding-left: 10px;
+        }
+    }
+    .mobile-summary {
+        padding: 6px 0;
+        font-size: 0.9rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Touch screens: finger-sized rows, and no iOS text-selection/callout on long-press.
+       The cell being edited must keep user-select, or iOS won't let you type in its input. */
+    @media (pointer: coarse) {
+        #spreadsheet .jexcel > tbody > tr > td {
+            height: 40px;
+            padding-top: 6px;
+            padding-bottom: 6px;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        /* Fill handle: jexcel's is a ~7px dot. Make it a visible 16px knob with a ~44px invisible
+           hit area. jexcel puts its top-left 4px inside the cell's bottom-right corner, so the
+           negative margins re-centre it on that corner. */
+        #spreadsheet .jexcel_corner {
+            width: 16px;
+            height: 16px;
+            padding: 0;
+            margin: -6px 0 0 -6px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            background-color: var(--active_color, #007aff);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+            touch-action: none;
+        }
+        #spreadsheet .jexcel_corner::after {
+            content: "";
+            position: absolute;
+            inset: -14px;
+        }
+        #spreadsheet .jexcel > tbody > tr > td.editor,
+        #spreadsheet .jexcel > tbody > tr > td.editor * {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+    }
 </style>
 {% endblock extra_css %}
 {% block body %}
@@ -267,9 +320,11 @@
             </div>
         </div>
 
-        <div class="col col-12 col-lg-8" style="overflow-x: auto;
-                        border-left: 1px solid;
-                        padding-left: 10px">
+        <div class="col col-12 col-lg-8 hours-grid-col" id="hours-grid-col">
+            <div class="mobile-summary d-lg-none">
+                <div id="mobile-summary-stats" class="fw-bold"></div>
+                <div class="text-muted small">Tap a cell to edit it. For half an hour type 0.5 or 00:30.</div>
+            </div>
             <div id="spreadsheet">
             </div>
         </div>
@@ -515,6 +570,7 @@
     let isSubmittingSheet = false;
     let sheetSubmitted = false;
     let validationToastTimeout = null;
+    let validationToast = null;   // the one "Invalid Data" toast on screen, so edits replace it instead of stacking
 
     function getSheetApiUrl() {
         const year = $("#year").val();
@@ -775,6 +831,8 @@
         $("#total-hours").text(`${totalH < 10 ? 0 : ''}${totalH}:${totalM < 10 ? 0 : ''}${totalM}`);
         $("#mean-hours").text(`${meanH < 10 ? 0 : ''}${meanH}:${meanM < 10 ? 0 : ''}${meanM}`);
         $("#worked-days-count").text(workedDaysCount);
+        $("#mobile-summary-stats").text(
+            `Total ${$("#total-hours").text()} · Avg ${$("#mean-hours").text()} · ${workedDaysCount} days`);
     }
 
     // Column -> element-id prefix for the Working stats breakdown.
@@ -894,10 +952,18 @@
             clearTimeout(validationToastTimeout);
             validationToastTimeout = null;
         }
-        if (!error || sheetSubmitted) return;
+        const hidePrevious = () => {
+            if (validationToast && validationToast.hide) validationToast.hide();
+            validationToast = null;
+        };
+        if (!error || sheetSubmitted) {
+            hidePrevious();          // the sheet is valid again: drop the stale error
+            return;
+        }
         validationToastTimeout = setTimeout(() => {
             validationToastTimeout = null;
-            jSuites.notification({
+            hidePrevious();
+            validationToast = jSuites.notification({
                 error: 1,
                 name: 'Error',
                 title: "Invalid Data",
@@ -1079,7 +1145,9 @@
         if (typeof value !== 'string')
             return value
 
-        const text = value.trim();
+        // Phone keypads in a Persian locale type ۰-۹ / ٠-٩ and "٫" as the decimal mark (e.g. on paste).
+        // Client-only: the value is rewritten to canonical hh:mm before it's saved.
+        const text = toLatinDigits(value.trim());
         if (text === '')
             return '00:00'
 
@@ -1113,6 +1181,49 @@
 
         return String(Number(hh)).padStart(2, '0') + ':' +
             String(minutes).padStart(2, '0')
+    }
+
+    // Below Bootstrap's lg breakpoint the sidebar stacks above the grid.
+    function isNarrowLayout() {
+        return window.matchMedia('(max-width: 991.98px)').matches;
+    }
+
+    // Phones: keep the grid near the top. Collapse "Working stats" (the sticky summary line above
+    // the grid shows the totals) and move the projects chart below the grid. Runs once at load.
+    function applyNarrowLayout() {
+        if (!isNarrowLayout()) return;
+        $("#collapseOne").removeClass("show");
+        $("#headingOne .accordion-button").addClass("collapsed").attr("aria-expanded", "false");
+        $(".chart-container").addClass("mt-3").appendTo("#hours-grid-col");
+    }
+
+    const toLatinDigits = s => s
+        .replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x06F0))
+        .replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660))
+        .replace(/٫/g, '.');
+
+    // Runs before jexcel focuses the new editor, so the attributes apply on the first open.
+    function onCreateEditorHandler(el, cell, x, y, editor) {
+        const col = window.spreadTable && window.spreadTable.options.columns[x];
+        if (!col || col.type !== 'numeric' || !editor || editor.tagName !== 'INPUT') return;
+        // Number keypad on phones. Which digits the keypad *shows* is up to the phone's keyboard;
+        // lang/dir nudge it toward English, and the listener below guarantees the cell only ever
+        // receives English digits.
+        editor.setAttribute('inputmode', 'decimal');
+        editor.setAttribute('lang', 'en');
+        editor.setAttribute('dir', 'ltr');
+        // jSuites applies masks from a document-level 'input' listener, so this one (on the
+        // editor itself) runs first:
+        //  - Persian/Arabic digits are converted; the mask would otherwise silently drop them.
+        //  - Once a time cell holds a ".", the mask is skipped: as you type, it turns "7.5" into
+        //    "07:5" (saved as 07:50) and "0.5" into "05" (05:00). TryStandartizeValue reads the
+        //    decimal correctly on close. Plain digits still go through the mask ("830" -> 08:30).
+        const isTime = col.mask === 'hh:mm';
+        editor.addEventListener('input', function (e) {
+            const v = toLatinDigits(this.value);
+            if (v !== this.value) this.value = v;
+            if (isTime && v.includes('.')) e.stopPropagation();
+        });
     }
 
     function onselectionHandler(worksheet, px, py, ux, uy, origin) {
@@ -1183,8 +1294,11 @@
             onchange: onChangeHandler,
             ondeletecolumn: onChangeHandler,
             onselection: onselectionHandler,
+            oncreateeditor: onCreateEditorHandler,
             tableOverflow: true,
-            tableHeight: "150vh",
+            // Phones: fit the scroll box to the screen so the header and horizontal scroll stay
+            // reachable, instead of a 150vh box nested in the page scroll.
+            tableHeight: isNarrowLayout() ? Math.max(360, window.innerHeight - 90) + "px" : "150vh",
             //tableWidth: "500px",
             updateTable: function (el, cell, x, y, source, value, id) {
                 if (value == "Fri") {
@@ -1216,6 +1330,111 @@
                 const ed = cell.querySelector('input, textarea');
                 if (ed) { ed.value = e.key; ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }
             }, true);
+        }
+
+        // Touch editing: jexcel only opens a cell after a motionless 500ms long-press, which nobody
+        // discovers on a phone. Here a single tap on an editable cell opens its editor (a tap that
+        // turns into a scroll doesn't). It is opened inside touchend (a user gesture), so iOS/Android
+        // actually show the keyboard. jexcel's own touch listeners are on document, so these
+        // grid-level ones run before them. Mouse behaviour (click selects) is unchanged.
+        if (!sheetEl.dataset.touchEditFix) {
+            sheetEl.dataset.touchEditFix = '1';
+            let tapCell = null, tapMoved = false;
+            sheetEl.addEventListener('touchstart', function (e) {
+                tapCell = e.target.closest('tbody td[data-x]');
+                tapMoved = false;
+            }, { capture: true, passive: true });
+            sheetEl.addEventListener('touchmove', function () { tapMoved = true; }, { capture: true, passive: true });
+            sheetEl.addEventListener('touchend', function (e) {
+                const t = window.spreadTable;
+                const td = e.target.closest('tbody td[data-x]');
+                if (!t || !td || tapMoved || td !== tapCell) return;
+                if (t.edition) {
+                    if (t.edition[0] === td) return;                  // tap inside the open editor
+                    // jexcel ignores taps while a cell is being edited: commit it and move on.
+                    e.preventDefault();
+                    t.closeEditor(t.edition[0], true);
+                }
+                e.preventDefault();  // no synthetic mouse events: they would re-select and steal focus
+                t.updateSelectionFromCoords(td.dataset.x, td.dataset.y);
+                if (td.classList.contains('readonly')) return;
+                t.openEditor(td, false);
+                const ed = td.querySelector('input, textarea');
+                if (ed) ed.focus();
+            });
+        }
+
+        // Touch drag-to-fill: jexcel only drives the fill corner (.jexcel_corner, enlarged for touch
+        // in the CSS) with the mouse; its touch handler ignores it. This replays the mouse flow:
+        // press the corner -> updateCopySelection() under the finger -> copyData() on release.
+        // If a cell is being edited, its value is committed first, so "type a value, drag the
+        // handle down" works. The grid auto-scrolls while the finger is near its edges.
+        if (!sheetEl.dataset.touchFillFix) {
+            sheetEl.dataset.touchFillFix = '1';
+            let filling = false, lastTouch = null, scrollRaf = null;
+
+            const cellAt = (x, y) => {
+                const el = document.elementFromPoint(x, y);
+                return el ? el.closest('#spreadsheet tbody td[data-x]') : null;
+            };
+            const extendTo = (x, y) => {
+                const td = cellAt(x, y);
+                if (td) window.spreadTable.updateCopySelection(td.dataset.x, td.dataset.y);
+            };
+            const autoScroll = () => {
+                scrollRaf = null;
+                const t = window.spreadTable;
+                if (!filling || !lastTouch || !t) return;
+                const box = t.content.getBoundingClientRect(), EDGE = 40, STEP = 12;
+                let dx = 0, dy = 0;
+                if (lastTouch.clientY > box.bottom - EDGE) dy = STEP;
+                else if (lastTouch.clientY < box.top + EDGE) dy = -STEP;
+                if (lastTouch.clientX > box.right - EDGE) dx = STEP;
+                else if (lastTouch.clientX < box.left + EDGE) dx = -STEP;
+                if (dx || dy) {
+                    t.content.scrollTop += dy;
+                    t.content.scrollLeft += dx;
+                    extendTo(lastTouch.clientX, lastTouch.clientY);
+                }
+                scrollRaf = requestAnimationFrame(autoScroll);
+            };
+            const stopFill = () => {
+                filling = false;
+                lastTouch = null;
+                if (scrollRaf) cancelAnimationFrame(scrollRaf);
+                scrollRaf = null;
+            };
+
+            sheetEl.addEventListener('touchstart', function (e) {
+                const t = window.spreadTable;
+                if (!t || !e.target.classList.contains('jexcel_corner') || e.touches.length !== 1) return;
+                e.preventDefault();       // the finger drives the fill, not page scroll
+                e.stopPropagation();      // keep jexcel's document handler from resetting the selection
+                if (t.edition) t.closeEditor(t.edition[0], true);
+                if (!t.selectedContainer) return;
+                filling = true;
+                lastTouch = e.touches[0];
+                scrollRaf = requestAnimationFrame(autoScroll);
+            }, { capture: true, passive: false });
+
+            sheetEl.addEventListener('touchmove', function (e) {
+                if (!filling) return;
+                e.preventDefault();
+                lastTouch = e.touches[0];
+                extendTo(lastTouch.clientX, lastTouch.clientY);
+            }, { capture: true, passive: false });
+
+            const endFill = function (e) {
+                if (!filling) return;
+                const t = window.spreadTable;
+                e.preventDefault();
+                stopFill();
+                if (e.type === 'touchend' && t.selection && t.selection.length > 0)
+                    t.copyData(t.selection[0], t.selection[t.selection.length - 1]);
+                t.removeCopySelection();
+            };
+            sheetEl.addEventListener('touchend', endFill, { capture: true, passive: false });
+            sheetEl.addEventListener('touchcancel', endFill, { capture: true, passive: false });
         }
 
         const year = $("#year").val();
@@ -1535,6 +1754,7 @@
 
     $("document").ready(async function () {
 
+        applyNarrowLayout();
         fillProjects();
 
         const today = new JDate();
