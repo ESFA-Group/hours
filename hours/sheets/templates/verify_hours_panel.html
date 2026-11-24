@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/spreadsheet_custom.css' %}">
+<link rel="stylesheet" href="{% static 'sheets/css/sheet_mobile.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/verify_panel.css' %}">
 {% endblock extra_css %}
 {% block body %}
@@ -78,14 +79,18 @@
             </div>
         </div>
 
-        <div class="col col-12 col-lg-9 mt-2">
-            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap" style="gap: 10px;">
+        <div class="col col-12 col-lg-9 mt-2" id="verify-sheet-col">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap sheet-focus-bar" style="gap: 10px;">
                 <div>
                     <h4 id="selected-user-name">Select a person</h4>
-                    <div id="selected-user-status" class="approval-status-line text-muted small"></div>
+                    <div id="selected-user-status" class="approval-status-line text-muted small sheet-focus-hide"></div>
                     <div id="selected-user-totals" class="mt-1"></div>
                 </div>
                 <div class="d-flex gap-2">
+                    <button type="button" id="sheet-focus-btn" class="btn btn-outline-primary d-lg-none d-none"
+                            aria-pressed="false" title="Full screen sheet">
+                        <i class="fa fa-expand"></i> <span>Full screen</span>
+                    </button>
                     <button id="verify-btn" class="btn btn-success" disabled>Verify</button>
                     <button id="reject-btn" class="btn btn-danger" disabled>Reject</button>
                 </div>
@@ -130,7 +135,7 @@
                 </div>
             </div>
 
-            <div class="verification-sheet-scroll">
+            <div class="verification-sheet-scroll sheet-focus-body">
                 <div id="spreadsheet"></div>
             </div>
 
@@ -144,6 +149,7 @@
 <script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
 <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
 <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
+<script src="{% static 'sheets/js/sheet_mobile.js' %}"></script>
 <script>
     window.VERIFY_HOURS_MODE = "manager";
 </script>

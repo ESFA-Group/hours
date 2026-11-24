@@ -1,0 +1,92 @@
+/* Phone/touch styles shared by the jspreadsheet pages (hours, verify, supreme verify).
+   Pairs with js/sheet_mobile.js. */
+
+/* Touch screens: finger-sized rows, and no iOS text-selection/callout on long-press.
+   The cell being edited must keep user-select, or iOS won't let you type in its input. */
+@media (pointer: coarse) {
+    #spreadsheet .jexcel > tbody > tr > td {
+        height: 40px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    #spreadsheet .jexcel > tbody > tr > td.editor,
+    #spreadsheet .jexcel > tbody > tr > td.editor * {
+        -webkit-user-select: text;
+        user-select: text;
+    }
+    /* jexcel sizes the editor to the cell's full height, so drop the padding while editing;
+       otherwise the row grows (40 -> 52px) and shifts every row below it mid-tap. */
+    #spreadsheet .jexcel > tbody > tr > td.editor {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    /* Fill handle, only on grids with touch drag-to-fill (SheetMobile.enableTouchEditing sets
+       data-touch-fill-fix). jexcel's is a ~7px dot: make it a visible 16px knob with a ~44px
+       invisible hit area. jexcel puts its top-left 4px inside the cell's bottom-right corner, so
+       the negative margins re-centre it on that corner. */
+    #spreadsheet[data-touch-fill-fix] .jexcel_corner {
+        width: 16px;
+        height: 16px;
+        padding: 0;
+        margin: -6px 0 0 -6px;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        background-color: var(--active_color, #007aff);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        touch-action: none;
+    }
+    #spreadsheet[data-touch-fill-fix] .jexcel_corner::after {
+        content: "";
+        position: absolute;
+        inset: -14px;
+    }
+}
+
+/* Sheet focus mode (SheetMobile.initFocusMode): the host becomes a fixed full-screen layer, so
+   the page can't scroll and the grid is the only scroll area (no page-vs-grid double scroll).
+   Its .sheet-focus-bar child stays on top, its .sheet-focus-body child fills the rest, and every
+   other child of the host is hidden. */
+body.sheet-focus-open {
+    overflow: hidden;
+}
+.sheet-focus-host.sheet-focus {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;               /* above the navbar, below Bootstrap modals and toasts */
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 8px env(safe-area-inset-bottom, 0px);
+    border: 0;
+    background: #fff;
+    overflow: hidden;
+}
+.sheet-focus-host.sheet-focus > :not(.sheet-focus-bar):not(.sheet-focus-body),
+.sheet-focus-host.sheet-focus .sheet-focus-hide {
+    display: none !important;
+}
+.sheet-focus-host.sheet-focus > .sheet-focus-bar {
+    display: flex !important;    /* even when the bar is phone-only (d-lg-none) */
+    flex-shrink: 0;
+    margin: 0 !important;
+    padding: 6px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+.sheet-focus-host.sheet-focus > .sheet-focus-body,
+.sheet-focus-host.sheet-focus > .sheet-focus-body > .jexcel_container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+}
+.sheet-focus-host.sheet-focus .jexcel_content {
+    flex: 1;
+    min-height: 0;
+    max-height: none !important; /* jexcel sets an inline max-height from tableHeight */
+}

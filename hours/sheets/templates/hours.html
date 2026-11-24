@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.datatables.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/jspreadsheet.theme.css' %}">
 <link rel="stylesheet" href="{% static 'sheets/css/spreadsheet_custom.css' %}">
+<link rel="stylesheet" href="{% static 'sheets/css/sheet_mobile.css' %}">
 <style>
     .redFont {
         color: red;
@@ -64,9 +65,16 @@
         }
     }
     .mobile-summary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         padding: 6px 0;
         font-size: 0.9rem;
         font-variant-numeric: tabular-nums;
+    }
+    .mobile-summary .btn {
+        flex-shrink: 0;
+        min-height: 40px;
     }
 
     /* Description: per-line auto direction (Persian lines RTL, English lines LTR). */
@@ -82,43 +90,6 @@
         resize: vertical;
         font-family: inherit;
         padding: 4px 6px;
-    }
-
-    /* Touch screens: finger-sized rows, and no iOS text-selection/callout on long-press.
-       The cell being edited must keep user-select, or iOS won't let you type in its input. */
-    @media (pointer: coarse) {
-        #spreadsheet .jexcel > tbody > tr > td {
-            height: 40px;
-            padding-top: 6px;
-            padding-bottom: 6px;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-        /* Fill handle: jexcel's is a ~7px dot. Make it a visible 16px knob with a ~44px invisible
-           hit area. jexcel puts its top-left 4px inside the cell's bottom-right corner, so the
-           negative margins re-centre it on that corner. */
-        #spreadsheet .jexcel_corner {
-            width: 16px;
-            height: 16px;
-            padding: 0;
-            margin: -6px 0 0 -6px;
-            border: 2px solid #fff;
-            border-radius: 50%;
-            background-color: var(--active_color, #007aff);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-            touch-action: none;
-        }
-        #spreadsheet .jexcel_corner::after {
-            content: "";
-            position: absolute;
-            inset: -14px;
-        }
-        #spreadsheet .jexcel > tbody > tr > td.editor,
-        #spreadsheet .jexcel > tbody > tr > td.editor * {
-            -webkit-user-select: text;
-            user-select: text;
-        }
     }
 </style>
 {% endblock extra_css %}
@@ -336,11 +307,17 @@
         </div>
 
         <div class="col col-12 col-lg-8 hours-grid-col" id="hours-grid-col">
-            <div class="mobile-summary d-lg-none">
-                <div id="mobile-summary-stats" class="fw-bold"></div>
-                <div class="text-muted small">Tap a cell to edit it. For half an hour type 0.5 or 00:30.</div>
+            <div class="mobile-summary sheet-focus-bar d-lg-none">
+                <div class="flex-grow-1">
+                    <div id="mobile-summary-stats" class="fw-bold"></div>
+                    <div class="text-muted small sheet-focus-hide">Tap a cell to edit it. For half an hour type 0.5 or 00:30.</div>
+                </div>
+                <button type="button" id="sheet-focus-btn" class="btn btn-outline-primary btn-sm"
+                        aria-pressed="false" title="Full screen sheet">
+                    <i class="fa fa-expand"></i> <span>Full screen</span>
+                </button>
             </div>
-            <div id="spreadsheet">
+            <div id="spreadsheet" class="sheet-focus-body">
             </div>
         </div>
 
@@ -431,6 +408,7 @@
 <script src="{% static 'sheets/js/esfa_persian_holidays.min.js' %}"></script>
 <script src="{% static 'sheets/js/plotly-basic.min.js' %}"></script>
 <script src="{% static 'sheets/js/jspreadsheet.min.js' %}"></script>
+<script src="{% static 'sheets/js/sheet_mobile.js' %}"></script>
 <script>
     // JSuites toast settings:
     // error: 1,
@@ -1198,15 +1176,10 @@
             String(minutes).padStart(2, '0')
     }
 
-    // Below Bootstrap's lg breakpoint the sidebar stacks above the grid.
-    function isNarrowLayout() {
-        return window.matchMedia('(max-width: 991.98px)').matches;
-    }
-
-    // Phones: keep the grid near the top. Collapse "Working stats" (the sticky summary line above
-    // the grid shows the totals) and move the projects chart below the grid. Runs once at load.
+    // Phones: keep the grid near the top. Collapse "Working stats" (the summary line above the
+    // grid shows the totals) and move the projects chart below the grid. Runs once at load.
     function applyNarrowLayout() {
-        if (!isNarrowLayout()) return;
+        if (!SheetMobile.isNarrow()) return;
         $("#collapseOne").removeClass("show");
         $("#headingOne .accordion-button").addClass("collapsed").attr("aria-expanded", "false");
         $(".chart-container").addClass("mt-3").appendTo("#hours-grid-col");
@@ -1324,9 +1297,7 @@
             onselection: onselectionHandler,
             oncreateeditor: onCreateEditorHandler,
             tableOverflow: true,
-            // Phones: fit the scroll box to the screen so the header and horizontal scroll stay
-            // reachable, instead of a 150vh box nested in the page scroll.
-            tableHeight: isNarrowLayout() ? Math.max(360, window.innerHeight - 90) + "px" : "150vh",
+            tableHeight: SheetMobile.tableHeight("150vh"),
             //tableWidth: "500px",
             updateTable: function (el, cell, x, y, source, value, id) {
                 if (columns[x] && columns[x].title === 'Description') {
@@ -1374,110 +1345,7 @@
             }, true);
         }
 
-        // Touch editing: jexcel only opens a cell after a motionless 500ms long-press, which nobody
-        // discovers on a phone. Here a single tap on an editable cell opens its editor (a tap that
-        // turns into a scroll doesn't). It is opened inside touchend (a user gesture), so iOS/Android
-        // actually show the keyboard. jexcel's own touch listeners are on document, so these
-        // grid-level ones run before them. Mouse behaviour (click selects) is unchanged.
-        if (!sheetEl.dataset.touchEditFix) {
-            sheetEl.dataset.touchEditFix = '1';
-            let tapCell = null, tapMoved = false;
-            sheetEl.addEventListener('touchstart', function (e) {
-                tapCell = e.target.closest('tbody td[data-x]');
-                tapMoved = false;
-            }, { capture: true, passive: true });
-            sheetEl.addEventListener('touchmove', function () { tapMoved = true; }, { capture: true, passive: true });
-            sheetEl.addEventListener('touchend', function (e) {
-                const t = window.spreadTable;
-                const td = e.target.closest('tbody td[data-x]');
-                if (!t || !td || tapMoved || td !== tapCell) return;
-                if (t.edition) {
-                    if (t.edition[0] === td) return;                  // tap inside the open editor
-                    // jexcel ignores taps while a cell is being edited: commit it and move on.
-                    e.preventDefault();
-                    t.closeEditor(t.edition[0], true);
-                }
-                e.preventDefault();  // no synthetic mouse events: they would re-select and steal focus
-                t.updateSelectionFromCoords(td.dataset.x, td.dataset.y);
-                if (td.classList.contains('readonly')) return;
-                t.openEditor(td, false);
-                const ed = td.querySelector('input, textarea');
-                if (ed) ed.focus();
-            });
-        }
-
-        // Touch drag-to-fill: jexcel only drives the fill corner (.jexcel_corner, enlarged for touch
-        // in the CSS) with the mouse; its touch handler ignores it. This replays the mouse flow:
-        // press the corner -> updateCopySelection() under the finger -> copyData() on release.
-        // If a cell is being edited, its value is committed first, so "type a value, drag the
-        // handle down" works. The grid auto-scrolls while the finger is near its edges.
-        if (!sheetEl.dataset.touchFillFix) {
-            sheetEl.dataset.touchFillFix = '1';
-            let filling = false, lastTouch = null, scrollRaf = null;
-
-            const cellAt = (x, y) => {
-                const el = document.elementFromPoint(x, y);
-                return el ? el.closest('#spreadsheet tbody td[data-x]') : null;
-            };
-            const extendTo = (x, y) => {
-                const td = cellAt(x, y);
-                if (td) window.spreadTable.updateCopySelection(td.dataset.x, td.dataset.y);
-            };
-            const autoScroll = () => {
-                scrollRaf = null;
-                const t = window.spreadTable;
-                if (!filling || !lastTouch || !t) return;
-                const box = t.content.getBoundingClientRect(), EDGE = 40, STEP = 12;
-                let dx = 0, dy = 0;
-                if (lastTouch.clientY > box.bottom - EDGE) dy = STEP;
-                else if (lastTouch.clientY < box.top + EDGE) dy = -STEP;
-                if (lastTouch.clientX > box.right - EDGE) dx = STEP;
-                else if (lastTouch.clientX < box.left + EDGE) dx = -STEP;
-                if (dx || dy) {
-                    t.content.scrollTop += dy;
-                    t.content.scrollLeft += dx;
-                    extendTo(lastTouch.clientX, lastTouch.clientY);
-                }
-                scrollRaf = requestAnimationFrame(autoScroll);
-            };
-            const stopFill = () => {
-                filling = false;
-                lastTouch = null;
-                if (scrollRaf) cancelAnimationFrame(scrollRaf);
-                scrollRaf = null;
-            };
-
-            sheetEl.addEventListener('touchstart', function (e) {
-                const t = window.spreadTable;
-                if (!t || !e.target.classList.contains('jexcel_corner') || e.touches.length !== 1) return;
-                e.preventDefault();       // the finger drives the fill, not page scroll
-                e.stopPropagation();      // keep jexcel's document handler from resetting the selection
-                if (t.edition) t.closeEditor(t.edition[0], true);
-                if (!t.selectedContainer) return;
-                filling = true;
-                lastTouch = e.touches[0];
-                scrollRaf = requestAnimationFrame(autoScroll);
-            }, { capture: true, passive: false });
-
-            sheetEl.addEventListener('touchmove', function (e) {
-                if (!filling) return;
-                e.preventDefault();
-                lastTouch = e.touches[0];
-                extendTo(lastTouch.clientX, lastTouch.clientY);
-            }, { capture: true, passive: false });
-
-            const endFill = function (e) {
-                if (!filling) return;
-                const t = window.spreadTable;
-                e.preventDefault();
-                stopFill();
-                if (e.type === 'touchend' && t.selection && t.selection.length > 0)
-                    t.copyData(t.selection[0], t.selection[t.selection.length - 1]);
-                t.removeCopySelection();
-            };
-            sheetEl.addEventListener('touchend', endFill, { capture: true, passive: false });
-            sheetEl.addEventListener('touchcancel', endFill, { capture: true, passive: false });
-        }
+        SheetMobile.enableTouchEditing(sheetEl);
 
         const year = $("#year").val();
         const month = $("#month").val();
@@ -1797,6 +1665,8 @@
     $("document").ready(async function () {
 
         applyNarrowLayout();
+        SheetMobile.initFocusMode(document.getElementById("hours-grid-col"),
+                                  document.getElementById("sheet-focus-btn"));
         fillProjects();
 
         const today = new JDate();

@@ -151,3 +151,52 @@
     color: #8a6100;
     font-weight: 600;
 }
+
+/* ---- Full-screen sheet (sheet_mobile.css): keep the header bar compact ---- */
+
+.sheet-focus .sheet-focus-bar {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 4px !important;
+}
+/* Flex items default to min-width:auto, so the one-line chip row would stretch the whole bar
+   (and the button row with it) past the screen edge. Cap everything at the bar's width. */
+.sheet-focus .sheet-focus-bar,
+.sheet-focus .sheet-focus-bar > *,
+.sheet-focus #selected-user-totals {
+    min-width: 0;
+    max-width: 100%;
+}
+.sheet-focus #selected-user-name {
+    font-size: 1.05rem;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* One row of chips you can swipe sideways, instead of four wrapped rows. */
+.sheet-focus #selected-user-totals {
+    margin-top: 0 !important;
+}
+.sheet-focus .hour-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.sheet-focus .hour-chips > .hour-chip {
+    flex-shrink: 0;
+}
+.sheet-focus .sheet-focus-bar .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+/* Buttons in one row under the name and chips; it scrolls sideways if they don't fit. */
+.sheet-focus .sheet-focus-bar > .d-flex.gap-2 {
+    gap: 4px !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.sheet-focus .sheet-focus-bar > .d-flex.gap-2 > .btn {
+    flex: 1 0 auto;
+}

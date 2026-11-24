@@ -102,6 +102,8 @@ function renderWarnings(warnings) {
 }
 
 function clearSelectedUser() {
+	SheetMobile.exitFocus();
+	$("#sheet-focus-btn").addClass("d-none");
 	if (typeof window.spreadTable === "object" && window.spreadTable) {
 		window.spreadTable.destroy();
 		window.spreadTable = null;
@@ -275,7 +277,7 @@ function constructTable(data) {
 		allowDeleteRow: false,
 		allowRenameColumn: false,
 		tableOverflow: true,
-		tableHeight: "150vh",
+		tableHeight: SheetMobile.tableHeight("150vh"),
 		tableWidth: "100%",
 		updateTable: function (el, cell, x, y, source, value, id) {
 			if (value == "Fri") cell.style.color = 'red';
@@ -502,6 +504,10 @@ async function selectUser(userId, role) {
 			renderReviewState(selectedDetail);
 
 			constructTable(selectedDetail.sheetData);
+			$("#sheet-focus-btn").removeClass("d-none");
+			// Phones: the people lists stack above the sheet, so jump down to the picked person.
+			if (SheetMobile.isNarrow() && !SheetMobile.isFocused())
+				document.getElementById("verify-sheet-col").scrollIntoView({ block: "start" });
 		}, "Loading sheet...");
 	} catch (error) {
 		console.error("Error loading selected user:", error);
@@ -773,6 +779,8 @@ async function saveComments() {
 }
 
 $("document").ready(async function () {
+	SheetMobile.initFocusMode(document.getElementById("verify-sheet-col"),
+		document.getElementById("sheet-focus-btn"));
 	fillYears(currentYear);
 	$("#month").val(currentMonth);
 	$("#year").val(currentYear);
