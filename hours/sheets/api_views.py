@@ -1817,7 +1817,7 @@ def _review_state(sheet):
 
 
 def _parse_performance_percentage(value):
-    """Integer 1-100, or None for a blank value (clears the rating).
+    """Integer 0-100, or None for a blank value (clears the rating).
     Raises ValueError for anything else -- never clamps."""
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
@@ -1831,7 +1831,7 @@ def _parse_performance_percentage(value):
         value = int(value.strip())  # rejects "85.5" / "abc"
     elif not isinstance(value, int):
         raise ValueError
-    if not 1 <= value <= 100:
+    if not 0 <= value <= 100:
         raise ValueError
     return value
 
@@ -2168,7 +2168,7 @@ class HourVerifierAPIView(APIView):
                     review_changes[cfg["score_field"]] = _parse_performance_percentage(request.data.get(cfg["score_key"]))
                 except (TypeError, ValueError):
                     return Response(
-                        {"error": f"{label} performance score must be a whole number from 1 to 100."},
+                        {"error": f"{label} performance score must be a whole number from 0 to 100."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
             if mode != "supreme":

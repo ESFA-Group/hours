@@ -117,7 +117,7 @@ class RewardCalculationTests(PerformanceRewardTestBase):
         self.assertEqual(self.sheet.addition_3_reward, 75_000_000)
 
     def test_model_validation_rejects_out_of_range(self):
-        for bad in (0, 101):
+        for bad in (-1, 101):
             for field in ('performance_form_aspect_m1', 'performance_form_aspect_m2'):
                 setattr(self.sheet, field, bad)
                 with self.assertRaises(ValidationError):
@@ -267,7 +267,7 @@ class PerformancePermissionTests(PerformanceRewardTestBase):
     def test_invalid_values_rejected_without_changes(self):
         self.sheet.performance_form_aspect_m2 = 85
         self.sheet.save()
-        for bad in (0, 101, -5, 'abc', '85.5', 85.5, True, [], {}):
+        for bad in (101, -5, 'abc', '85.5', 85.5, True, [], {}):
             response = self._post_perf(self.manager_2, 'manager', performanceM2=bad)
             self.assertEqual(response.status_code, 400, bad)
             sheet = self._reload()
@@ -276,7 +276,7 @@ class PerformancePermissionTests(PerformanceRewardTestBase):
 
     def test_boundaries_and_numeric_strings_accepted(self):
         # Supreme can save repeatedly; managers submit only once (see ReviewLockTests).
-        for value, expected in ((1, 1), (100, 100), ('42', 42)):
+        for value, expected in ((0, 0), (1, 1), (100, 100), ('42', 42)):
             self.assertEqual(self._post_perf(self.supreme, 'supreme', performanceM2=value).status_code, 200)
             self.assertEqual(self._reload().performance_form_aspect_m2, expected)
 

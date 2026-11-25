@@ -377,19 +377,19 @@ class Sheet(models.Model):
 	addition2 = models.IntegerField("addition2", default=0)
 	reward_base = models.IntegerField("reward_base", default=0)
 
-	# monthly performance assessments (1-100, null = not assessed yet). Only M2's
+	# monthly performance assessments (0-100, null = not assessed yet). Only M2's
 	# percentage feeds the reward; M1's is stored and displayed.
 	performance_form_aspect_m1 = models.PositiveSmallIntegerField(
 		"performance_form_aspect_m1",
 		null=True,
 		blank=True,
-		validators=[MinValueValidator(1), MaxValueValidator(100)],
+		validators=[MinValueValidator(0), MaxValueValidator(100)],
 	)
 	performance_form_aspect_m2 = models.PositiveSmallIntegerField(
 		"performance_form_aspect_m2",
 		null=True,
 		blank=True,
-		validators=[MinValueValidator(1), MaxValueValidator(100)],
+		validators=[MinValueValidator(0), MaxValueValidator(100)],
 	)
 	# derived: recomputed on every save() from addition2, reward_base and M2's percentage
 	addition_3_reward = models.IntegerField("addition_3_reward", default=0)
