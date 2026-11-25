@@ -102,6 +102,8 @@ function renderWarnings(warnings) {
 }
 
 function clearSelectedUser() {
+	SheetMobile.exitFocus();
+	$("#sheet-focus-btn").addClass("d-none");
 	if (typeof window.spreadTable === "object" && window.spreadTable) {
 		window.spreadTable.destroy();
 		window.spreadTable = null;
@@ -275,7 +277,7 @@ function constructTable(data) {
 		allowDeleteRow: false,
 		allowRenameColumn: false,
 		tableOverflow: true,
-		tableHeight: "150vh",
+		tableHeight: SheetMobile.tableHeight("150vh"),
 		tableWidth: "100%",
 		updateTable: function (el, cell, x, y, source, value, id) {
 			if (value == "Fri") cell.style.color = 'red';
@@ -364,7 +366,8 @@ function renderSelectedStatus(user) {
 // Only the Addition 3 preview under the score inputs is estimated client-side.
 const MONEY_CHIPS = [
 	{ key: "wage", label: "Wage", title: "Hourly wage (R)" },
-	{ key: "totalPayment", label: "Wage Pay", title: "Effective worked hours × wage" },
+	{ key: "totalPayment", label: "Wage Pay", title: "Effective worked hours × wage + base payment" },
+	{ key: "rewardBase", label: "Reward Base", title: "Reward base per worked hour (R)", supremeOnly: true },
 	{ key: "addition3Reward", label: "Reward Pay", title: "Based on the Manager 2 performance score and total worked hours", supremeOnly: true },
 ];
 
@@ -372,19 +375,20 @@ function formatMoney(value) {
 	return Number(value || 0).toLocaleString();
 }
 
-// Mirrors Sheet.compute_addition_3_reward(): reward_base * pct / 100 * hours.
+// Mirrors Sheet.compute_addition_3_reward(): addition2 * pct + reward_base * pct * hours.
 // Returns null for a blank / invalid score.
 function computeAddition3(rawValue) {
 	if (!selectedDetail || String(rawValue ?? "").trim() === "") return null;
 	const pct = Number(rawValue);
 	if (!Number.isInteger(pct) || pct < 1 || pct > 100) return null;
-	return Math.round((selectedDetail.rewardBase || 0) * pct / 100 * (selectedDetail.rewardHours || 0));
+	const p = pct / 100;
+	return Math.round((selectedDetail.addition2 || 0) * p + (selectedDetail.rewardBase || 0) * p * (selectedDetail.rewardHours || 0));
 }
 
 // Live "what would Addition 3 be" line under each score input. Both managers see
 // both; only Manager 2's score sets the real Addition 3.
 function renderAddition3Preview() {
-	const noBase = selectedDetail && !selectedDetail.rewardBase;
+	const noBase = selectedDetail && !selectedDetail.rewardBase && !selectedDetail.addition2;
 	[
 		["#performance-m1", "#addition3-preview-m1", "Addition 3 at this score", ""],
 		["#performance-m2", "#addition3-preview-m2", "Addition 3", ""],
@@ -500,6 +504,10 @@ async function selectUser(userId, role) {
 			renderReviewState(selectedDetail);
 
 			constructTable(selectedDetail.sheetData);
+			$("#sheet-focus-btn").removeClass("d-none");
+			// Phones: the people lists stack above the sheet, so jump down to the picked person.
+			if (SheetMobile.isNarrow() && !SheetMobile.isFocused())
+				document.getElementById("verify-sheet-col").scrollIntoView({ block: "start" });
 		}, "Loading sheet...");
 	} catch (error) {
 		console.error("Error loading selected user:", error);
@@ -771,6 +779,8 @@ async function saveComments() {
 }
 
 $("document").ready(async function () {
+	SheetMobile.initFocusMode(document.getElementById("verify-sheet-col"),
+		document.getElementById("sheet-focus-btn"));
 	fillYears(currentYear);
 	$("#month").val(currentMonth);
 	$("#year").val(currentYear);

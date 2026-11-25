@@ -129,7 +129,7 @@ async function postRequest(url, data, errTitle = "Updating Sheet") {
 				error: 1,
 				name: 'Error',
 				title: errTitle + " | " + response.status,
-				message: response.statusText + " at " + url.replace("/hours/api/", ""),
+				message: response.statusText + " at " + url.replace("/api/", ""),
 			});
 		}
 	} catch (err) {
@@ -164,40 +164,40 @@ async function putRequest(url, data) {
 }
 
 async function getSheetDBT(year, month) {
-	const url = `/hours/api/sheets/${year}/${month}`;
+	const url = `/api/sheets/${year}/${month}`;
 	return await getRequest(url)
 }
 
 async function getFoodDataDBT(year = ACTIVE_YEAR, month = ACTIVE_MONTH) {
-	const url = `/hours/api/FoodData/${year}/${month}`;
+	const url = `/api/FoodData/${year}/${month}`;
 	return await getRequest(url)
 }
 
 async function getCostTableDataDBT(year = ACTIVE_YEAR, month = ACTIVE_MONTH) {
-	const url = `/hours/api/food_cost_management/${year}/${month}`;
+	const url = `/api/food_cost_management/${year}/${month}`;
 	return await getRequest(url)
 }
 
 async function saveFoodDataDBT(fooddata) {
-	const url = `/hours/api/FoodManagement/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
+	const url = `/api/FoodManagement/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
 
 	let res = await putRequest(url, { type: "food_data", data: fooddata });
 }
 
 async function saveFoodOrderModeDBT(mode) {
-	const url = `/hours/api/FoodManagement/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
+	const url = `/api/FoodManagement/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
 
 	await putRequest(url, { type: "order_mode", data: mode });
 }
 
 async function getFoodOrderSummaryDBT(day = TODAY.getDate(), weekIndex = ACTIVE_WEEK_INDEX, month = ACTIVE_MONTH, year = ACTIVE_YEAR) {
-	const url = `/hours/api/daily_foods_order/${year}/${month}/${weekIndex}/${day}`;
+	const url = `/api/daily_foods_order/${year}/${month}/${weekIndex}/${day}`;
 	const data = await getRequest(url);
 	return data;
 }
 
 async function getFoodOrderSummaryExcelDBT(weekIndex = ACTIVE_WEEK_INDEX, month = ACTIVE_MONTH, year = ACTIVE_YEAR) {
-	const url = `/hours/api/daily_foods_order/${year}/${month}/${weekIndex}/0`;
+	const url = `/api/daily_foods_order/${year}/${month}/${weekIndex}/0`;
 
 	const $form = $("<form>", { action: url, method: "POST" });
 	$form.append($("<input type='hidden' name='csrfmiddlewaretoken'>").val(window.CSRF_TOKEN));
@@ -465,7 +465,7 @@ async function FillCostTable(year, month) {
 }
 
 function UpdatePaymentTable(year, month, rowData, idx) {
-	const url = `/hours/api/food_cost_management/${year}/${month}`;
+	const url = `/api/food_cost_management/${year}/${month}`;
 
 	return fetch(url, {
 		method: 'POST',
@@ -572,7 +572,7 @@ function deleteFoodRow(rowId) {
 }
 
 async function updateFoodClick() {
-	const url = `/hours/api/FoodManagement/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
+	const url = `/api/FoodManagement/${ACTIVE_YEAR}/${ACTIVE_MONTH}`;
 	const data = getModalFormFoodData()
 
 	let res = await postRequest(url, data);
