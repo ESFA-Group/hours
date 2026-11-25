@@ -173,7 +173,7 @@
                class="table table-sm table-hover"
                style="table-layout: fixed;
                       text-align: center;
-                      min-width: 2600px">
+                      min-width: 2700px">
             <thead class="table-success">
                 <tr>
                     <th scope="col"
@@ -253,6 +253,14 @@
                         data-width="5"
                         data-width-unit="%">
                         Rest (h)
+                    </th>
+                    <th scope="col"
+                        data-field="totalHours"
+                        data-sortable="true"
+                        data-sorter="hhmmSorter"
+                        data-width="5"
+                        data-width-unit="%">
+                        Total (h)
                     </th>
                     <th scope="col"
                         data-field="wage"
@@ -644,7 +652,7 @@
         // Persist the column picker choice in the browser, so it survives
         // month changes and page reloads.
         const COLUMNS_KEY = 'paymentTableHiddenColumns';
-        const FULL_MIN_WIDTH = 2600; // px needed when every column is shown
+        const FULL_MIN_WIDTH = 2700; // px needed when every column is shown
         // Shrink the table's min-width in proportion to the hidden columns,
         // so the remaining ones don't stretch and force a horizontal scroll.
         function applyMinWidth(){

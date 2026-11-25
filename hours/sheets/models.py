@@ -694,7 +694,7 @@ class Sheet(models.Model):
 	def get_hours_summary(self) -> dict:
 		"""Month totals as "hh:mm" for the payment table. Rest is what it really
 		deducts (see row_minutes), and Attendance is the Auto Hours column."""
-		sums = {col: 0 for col in (*WORK_TIME_COLUMNS, "Rest")}
+		sums = {col: 0 for col in (*WORK_TIME_COLUMNS, "Rest", "Total")}
 		for row in self.data or []:
 			for col, mins in self.row_minutes(row).items():
 				if col in sums:
@@ -705,6 +705,7 @@ class Sheet(models.Model):
 			"missionHours": self.minutes2hhmm(sums["Mission"]),
 			"forgetHours": self.minutes2hhmm(sums["Forget"]),
 			"restHours": self.minutes2hhmm(sums["Rest"]),
+			"totalHours": self.minutes2hhmm(sums["Total"]),
 		}
 
 	def get_public_payment_info(self) -> dict:
