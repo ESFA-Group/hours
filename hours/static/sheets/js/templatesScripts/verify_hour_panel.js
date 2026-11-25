@@ -380,7 +380,7 @@ function formatMoney(value) {
 function computeAddition3(rawValue) {
 	if (!selectedDetail || String(rawValue ?? "").trim() === "") return null;
 	const pct = Number(rawValue);
-	if (!Number.isInteger(pct) || pct < 0 || pct > 100) return null;
+	if (!Number.isInteger(pct) || pct < 1 || pct > 100) return null;
 	const p = pct / 100;
 	return Math.round((selectedDetail.addition2 || 0) * p + (selectedDetail.rewardBase || 0) * p * (selectedDetail.rewardHours || 0));
 }
@@ -656,12 +656,12 @@ function getCommentPayload() {
 			continue;
 		}
 		const value = Number(raw);
-		if (!Number.isInteger(value) || value < 0 || value > 100) {
+		if (!Number.isInteger(value) || value < 1 || value > 100) {
 			jSuites.notification({
 				error: 1,
 				name: "Error",
 				title: "Invalid percentage",
-				message: `${label} must be a whole number from 0 to 100.`,
+				message: `${label} must be a whole number from 1 to 100.`,
 				timeout: 4000,
 			});
 			return null;
@@ -700,7 +700,7 @@ async function postSheetAction(action) {
 			error: 1,
 			name: "Error",
 			title: "Performance score required",
-			message: "Enter your performance score (0 - 100) before verifying.",
+			message: "Enter your performance score (1 - 100) before verifying.",
 			timeout: 4000,
 		});
 		$(scoreInput).trigger("focus");
